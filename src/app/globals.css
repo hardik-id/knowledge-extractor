@@ -1,0 +1,330 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Polder design tokens — source: design/tokens.json, rules: design/DESIGN.md.
+ * Change a colour here AND in design/tokens.json in the same PR.
+ * Light values on :root, dark values on .dark (set by next-themes).
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Polder colour tokens — light */
+  --bg: #ffffff;
+  --surface-tint: #eef2fc;
+  --surface-raised: #ffffff;
+  --bg-hero: #000a6e;
+  --on-hero: #ffffff;
+  --on-hero-muted: #c9d2ff;
+  --ink: #0b1033;
+  --ink-heading: #000a6e;
+  --ink-muted: #4a5170;
+  --border-subtle: #d5dbef;
+  --border-control: #8a93b8;
+  --brand-blue: #000a8c;
+  --brand-orange: #ff6a00;
+  --on-brand-orange: #000a6e;
+  --link: #1a33c9;
+  --action: #c94b00;
+  --action-hover: #a83e00;
+  --on-action: #ffffff;
+  --focus-ring: #1a33c9;
+  --success: #0d7a3e;
+  --warning: #8a5a00;
+  --danger: #c0182c;
+  --success-soft: #e5f4ec;
+  --warning-soft: #fbf1dc;
+  --danger-soft: #fbe8ea;
+  --elev-card: 0 1px 2px rgba(0, 10, 110, 0.06), 0 4px 16px rgba(0, 10, 110, 0.08);
+  --elev-lift: 0 8px 32px rgba(0, 10, 110, 0.16);
+
+  /* shadcn/ui variables, pointed at Polder tokens */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--surface-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--action);
+  --primary-foreground: var(--on-action);
+  --secondary: var(--surface-tint);
+  --secondary-foreground: var(--ink-heading);
+  --muted: var(--surface-tint);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--surface-tint);
+  --accent-foreground: var(--ink-heading);
+  --destructive: var(--danger);
+  --border: var(--border-subtle);
+  --input: var(--border-control);
+  --ring: var(--focus-ring);
+  --radius: 1rem;
+  --sidebar: var(--surface-tint);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink-heading);
+  --sidebar-primary-foreground: var(--bg);
+  --sidebar-accent: var(--surface-raised);
+  --sidebar-accent-foreground: var(--ink-heading);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--focus-ring);
+  --chart-1: var(--brand-blue);
+  --chart-2: var(--brand-orange);
+  --chart-3: var(--link);
+  --chart-4: var(--success);
+  --chart-5: var(--ink-muted);
+}
+
+.dark {
+  --bg: #070b26;
+  --surface-tint: #0d1338;
+  --surface-raised: #141b4a;
+  --bg-hero: #0d1338;
+  --on-hero: #ffffff;
+  --on-hero-muted: #a9b1d6;
+  --ink: #eef1ff;
+  --ink-heading: #ffffff;
+  --ink-muted: #a9b1d6;
+  --border-subtle: #232b5e;
+  --border-control: #5a6499;
+  --brand-blue: #2f45e6;
+  --brand-orange: #ff7a21;
+  --on-brand-orange: #0d1338;
+  --link: #93a6ff;
+  --action: #ff7a21;
+  --action-hover: #ff9447;
+  --on-action: #1b0b00;
+  --focus-ring: #ffb27a;
+  --success: #4fd08a;
+  --warning: #f2c14e;
+  --danger: #ff8a94;
+  --success-soft: #0f2f2a;
+  --warning-soft: #2e2610;
+  --danger-soft: #33141f;
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.35);
+  --elev-lift: 0 10px 36px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+@theme inline {
+  /* Fonts (next/font variables set in app/layout.tsx) */
+  --font-sans: var(--font-source-sans), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-source-code), ui-monospace, Menlo, monospace;
+  --font-heading: var(--font-sans);
+
+  /* Polder breakpoints (mobile first) */
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 960px;
+  --breakpoint-lg: 1280px;
+
+  /* Polder radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 24px;
+  --radius-3xl: 24px;
+  --radius-4xl: 24px;
+
+  /* Polder shadows */
+  --shadow-card: var(--elev-card);
+  --shadow-lift: var(--elev-lift);
+
+  /* Polder colours as utilities: bg-surface-tint, text-ink-heading, … */
+  --color-bg: var(--bg);
+  --color-surface-tint: var(--surface-tint);
+  --color-surface-raised: var(--surface-raised);
+  --color-hero: var(--bg-hero);
+  --color-on-hero: var(--on-hero);
+  --color-on-hero-muted: var(--on-hero-muted);
+  --color-ink: var(--ink);
+  --color-ink-heading: var(--ink-heading);
+  --color-ink-muted: var(--ink-muted);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-control: var(--border-control);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-orange: var(--brand-orange);
+  --color-on-brand-orange: var(--on-brand-orange);
+  --color-link: var(--link);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-on-action: var(--on-action);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-success-soft: var(--success-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
+
+  /* shadcn colour utilities */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+  }
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 17px;
+    line-height: 26px;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-ink-heading;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Markdown preview (MarkdownViewer). Polder type scale, tokens only. */
+@layer components {
+  .md-prose {
+    max-width: 68ch;
+    color: var(--ink);
+    font-size: 17px;
+    line-height: 26px;
+  }
+  .md-prose > * + * {
+    margin-top: 1rem;
+  }
+  .md-prose h1 {
+    font-size: 32px;
+    line-height: 40px;
+    font-weight: 700;
+  }
+  .md-prose h2 {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 600;
+    margin-top: 2rem;
+  }
+  .md-prose h3 {
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 600;
+    margin-top: 1.5rem;
+  }
+  .md-prose em {
+    color: var(--ink-muted);
+  }
+  .md-prose strong {
+    font-weight: 600;
+    color: var(--ink-heading);
+  }
+  .md-prose a {
+    color: var(--link);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .md-prose ul,
+  .md-prose ol {
+    padding-left: 1.5rem;
+    display: grid;
+    gap: 0.25rem;
+  }
+  .md-prose ul {
+    list-style: disc;
+  }
+  .md-prose ol {
+    list-style: decimal;
+  }
+  .md-prose blockquote {
+    background: var(--surface-tint);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    color: var(--ink-muted);
+    font-size: 15px;
+    line-height: 22px;
+  }
+  .md-prose code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--surface-tint);
+    border-radius: var(--radius-sm);
+    padding: 0.1em 0.35em;
+  }
+  .md-prose pre {
+    background: var(--surface-tint);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  .md-prose pre code {
+    background: none;
+    padding: 0;
+  }
+  .md-prose table {
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 15px;
+    line-height: 22px;
+    font-variant-numeric: tabular-nums;
+  }
+  .md-prose th,
+  .md-prose td {
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+  .md-prose th {
+    color: var(--ink-heading);
+    font-weight: 600;
+  }
+  .md-prose td[align="right"],
+  .md-prose th[align="right"] {
+    text-align: right;
+  }
+}
