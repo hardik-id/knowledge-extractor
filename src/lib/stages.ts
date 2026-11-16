@@ -1,8 +1,9 @@
-import { STAGE_IDS, type StageId } from "@/types/pipeline";
+import { appProfile } from "@/config/app-profile";
+import type { StageId } from "@/types/pipeline";
 
 /** Pure helpers for stage order and URLs. No React, no store. */
 
-export const STAGE_ORDER: readonly StageId[] = STAGE_IDS;
+export const STAGE_ORDER: readonly StageId[] = appProfile.stages;
 export const FIRST_STAGE: StageId = STAGE_ORDER[0];
 
 export function isStageId(value: unknown): value is StageId {

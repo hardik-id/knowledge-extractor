@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { appProfile } from "@/config/app-profile";
 import { FIRST_STAGE, stageHref } from "@/lib/stages";
 
 /** Product mark + name. `compact` shows "KX" below 600px. */
@@ -13,11 +14,11 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       </span>
       {compact ? (
         <>
-          <span className="hidden sm:inline">Knowledge Extractor</span>
+          <span className="hidden sm:inline">{appProfile.name}</span>
           <span className="sm:hidden">KX</span>
         </>
       ) : (
-        <span>Knowledge Extractor</span>
+        <span>{appProfile.name}</span>
       )}
     </Link>
   );

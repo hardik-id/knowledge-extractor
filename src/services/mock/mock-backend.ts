@@ -58,7 +58,7 @@ import { extractRecords } from "./mock-extractor";
  * way it would on a real server.
  */
 
-const STORAGE_KEY = "knowledge-extractor:mock-backend";
+const DEFAULT_STORAGE_KEY = "knowledge-extractor:mock-backend";
 
 const LATENCY_MS = 150;
 const QUEUE_STAGGER_MS = 250;
@@ -115,6 +115,10 @@ export interface MockBackendOptions {
   speed?: number;
   /** Where to keep state between reloads. Default: sessionStorage when there is one. */
   storage?: Pick<Storage, "getItem" | "setItem"> | null;
+  /** The key the state is kept under. One per app, so two apps on one origin keep apart. */
+  storageKey?: string;
+  /** The stages this backend runs, in order. Default: all of them. */
+  workStages?: readonly WorkStageId[];
 }
 
 const key = (fileId: string, stage: WorkStageId) => `${fileId}:${stage}`;
@@ -200,16 +204,20 @@ export class MockBackend {
   private readonly runs = new Map<string, MockRun>();
   private readonly subscriptions = new Set<Subscription>();
   private readonly storage: MockBackendOptions["storage"];
+  private readonly storageKey: string;
   private readonly failNextStages = new Set<WorkStageId>();
   private unanchorNextExtraction = false;
   private readonly examplesUsed = new Map<string, number>();
+  private readonly workStages: readonly WorkStageId[];
   private speed: number;
   private connected = true;
   private lastTimestamp = 0;
 
   constructor(options: MockBackendOptions = {}) {
     this.speed = options.speed ?? 1;
+    this.workStages = options.workStages ?? WORK_STAGE_IDS;
     this.storage = options.storage === undefined ? defaultStorage() : options.storage;
+    this.storageKey = options.storageKey ?? DEFAULT_STORAGE_KEY;
     this.restore();
   }
 
@@ -242,7 +250,7 @@ export class MockBackend {
       sharedWriter: {},
     };
     for (const file of run.files) {
-      for (const stage of WORK_STAGE_IDS) {
+      for (const stage of this.workStages) {
         run.cells[key(file.id, stage)] = {
           fileId: file.id,
           stage,
@@ -294,8 +302,8 @@ export class MockBackend {
       });
     }
 
-    const stageAt = WORK_STAGE_IDS.indexOf(stage);
-    const previous = WORK_STAGE_IDS[stageAt - 1];
+    const stageAt = this.workStages.indexOf(stage);
+    const previous = this.workStages[stageAt - 1];
     if (previous && fileIds.some((id) => run.cells[key(id, previous)].status !== "succeeded")) {
       throw new ApiError({
         status: 422,
@@ -305,7 +313,7 @@ export class MockBackend {
     }
 
     // Work built on the old output of this stage is now out of date.
-    for (const later of WORK_STAGE_IDS.slice(stageAt + 1)) {
+    for (const later of this.workStages.slice(stageAt + 1)) {
       for (const id of fileIds) {
         if (run.cells[key(id, later)].status !== "pending") {
           this.update(run, id, later, { status: "stale", progress: null });
@@ -740,11 +748,30 @@ export class MockBackend {
     }
   }
 
-  /** Runs the extractor on the enriched text and stores the result. Returns the new revision. */
+  /**
+   * The text extraction works on for a file and its version, or null when there
+   * is none yet. The one place that says where that text comes from: today the
+   * copy classify and enrich share, as getOutput(…, "enrich") returns it.
+   */
+  private extractionInput(run: MockRun, fileId: string): { text: string; etag: string } | null {
+    const file = run.files.find((f) => f.id === fileId);
+    const etag = run.cells[key(fileId, "enrich")]?.output?.etag;
+    if (!file || !etag) return null;
+    return { text: outputText(file, run.sharedWriter?.[fileId] ?? "enrich"), etag };
+  }
+
+  /** Runs the extractor on the extraction input and stores the result. Returns the new revision. */
   private extract(run: MockRun, file: RunFile, unanchor: boolean): number {
     const definition = this.ensureDefinition(run);
-    // Same text as getOutput(…, "enrich"): the copy classify and enrich share.
-    const text = outputText(file, run.sharedWriter?.[file.id] ?? "enrich");
+    const input = this.extractionInput(run, file.id);
+    if (!input) {
+      throw new ApiError({
+        status: 422,
+        code: "upstream_not_ready",
+        message: "The file has no text to extract from yet.",
+      });
+    }
+    const text = input.text;
     const previous = run.extractions?.[file.id];
     // Learning: the real service sends these records, passage and expected output
     // together, to the model as examples. The mock only counts them.
@@ -762,7 +789,7 @@ export class MockBackend {
     (run.extractions ??= {})[file.id] = {
       fileId: file.id,
       revision,
-      sourceEtag: run.cells[key(file.id, "enrich")].output!.etag,
+      sourceEtag: input.etag,
       definitionVersion: definition.version,
       records,
     };
@@ -801,18 +828,18 @@ export class MockBackend {
           message: "This file has not been extracted yet.",
         });
       }
-      const enrichOutput = run.cells[key(fileId, "enrich")]?.output;
-      if (!enrichOutput) {
+      const input = this.extractionInput(run, fileId);
+      if (!input) {
         throw new ApiError({
           status: 422,
           code: "upstream_not_ready",
-          message: "The file has not been enriched yet.",
+          message: "The file has no text to extract from yet.",
         });
       }
       extraction = {
         fileId,
         revision: 0,
-        sourceEtag: enrichOutput.etag,
+        sourceEtag: input.etag,
         definitionVersion: definition.version || 0,
         records: [],
       };
@@ -827,7 +854,7 @@ export class MockBackend {
     }
 
     const next = structuredClone(extraction);
-    const text = outputText(file, run.sharedWriter?.[fileId] ?? "enrich");
+    const text = this.extractionInput(run, fileId)?.text ?? "";
     apply({
       extraction: next,
       definition,
@@ -981,7 +1008,7 @@ export class MockBackend {
 
   private save() {
     try {
-      this.storage?.setItem(STORAGE_KEY, JSON.stringify([...this.runs.values()]));
+      this.storage?.setItem(this.storageKey, JSON.stringify([...this.runs.values()]));
     } catch {
       // Storage full or blocked: the mock still works until the next reload.
     }
@@ -991,7 +1018,7 @@ export class MockBackend {
   private restore() {
     let saved: MockRun[];
     try {
-      saved = JSON.parse(this.storage?.getItem(STORAGE_KEY) ?? "[]") as MockRun[];
+      saved = JSON.parse(this.storage?.getItem(this.storageKey) ?? "[]") as MockRun[];
     } catch {
       return;
     }

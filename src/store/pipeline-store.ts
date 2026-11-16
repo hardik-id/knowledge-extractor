@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { appProfile } from "@/config/app-profile";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { createFilesSlice } from "./slices/files-slice";
 import { createNavigationSlice } from "./slices/navigation-slice";
@@ -24,7 +25,7 @@ export const usePipelineStore = create<PipelineState>()(
       ...createRunSlice(...a),
     }),
     {
-      name: "knowledge-extractor:run",
+      name: `${appProfile.storagePrefix}:run`,
       version: 2,
       storage: createJSONStorage(() => sessionStorage),
       skipHydration: true,

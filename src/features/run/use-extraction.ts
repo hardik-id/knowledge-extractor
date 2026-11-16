@@ -14,6 +14,7 @@ import type {
 } from "@/services/contracts";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
+import { extractionInputEtag } from "./use-extraction-input";
 
 /**
  * Records already fetched. A key holds the revision, so an entry never goes
@@ -30,14 +31,12 @@ const keyFor = (runId: string, fileId: string, sourceEtag: string, revision: num
  * when the server says they changed (the file's revision goes up) and when an
  * extraction run finishes. A file nothing was extracted from yet gives an
  * empty list at revision 0, so it can be labelled from scratch. Nothing is
- * loaded until the file has the text extraction works on (the enrich output).
+ * loaded until the file has the text extraction works on (see `use-extraction-input.ts`).
  * Pass `null` when no file is chosen.
  */
 export function useFileExtraction(fileId: string | null): AsyncData<FileExtraction> {
   const runId = usePipelineStore((s) => s.runId);
-  const sourceEtag = usePipelineStore((s) =>
-    fileId ? (s.cells[fileId]?.enrich?.output?.etag ?? null) : null,
-  );
+  const sourceEtag = usePipelineStore((s) => (fileId ? extractionInputEtag(s, fileId) : null));
   // A finished run changes this ETag, in case the "records changed" message was missed.
   const runEtag = usePipelineStore((s) =>
     fileId ? (s.cells[fileId]?.extract?.output?.etag ?? "") : "",
@@ -100,13 +99,14 @@ export function useExtractionActions(extraction: FileExtraction | undefined): Ex
     const runId = store.runId;
     if (!runId || !extraction) return null;
     const { fileId } = extraction;
-    const cell = (stage: "enrich" | "extract") => store.cells[fileId]?.[stage]?.output?.etag;
+    const inputEtag = extractionInputEtag(store, fileId);
+    const runEtag = store.cells[fileId]?.extract?.output?.etag;
 
     setPending((n) => n + 1);
     try {
       const next = await change(runId, extraction);
       extractions.set(
-        keyFor(runId, fileId, `${cell("enrich") ?? ""}|${cell("extract") ?? ""}`, next.revision),
+        keyFor(runId, fileId, `${inputEtag ?? ""}|${runEtag ?? ""}`, next.revision),
         next,
       );
       usePipelineStore.getState().setExtractionRevision(fileId, next.revision);

@@ -10,7 +10,11 @@ import { SplitView } from "@/components/pipeline/split-view";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExtractionActions, useFileExtraction } from "@/features/run/use-extraction";
-import { useStageOutput } from "@/features/run/use-stage-output";
+import {
+  extractionInputEtag,
+  hasExtractionInput,
+  useExtractionInput,
+} from "@/features/run/use-extraction-input";
 import { readSelection } from "@/lib/dom-selection";
 import { spanFromRange } from "@/lib/text-spans";
 import { cn } from "@/lib/utils";
@@ -49,7 +53,7 @@ export function ReviewTab({ definition }: { definition: ExtractionDefinition }) 
 
   // Every file with the text extraction works on can be reviewed and labelled by hand.
   const rows: Row[] = files.flatMap((file) =>
-    cells[file.id]?.enrich?.output ? [{ file, cell: cells[file.id]?.extract }] : [],
+    hasExtractionInput({ cells }, file.id) ? [{ file, cell: cells[file.id]?.extract }] : [],
   );
   const active = rows.find((row) => row.file.id === activeDocId) ?? rows[0];
 
@@ -101,11 +105,9 @@ function ReviewWorkspace({
   const setActiveDoc = usePipelineStore((s) => s.setActiveDoc);
   const fileId = active?.file.id ?? null;
 
-  const text = useStageOutput(fileId, "enrich");
+  const text = useExtractionInput(fileId);
   const extraction = useFileExtraction(fileId);
-  const enrichEtag = usePipelineStore((s) =>
-    fileId ? (s.cells[fileId]?.enrich?.output?.etag ?? null) : null,
-  );
+  const inputEtag = usePipelineStore((s) => (fileId ? extractionInputEtag(s, fileId) : null));
 
   const [view, setView] = useState<"rendered" | "source">("rendered");
   const [activeValueId, setActiveValueId] = useState<string | null>(null);
@@ -141,9 +143,7 @@ function ReviewWorkspace({
   };
 
   const outdated =
-    extraction.data !== undefined &&
-    enrichEtag !== null &&
-    extraction.data.sourceEtag !== enrichEtag;
+    extraction.data !== undefined && inputEtag !== null && extraction.data.sourceEtag !== inputEtag;
 
   const addedValue = added
     ? records
