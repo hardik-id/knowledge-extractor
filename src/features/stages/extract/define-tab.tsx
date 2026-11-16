@@ -2,6 +2,7 @@
 
 import { AlertCircle, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { useId } from "react";
+import { appProfile } from "@/config/app-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,10 +53,7 @@ export function DefineTab({ definition }: { definition: ExtractionDefinitionStat
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-8">
       <div className="flex min-w-0 flex-col gap-8">
-        <p className="max-w-[68ch] text-ink-muted">
-          This definition starts from the pipeline&apos;s extraction settings and applies to this
-          run only.
-        </p>
+        <p className="max-w-[68ch] text-ink-muted">{appProfile.definitionNote}</p>
 
         {showErrors && errors.general.length > 0 && (
           <div role="alert" className="space-y-1">

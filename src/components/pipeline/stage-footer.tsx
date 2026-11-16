@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
+import { appProfile } from "@/config/app-profile";
 import { Button } from "@/components/ui/button";
 import { STAGE_META } from "@/features/stages/config";
 import { getNextStage, getPrevStage, stageHref } from "@/lib/stages";
@@ -60,7 +61,7 @@ export function StageFooter({ stageId }: { stageId: StageId }) {
           {!canProceed && (
             <p id={hintId} className="text-[13px] leading-[18px] text-ink-muted sm:text-right">
               {stageId === "select"
-                ? "Select at least one file to continue."
+                ? `Select at least one ${appProfile.itemNoun} to continue.`
                 : `${STAGE_META[stageId].actionLabel} to continue.`}
             </p>
           )}

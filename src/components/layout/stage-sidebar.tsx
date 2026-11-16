@@ -1,5 +1,6 @@
 "use client";
 
+import { appProfile } from "@/config/app-profile";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { STAGE_META } from "@/features/stages/config";
@@ -26,7 +27,8 @@ export function StageSidebar({ onNavigate }: StageSidebarProps) {
   return (
     <div className="flex min-h-full flex-col gap-4 px-6 pt-2 pb-6">
       <p className="text-[15px] leading-[22px] text-ink-muted">
-        <span className="font-semibold text-ink">{plural(selectedCount, "file")}</span> in this run
+        <span className="font-semibold text-ink">{plural(selectedCount, appProfile.itemNoun)}</span>{" "}
+        in this run
       </p>
 
       <nav aria-label="Stages">

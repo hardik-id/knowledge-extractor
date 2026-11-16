@@ -41,6 +41,7 @@ export const SOURCE_LABEL: Record<SourceKind, string> = {
   confluence: "Confluence",
   sharepoint: "SharePoint",
   upload: "Upload",
+  storage: "Storage",
 };
 
 /** "Q3 Report.xlsx" → "q3-report.md" */

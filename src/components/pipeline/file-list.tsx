@@ -1,5 +1,6 @@
 "use client";
 
+import { appProfile } from "@/config/app-profile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FILE_TYPE_LABEL, SOURCE_LABEL, formatBytes, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,9 @@ export function FileList({
                 <p className="truncate font-semibold text-ink">{file.name}</p>
               )}
               <p className="truncate text-[13px] leading-[18px] text-ink-muted">
-                {SOURCE_LABEL[file.source]} · {file.location}
+                {appProfile.sources.length > 1
+                  ? `${SOURCE_LABEL[file.source]} · ${file.location}`
+                  : file.location}
               </p>
             </div>
             <dl className="hidden shrink-0 grid-cols-[auto_auto_auto] gap-x-6 text-right text-[15px] leading-[22px] text-ink-muted tabular-nums sm:grid">

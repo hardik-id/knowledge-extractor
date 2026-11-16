@@ -38,7 +38,7 @@ import {
  * wire format, so a change in the API is a change here.
  *
  * Wire format:
- *   file  { id, name, source, type, size_bytes, location, modified_at, source_ref? }
+ *   file  { id, name, source, type, size_bytes, location, modified_at, source_ref?, etag? }
  *   cell  { file_id, stage, status, execution_id, progress, error: { code, message } | null,
  *           output: { name, content_type, size, etag } | null, updated_at }
  *   run   { id, created_at, files: file[], cells: cell[] }
@@ -61,7 +61,7 @@ import {
 
 const ROLES = ["user", "assistant"] as const;
 const MESSAGE_STATUSES = ["streaming", "done"] as const;
-const SOURCES: readonly SourceKind[] = ["confluence", "sharepoint", "upload"];
+const SOURCES: readonly SourceKind[] = ["confluence", "sharepoint", "upload", "storage"];
 const FILE_TYPES: readonly FileType[] = ["pdf", "docx", "xlsx", "pptx", "html", "md", "txt"];
 
 function invalid(path: string, expected: string): never {
@@ -116,7 +116,25 @@ export function parseSourceFile(value: unknown, path = "file"): SourceFile {
     sizeBytes: number(o.size_bytes, `${path}.size_bytes`),
     location: string(o.location, `${path}.location`),
     modifiedAt: string(o.modified_at, `${path}.modified_at`),
+    // Only storage documents report a version.
+    ...(o.etag === undefined || o.etag === null ? {} : { etag: string(o.etag, `${path}.etag`) }),
   };
+}
+
+/** The value of an `ETag` header without its quotes or a weak (`W/`) prefix. */
+export function parseEtagHeader(header: string | null): string {
+  const etag = header
+    ?.trim()
+    .replace(/^W\//, "")
+    .replace(/^"(.*)"$/, "$1");
+  if (!etag) {
+    throw new ApiError({
+      status: 0,
+      code: "invalid_response",
+      message: "The server sent a document without an ETag.",
+    });
+  }
+  return etag;
 }
 
 /** `{ items: file[] }` */

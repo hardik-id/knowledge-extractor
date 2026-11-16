@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { CloudOff, FolderOpen, Search, SearchX, Upload } from "lucide-react";
+import { appProfile } from "@/config/app-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +18,8 @@ import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import type { SourceKind } from "@/types/pipeline";
 import { SourcePicker } from "./source-picker";
+
+const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
 /** Wait this long after the last keystroke before asking the catalog. */
 const SEARCH_DEBOUNCE_MS = 250;
@@ -34,7 +37,7 @@ export function SelectPanel() {
       stageId="select"
       status={
         <p className="font-semibold text-ink" aria-live="polite">
-          {plural(selectedCount, "file")} selected
+          {plural(selectedCount, appProfile.itemNoun)} selected
           {selectedCount > 0 && (
             <Button variant="link" size="sm" onClick={clearSelection} className="ml-2 h-auto px-0">
               Clear
@@ -57,8 +60,8 @@ export function SelectPanel() {
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name or space"
-                aria-label="Search files"
+                placeholder={appProfile.searchHint}
+                aria-label={`Search ${appProfile.itemNoun}s`}
                 className="h-11 pl-9"
               />
             </div>
@@ -110,7 +113,7 @@ function CatalogFiles({ source }: { source: SourceKind }) {
     return (
       <EmptyState
         icon={CloudOff}
-        title={`Couldn't load files from ${SOURCE_LABEL[source]}`}
+        title={`Couldn't load ${appProfile.itemNoun}s from ${SOURCE_LABEL[source]}`}
         description={describeApiError(error)}
         action={
           <Button variant="outline" onClick={retry}>
@@ -123,7 +126,7 @@ function CatalogFiles({ source }: { source: SourceKind }) {
 
   if (!files) {
     return (
-      <div aria-busy="true" aria-label="Loading files" className="space-y-2">
+      <div aria-busy="true" aria-label={`Loading ${appProfile.itemNoun}s`} className="space-y-2">
         <Skeleton className="h-5 w-28" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
@@ -134,7 +137,7 @@ function CatalogFiles({ source }: { source: SourceKind }) {
     return query ? (
       <EmptyState
         icon={SearchX}
-        title="No files match your search"
+        title={`No ${appProfile.itemNoun}s match your search`}
         description={`Nothing in ${SOURCE_LABEL[source]} matches “${query}”. Try a shorter word.`}
         action={
           <Button variant="outline" onClick={() => setSearchQuery("")}>
@@ -145,8 +148,8 @@ function CatalogFiles({ source }: { source: SourceKind }) {
     ) : (
       <EmptyState
         icon={FolderOpen}
-        title={`No files in ${SOURCE_LABEL[source]}`}
-        description="Files you have access to in this source will be listed here."
+        title={`No ${appProfile.itemNoun}s in ${SOURCE_LABEL[source]}`}
+        description={`${capitalize(appProfile.itemNoun)}s you have access to in this source will be listed here.`}
       />
     );
   }
@@ -163,13 +166,15 @@ function CatalogFiles({ source }: { source: SourceKind }) {
     // While a new search is on its way the previous results stay, dimmed.
     <div aria-busy={isLoading} className={cn("flex flex-col gap-4", isLoading && "opacity-60")}>
       <div className="flex items-center justify-between">
-        <p className="text-[15px] text-ink-muted">{plural(files.length, "file")} found</p>
+        <p className="text-[15px] text-ink-muted">
+          {plural(files.length, appProfile.itemNoun)} found
+        </p>
         <Button variant="link" size="sm" className="px-0" onClick={toggleAllShown}>
           {allShownSelected ? "Deselect all shown" : "Select all shown"}
         </Button>
       </div>
       <FileList
-        label="Files"
+        label={`${capitalize(appProfile.itemNoun)}s`}
         files={files}
         selectedIds={selectedIds}
         onToggle={(fileId) => {

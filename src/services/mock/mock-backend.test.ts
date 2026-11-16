@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { isApiError } from "@/lib/api/api-error";
+import { MOCK_DOCUMENTS } from "@/mocks/documents";
 import { MOCK_FILES } from "@/mocks/files";
 import type {
   AssistantEvent,
@@ -1167,5 +1168,61 @@ describe("assistant and publishing", () => {
       const run = await backend.createRun(FILES);
       await rejectsWithCode(backend.executeStage(run.id, "classify"), "upstream_not_ready", 422);
     });
+  });
+});
+
+describe("storage documents (Knowledge Studio)", () => {
+  const studio = () =>
+    new MockBackend({
+      speed: 0,
+      storage: null,
+      workStages: ["extract"],
+      extractionInput: "document",
+    });
+
+  test("the storage listing has the documents and is filtered like the other sources", async () => {
+    const backend = fastBackend();
+    const all = await backend.listFiles("storage", "");
+    assert.equal(all.length, MOCK_DOCUMENTS.length);
+    assert.ok(all.every((d) => d.source === "storage" && d.type === "md" && d.etag));
+    assert.ok(MOCK_DOCUMENTS.length >= 8);
+
+    const found = await backend.listFiles("storage", " ADR ");
+    assert.ok(found.length >= 1 && found.every((d) => /adr/i.test(d.name + d.location)));
+    assert.ok((await backend.listFiles("confluence", "")).every((f) => f.source === "confluence"));
+  });
+
+  test("a document is read with its text and etag; an unknown id is 404", async () => {
+    const backend = fastBackend();
+    const [first] = await backend.listFiles("storage", "");
+    const content = await backend.getDocument(first.id);
+    assert.equal(content.etag, first.etag);
+    assert.equal(content.contentType, "text/markdown");
+    assert.ok(content.text.startsWith("---\n"));
+    await rejectsWithCode(backend.getDocument("doc-nope"), "document_not_found", 404);
+  });
+
+  test("a run of documents extracts from the document, with its etag, and takes corrections", async () => {
+    const backend = studio();
+    const adr = MOCK_DOCUMENTS.find((d) => d.name === "architecture-decisions-2026.md")!;
+    const run = await backend.createRun([adr]);
+    assert.equal(run.cells.length, 1);
+    const fileId = run.files[0].id;
+
+    await runStage(backend, run.id, "extract");
+    const extraction = await backend.getFileExtraction(run.id, fileId);
+    assert.equal(extraction.sourceEtag, adr.etag);
+    assert.ok(extraction.records.length > 0);
+
+    const updated = await backend.updateRecord(
+      run.id,
+      fileId,
+      extraction.records[0].id,
+      { review: "accepted" },
+      extraction.revision,
+    );
+    assert.equal(updated.revision, extraction.revision + 1);
+    assert.equal(updated.sourceEtag, adr.etag);
+    assert.equal(updated.records[0].review, "accepted");
   });
 });

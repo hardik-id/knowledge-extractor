@@ -7,6 +7,7 @@ import {
   parseAssistantMessages,
   parseCellMessage,
   parseDefinition,
+  parseEtagHeader,
   parseExecution,
   parseExtractionChangedMessage,
   parseFileExtraction,
@@ -447,5 +448,32 @@ describe("assistant parsers", () => {
       examples: 2,
     });
     assert.throws(() => parsePublishResult({ examples: 2 }), isInvalidResponse);
+  });
+});
+
+describe("storage documents", () => {
+  test("a listed document keeps its etag; other items have none", () => {
+    const [doc] = parseSourceFiles({
+      items: [{ ...wireFile, source: "storage", type: "md", etag: "abc123" }],
+    });
+    assert.equal(doc.source, "storage");
+    assert.equal(doc.etag, "abc123");
+    assert.equal("etag" in parseSourceFiles({ items: [wireFile] })[0], false);
+    assert.throws(
+      () => parseSourceFiles({ items: [{ ...wireFile, etag: 7 }] }),
+      (error) => isApiError(error) && error.code === "invalid_response",
+    );
+  });
+
+  test("an ETag header loses its quotes and weak prefix, and must be there", () => {
+    assert.equal(parseEtagHeader('"0x8DC1"'), "0x8DC1");
+    assert.equal(parseEtagHeader('W/"abc"'), "abc");
+    assert.equal(parseEtagHeader("plain"), "plain");
+    for (const missing of [null, "", '""']) {
+      assert.throws(
+        () => parseEtagHeader(missing),
+        (error) => isApiError(error) && error.code === "invalid_response",
+      );
+    }
   });
 });

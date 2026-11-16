@@ -2,7 +2,7 @@ import Link from "next/link";
 import { appProfile } from "@/config/app-profile";
 import { FIRST_STAGE, stageHref } from "@/lib/stages";
 
-/** Product mark + name. `compact` shows "KX" below 600px. */
+/** Product mark + name. `compact` shows the short name below 600px. */
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
@@ -15,7 +15,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       {compact ? (
         <>
           <span className="hidden sm:inline">{appProfile.name}</span>
-          <span className="sm:hidden">KX</span>
+          <span className="sm:hidden">{appProfile.shortName}</span>
         </>
       ) : (
         <span>{appProfile.name}</span>

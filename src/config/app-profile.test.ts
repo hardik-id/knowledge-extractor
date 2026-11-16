@@ -35,4 +35,20 @@ describe("app profiles", () => {
     assert.deepEqual(profile.stages, STAGE_IDS);
     assert.equal(profile.storagePrefix, "knowledge-extractor");
   });
+
+  test("studio selects documents from storage and extracts from them", () => {
+    const studio = profileFor("studio");
+    assert.deepEqual(studio.stages, ["select", "extract"]);
+    assert.deepEqual(studio.sources, ["storage"]);
+    assert.equal(studio.extractionInput, "document");
+    assert.notEqual(studio.storagePrefix, profileFor("pipeline").storagePrefix);
+    assert.notEqual(studio.shortName, profileFor("pipeline").shortName);
+  });
+
+  test("pipeline keeps its extraction input and wording", () => {
+    const pipeline = profileFor("pipeline");
+    assert.equal(pipeline.extractionInput, "enrich");
+    assert.equal(pipeline.shortName, "KX");
+    assert.equal(pipeline.itemNoun, "file");
+  });
 });

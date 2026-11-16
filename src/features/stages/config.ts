@@ -86,7 +86,18 @@ type StageWording = Partial<Pick<StageMeta, "label" | "description" | "actionLab
 /** Wording an app uses in place of the defaults above. The full pipeline needs none. */
 export const STAGE_WORDING_BY_MODE: Partial<
   Record<AppMode, Partial<Record<StageId, StageWording>>>
-> = {};
+> = {
+  studio: {
+    select: {
+      label: "Documents",
+      description: "Choose enriched documents from your storage container.",
+      actionLabel: "Select documents",
+    },
+    extract: {
+      description: "Say what to extract, run it, then review and label what it found.",
+    },
+  },
+};
 
 const overrides = STAGE_WORDING_BY_MODE[appProfile.mode] ?? {};
 
