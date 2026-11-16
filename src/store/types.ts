@@ -1,5 +1,7 @@
 import type { StateCreator } from "zustand";
 import type {
+  AssistantEvent,
+  AssistantMessage,
   ConnectionState,
   ExecuteStageOptions,
   Run,
@@ -53,9 +55,20 @@ export interface RunSlice {
   startingStages: WorkStageId[];
   connection: ConnectionState;
   activeDocId: string | null;
+  /** The latest revision of each file's extraction records, by file id. Fetch again when it changes. */
+  extractionRevisions: Record<string, number>;
+  assistantMessages: AssistantMessage[];
 
   setActiveDoc: (fileId: string | null) => void;
   setConnection: (state: ConnectionState) => void;
+  /** The conversation with the extraction assistant, oldest first. */
+  setAssistantMessages: (messages: AssistantMessage[]) => void;
+  /** Adds a message, or replaces the one with the same id. */
+  putAssistantMessage: (message: AssistantMessage) => void;
+  /** Live parts of a reply. A part for a message not seen yet starts that message. */
+  applyAssistantEvent: (event: AssistantEvent) => void;
+  /** Live updates. A lower revision than the one known is ignored. */
+  setExtractionRevision: (fileId: string, revision: number) => void;
   /** Creates a run from the selected files unless there is one. Rejects with an ApiError. */
   ensureRun: () => Promise<void>;
   /** Fetches the snapshot of the current run. Never rejects. */

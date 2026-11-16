@@ -41,6 +41,12 @@ export function attachRun(runId: string, { onGone }: AttachRunOptions): () => vo
       batch.push(cell);
       timer ??= setTimeout(flush, CELL_BATCH_MS);
     },
+    onExtractionChanged: ({ fileId, revision }) => {
+      if (store().runId === runId) store().setExtractionRevision(fileId, revision);
+    },
+    onAssistantEvent: (event) => {
+      if (store().runId === runId) store().applyAssistantEvent(event);
+    },
     onStateChange: (state) => {
       if (store().runId === runId) store().setConnection(state);
     },

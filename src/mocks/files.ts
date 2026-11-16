@@ -74,4 +74,22 @@ export const MOCK_FILES: SourceFile[] = [
     location: "IT / Compliance",
     modifiedAt: "2026-06-14T09:00:00Z",
   },
+  {
+    id: "cf-005",
+    name: "Architecture decisions 2026.pdf",
+    source: "confluence",
+    type: "pdf",
+    sizeBytes: 318_440,
+    location: "Engineering / Architecture",
+    modifiedAt: "2026-11-03T15:20:00Z",
+  },
+  {
+    id: "sp-005",
+    name: "Platform ADRs.pptx",
+    source: "sharepoint",
+    type: "pptx",
+    sizeBytes: 1_870_330,
+    location: "Engineering / Architecture",
+    modifiedAt: "2026-10-27T10:10:00Z",
+  },
 ];

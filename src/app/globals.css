@@ -37,6 +37,19 @@
   --success-soft: #e5f4ec;
   --warning-soft: #fbf1dc;
   --danger-soft: #fbe8ea;
+  /* Annotation labels: -N for the chip text and underline, -N-soft behind highlighted text */
+  --label-1: #1a4fd6;
+  --label-1-soft: #dfe8ff;
+  --label-2: #7a2bc2;
+  --label-2-soft: #f0e3fb;
+  --label-3: #00707a;
+  --label-3-soft: #d8f1f2;
+  --label-4: #b01773;
+  --label-4-soft: #fbe1ef;
+  --label-5: #7a5b00;
+  --label-5-soft: #f7edc9;
+  --label-6: #2d6f1e;
+  --label-6-soft: #e0f2d9;
   --elev-card: 0 1px 2px rgba(0, 10, 110, 0.06), 0 4px 16px rgba(0, 10, 110, 0.08);
   --elev-lift: 0 8px 32px rgba(0, 10, 110, 0.16);
 
@@ -101,6 +114,18 @@
   --success-soft: #0f2f2a;
   --warning-soft: #2e2610;
   --danger-soft: #33141f;
+  --label-1: #9db6ff;
+  --label-1-soft: #1a2a66;
+  --label-2: #cfa3f5;
+  --label-2-soft: #33205a;
+  --label-3: #63d2d9;
+  --label-3-soft: #0d3a40;
+  --label-4: #ff9ccb;
+  --label-4-soft: #47183a;
+  --label-5: #e8c765;
+  --label-5-soft: #3a300f;
+  --label-6: #93d67c;
+  --label-6-soft: #1b3a16;
   --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.35);
   --elev-lift: 0 10px 36px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
@@ -155,6 +180,18 @@
   --color-success-soft: var(--success-soft);
   --color-warning-soft: var(--warning-soft);
   --color-danger-soft: var(--danger-soft);
+  --color-label-1: var(--label-1);
+  --color-label-1-soft: var(--label-1-soft);
+  --color-label-2: var(--label-2);
+  --color-label-2-soft: var(--label-2-soft);
+  --color-label-3: var(--label-3);
+  --color-label-3-soft: var(--label-3-soft);
+  --color-label-4: var(--label-4);
+  --color-label-4-soft: var(--label-4-soft);
+  --color-label-5: var(--label-5);
+  --color-label-5-soft: var(--label-5-soft);
+  --color-label-6: var(--label-6);
+  --color-label-6-soft: var(--label-6-soft);
 
   /* shadcn colour utilities */
   --color-background: var(--background);

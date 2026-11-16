@@ -11,6 +11,8 @@ const NO_RUN = {
   startingStages: [],
   connection: "idle",
   activeDocId: null,
+  extractionRevisions: {},
+  assistantMessages: [],
 } satisfies Partial<RunSlice>;
 
 /**
@@ -28,6 +30,42 @@ export const createRunSlice: SliceCreator<RunSlice> = (set, get) => {
 
     setActiveDoc: (activeDocId) => set({ activeDocId }),
     setConnection: (connection) => set({ connection }),
+    setAssistantMessages: (assistantMessages) => set({ assistantMessages }),
+    putAssistantMessage: (message) =>
+      set((s) => ({
+        assistantMessages: s.assistantMessages.some((m) => m.id === message.id)
+          ? s.assistantMessages.map((m) => (m.id === message.id ? message : m))
+          : [...s.assistantMessages, message],
+      })),
+    applyAssistantEvent: (event) =>
+      set((s) => {
+        const known = s.assistantMessages.find((m) => m.id === event.messageId);
+        const message = known ?? {
+          id: event.messageId,
+          role: "assistant" as const,
+          text: "",
+          proposal: null,
+          status: "streaming" as const,
+          createdAt: new Date().toISOString(),
+        };
+        const next =
+          event.type === "delta"
+            ? { ...message, text: message.text + event.text }
+            : event.type === "proposal"
+              ? { ...message, proposal: event.proposal }
+              : { ...message, status: "done" as const };
+        return {
+          assistantMessages: known
+            ? s.assistantMessages.map((m) => (m.id === next.id ? next : m))
+            : [...s.assistantMessages, next],
+        };
+      }),
+    setExtractionRevision: (fileId, revision) =>
+      set((s) =>
+        (s.extractionRevisions[fileId] ?? -1) >= revision
+          ? s
+          : { extractionRevisions: { ...s.extractionRevisions, [fileId]: revision } },
+      ),
 
     ensureRun: () => {
       if (get().runId) return Promise.resolve();
