@@ -17,7 +17,7 @@ interface PlaceholderStagePanelProps {
 }
 
 /**
- * Shared skeleton for stages without real UI yet (classify, enrich, extract, index).
+ * Shared skeleton for stages without real UI yet (now only index).
  * Runs the stage on the backend so the proceed flow works end to end.
  */
 export function PlaceholderStagePanel({ stageId, comingSoon }: PlaceholderStagePanelProps) {

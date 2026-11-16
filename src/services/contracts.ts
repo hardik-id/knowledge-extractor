@@ -20,6 +20,23 @@ export function isWorkStageId(value: unknown): value is WorkStageId {
   return typeof value === "string" && (WORK_STAGE_IDS as readonly string[]).includes(value);
 }
 
+/** Stages whose output is the document as Markdown. */
+export const MARKDOWN_STAGE_IDS = ["transform", "classify", "enrich"] as const;
+
+export type MarkdownStageId = (typeof MARKDOWN_STAGE_IDS)[number];
+
+/**
+ * Classification writes a copy of the Markdown file (with front matter) to its
+ * own container, and enrichment updates that copy in place. So the two stages
+ * have one stored file between them: a write by either changes what both return.
+ */
+const SHARED_OUTPUT_STAGES: readonly WorkStageId[] = ["classify", "enrich"];
+
+/** The stages that write the stored file `stage` outputs, itself included. */
+export function sharedOutputStages(stage: WorkStageId): readonly WorkStageId[] {
+  return SHARED_OUTPUT_STAGES.includes(stage) ? SHARED_OUTPUT_STAGES : [stage];
+}
+
 /**
  * - pending:   never run
  * - queued:    accepted, waiting for a worker
@@ -125,10 +142,278 @@ export interface RunsApi {
   deleteRun(runId: string): Promise<void>;
 }
 
+// ── Extraction ──────────────────────────────────────────────────────────
+//
+// The extract stage is driven by a definition: a prompt, the record types to
+// look for (an ADR, a policy requirement) and the fields of each. Its result
+// is a list of records per file, and every value points at the text it came
+// from, so the UI can show it as a highlight.
+
+/**
+ * How a field's value is taken from the document.
+ * - quote:    copied exactly. The value is the text of its span.
+ * - inferred: derived by the model (a status, a normalised date). Its spans
+ *             are the passages it was based on.
+ */
+export const FIELD_MODES = ["quote", "inferred"] as const;
+export type FieldMode = (typeof FIELD_MODES)[number];
+
+export const FIELD_VALUE_TYPES = ["text", "date", "number", "choice"] as const;
+export type FieldValueType = (typeof FIELD_VALUE_TYPES)[number];
+
+export interface FieldDef {
+  id: string;
+  /** Name in the output and in templates, e.g. "approved_by". Unique within its record type. */
+  key: string;
+  /** Name people see, e.g. "Approved by". */
+  name: string;
+  /** What to look for: part of the instructions to the model. */
+  description: string;
+  mode: FieldMode;
+  valueType: FieldValueType;
+  /** The allowed values when `valueType` is "choice". */
+  choices: string[];
+  /** Whether one record can have several values for this field. */
+  multiple: boolean;
+}
+
+export interface RecordType {
+  id: string;
+  /** e.g. "ADR" */
+  name: string;
+  description: string;
+  /** May be empty: then a record is only its own span (the whole block of text). */
+  fields: FieldDef[];
+}
+
+export const OUTPUT_FORMATS = ["json", "markdown", "csv"] as const;
+export type OutputFormat = (typeof OUTPUT_FORMATS)[number];
+
+export interface ExtractionOutputSettings {
+  format: OutputFormat;
+  /** For "markdown": the text of one record, with {{field_key}} placeholders. Otherwise unused. */
+  template: string;
+}
+
+export interface ExtractionDefinition {
+  /** Goes up by one on every save. An extraction run names the version it used. */
+  version: number;
+  /** What to extract, in the person's words. */
+  prompt: string;
+  recordTypes: RecordType[];
+  output: ExtractionOutputSettings;
+}
+
+export type ExtractionDefinitionDraft = Omit<ExtractionDefinition, "version">;
+
+/**
+ * A stretch of the stage's input text (the enriched Markdown file, front
+ * matter included). `start` and `end` count Unicode code points, not
+ * JavaScript string indices: convert with lib/text-spans before slicing.
+ */
+export interface TextSpan {
+  start: number;
+  /** Exclusive. */
+  end: number;
+  /** The text of the span, kept so it can be found again if the offsets no longer fit. */
+  quote: string;
+}
+
+export type AnnotationOrigin = "llm" | "human";
+
+/** suggested: nobody has looked at it yet. */
+export const REVIEW_STATES = ["suggested", "accepted", "rejected"] as const;
+export type ReviewState = (typeof REVIEW_STATES)[number];
+
+export interface FieldValue {
+  id: string;
+  fieldId: string;
+  /** Null when the field was looked for and not found. */
+  value: string | null;
+  /** quote field: where the value is. inferred field: the evidence. */
+  spans: TextSpan[];
+  origin: AnnotationOrigin;
+  review: ReviewState;
+  /** False when a span's quote could not be found in the text. Shown, never dropped. */
+  anchored: boolean;
+}
+
+export interface ExtractionRecord {
+  id: string;
+  fileId: string;
+  recordTypeId: string;
+  /** The whole block this record covers (e.g. one ADR), when there is one. */
+  span: TextSpan | null;
+  fields: FieldValue[];
+  origin: AnnotationOrigin;
+  review: ReviewState;
+  /** Given to the model as an example in later extraction runs. */
+  useAsExample: boolean;
+}
+
+/** Everything extracted from one file. */
+export interface FileExtraction {
+  fileId: string;
+  /** Goes up on every change to the records, by a run or by a person. */
+  revision: number;
+  /** The ETag of the input text the spans refer to. */
+  sourceEtag: string;
+  /** The definition version the last extraction run used. */
+  definitionVersion: number;
+  records: ExtractionRecord[];
+}
+
+/** One value written by a person: the text and where it is in the document. */
+export interface FieldValueInput {
+  value: string | null;
+  spans: TextSpan[];
+}
+
+export interface NewRecordInput {
+  recordTypeId: string;
+  /** The block the person selected, if they marked one. */
+  span: TextSpan | null;
+  /** Values to start with, by field id. Fields left out stay empty. */
+  fields?: { fieldId: string; values: FieldValueInput[] }[];
+}
+
+export interface RecordPatch {
+  review?: ReviewState;
+  span?: TextSpan | null;
+  useAsExample?: boolean;
+}
+
+// The assistant: a chat that turns a prompt into record types, fields and a
+// template, and changes them on request. It proposes; the person applies.
+
+export interface AssistantProposal {
+  /** The whole definition as the assistant would have it. Not saved until the person applies it. */
+  definition: ExtractionDefinitionDraft;
+  /** Why, per change. `path` names what changed in plain words, e.g. "ADR / Approved by". */
+  reasons: { path: string; reason: string }[];
+}
+
+export interface AssistantMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  proposal: AssistantProposal | null;
+  /** streaming: the reply is still being written. */
+  status: "streaming" | "done";
+  createdAt: string; // ISO-8601
+}
+
+/** Parts of a reply, as they arrive over the live connection. */
+export type AssistantEvent =
+  | { type: "delta"; messageId: string; text: string }
+  | { type: "proposal"; messageId: string; proposal: AssistantProposal }
+  | { type: "done"; messageId: string };
+
+export interface PublishResult {
+  /** The version of the pipeline's extraction config that now holds this definition. */
+  pipelineConfigVersion: number;
+  /** How many example records went with it. */
+  examples: number;
+}
+
+/**
+ * Extraction runs like every other stage, through `RunsApi.executeStage` with
+ * `config: { definitionVersion }`. Codes the UI handles here:
+ * `definition_conflict` (409), `extraction_not_found` (404).
+ *
+ * The calls that change records take the `revision` the caller last saw and
+ * resolve with the file's new state. If someone else changed the records in
+ * between they reject with `revision_conflict` (409): fetch and try again.
+ * What a person writes is `origin: "human"` and `review: "accepted"`, and an
+ * extraction run never replaces it.
+ */
+export interface ExtractionApi {
+  /** The run's definition. It starts as a copy of the pipeline's extraction config. */
+  getDefinition(runId: string, signal?: AbortSignal): Promise<ExtractionDefinition>;
+  /** Saves a new version. Rejects with `definition_conflict` if `baseVersion` is not the latest. */
+  saveDefinition(
+    runId: string,
+    draft: ExtractionDefinitionDraft,
+    baseVersion: number,
+  ): Promise<ExtractionDefinition>;
+  /** The records of one file. Rejects with `extraction_not_found` before the first run. */
+  getFileExtraction(runId: string, fileId: string, signal?: AbortSignal): Promise<FileExtraction>;
+  /** Adds a record a person marked. Works before any extraction run: the file then starts at revision 1. */
+  addRecord(
+    runId: string,
+    fileId: string,
+    input: NewRecordInput,
+    revision: number,
+  ): Promise<FileExtraction>;
+  /** Accepting a record also accepts its values that are still suggestions. */
+  updateRecord(
+    runId: string,
+    fileId: string,
+    recordId: string,
+    patch: RecordPatch,
+    revision: number,
+  ): Promise<FileExtraction>;
+  /**
+   * Removes a record a person added. A record the model suggested can't be
+   * deleted (`not_deletable`, 422): reject it instead, so it isn't suggested again.
+   */
+  deleteRecord(
+    runId: string,
+    fileId: string,
+    recordId: string,
+    revision: number,
+  ): Promise<FileExtraction>;
+  /** Replaces every value of one field of a record. An empty list leaves the field "not found". */
+  setFieldValues(
+    runId: string,
+    fileId: string,
+    recordId: string,
+    fieldId: string,
+    values: FieldValueInput[],
+    revision: number,
+  ): Promise<FileExtraction>;
+  /** Accepts or rejects one value. */
+  setValueReview(
+    runId: string,
+    fileId: string,
+    recordId: string,
+    valueId: string,
+    review: ReviewState,
+    revision: number,
+  ): Promise<FileExtraction>;
+  /** The conversation with the assistant so far, oldest first. */
+  getAssistantMessages(runId: string, signal?: AbortSignal): Promise<AssistantMessage[]>;
+  /**
+   * Sends what the person typed, with the definition as it is on their screen
+   * (saved or not). Resolves with their message once accepted; the reply
+   * arrives as `AssistantEvent`s. `assistant_busy` (409) while a reply is being written.
+   */
+  sendAssistantMessage(
+    runId: string,
+    text: string,
+    definition: ExtractionDefinitionDraft,
+  ): Promise<AssistantMessage>;
+  /**
+   * Writes the saved definition, and the accepted records marked as examples,
+   * to the pipeline's extraction config, so every document of the pipeline is
+   * extracted the same way.
+   */
+  publishDefinition(runId: string): Promise<PublishResult>;
+}
+
+export interface ExtractionChange {
+  fileId: string;
+  revision: number;
+}
+
 export type ConnectionState = "idle" | "connecting" | "open" | "reconnecting" | "closed";
 
 export interface RunEventHandlers {
   onCell(cell: StageCell): void;
+  /** A file's records changed (a run finished, or someone edited them): fetch them again. */
+  onExtractionChanged?(change: ExtractionChange): void;
+  /** Part of a reply from the assistant. */
+  onAssistantEvent?(event: AssistantEvent): void;
   onStateChange?(state: ConnectionState): void;
   /** The connection is (back) up. Cells may have been missed: fetch the snapshot. */
   onOpen?(): void;
@@ -142,5 +427,6 @@ export interface RunEvents {
 export interface Services {
   catalog: SourceCatalog;
   runs: RunsApi;
+  extraction: ExtractionApi;
   events: RunEvents;
 }

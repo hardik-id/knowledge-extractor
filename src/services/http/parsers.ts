@@ -2,8 +2,30 @@ import { ApiError } from "@/lib/api/api-error";
 import type { FileType, SourceFile, SourceKind } from "@/types/pipeline";
 import {
   CELL_STATUSES,
+  FIELD_MODES,
+  FIELD_VALUE_TYPES,
+  OUTPUT_FORMATS,
+  REVIEW_STATES,
   isWorkStageId,
+  type AnnotationOrigin,
   type Execution,
+  type AssistantEvent,
+  type AssistantMessage,
+  type AssistantProposal,
+  type ExtractionChange,
+  type PublishResult,
+  type ExtractionDefinition,
+  type ExtractionDefinitionDraft,
+  type ExtractionRecord,
+  type FieldDef,
+  type FieldValue,
+  type FieldValueInput,
+  type FileExtraction,
+  type NewRecordInput,
+  type RecordPatch,
+  type RecordType,
+  type ReviewState,
+  type TextSpan,
   type Run,
   type RunFile,
   type StageCell,
@@ -20,8 +42,25 @@ import {
  *   cell  { file_id, stage, status, execution_id, progress, error: { code, message } | null,
  *           output: { name, content_type, size, etag } | null, updated_at }
  *   run   { id, created_at, files: file[], cells: cell[] }
+ *   span  { start, end, quote }   (start and end count Unicode code points)
+ *   definition  { version, prompt, output: { format, template },
+ *                 record_types: [{ id, name, description,
+ *                   fields: [{ id, key, name, description, mode, value_type, choices?, multiple }] }] }
+ *   file extraction  { file_id, revision, source_etag, definition_version,
+ *                      records: [{ id, file_id, record_type_id, span: span | null, origin, review,
+ *                        use_as_example, fields: [{ id, field_id, value, spans: span[], origin,
+ *                        review, anchored }] }] }
+ *   assistant message  { id, role, text, proposal: { definition (no version), reasons: [{ path, reason }] } | null,
+ *                        status, created_at }
+ *   publish result  { pipeline_config_version, examples }
+ *   message  { type: "cell", cell } | { type: "extraction.changed", file_id, revision }
+ *          | { type: "assistant.delta", message_id, text }
+ *          | { type: "assistant.proposal", message_id, proposal }
+ *          | { type: "assistant.done", message_id }
  */
 
+const ROLES = ["user", "assistant"] as const;
+const MESSAGE_STATUSES = ["streaming", "done"] as const;
 const SOURCES: readonly SourceKind[] = ["confluence", "sharepoint", "upload"];
 const FILE_TYPES: readonly FileType[] = ["pdf", "docx", "xlsx", "pptx", "html", "md", "txt"];
 
@@ -158,4 +197,260 @@ export function parseExecution(value: unknown): Execution {
 export function parseCellMessage(value: unknown): StageCell | null {
   const o = object(value, "message");
   return o.type === "cell" ? parseCell(o.cell, "message.cell") : null;
+}
+
+// ── Extraction ──────────────────────────────────────────────────────────
+
+const ORIGINS: readonly AnnotationOrigin[] = ["llm", "human"];
+
+function parseFieldDef(value: unknown, path: string): FieldDef {
+  const o = object(value, path);
+  return {
+    id: string(o.id, `${path}.id`),
+    key: string(o.key, `${path}.key`),
+    name: string(o.name, `${path}.name`),
+    description: string(o.description, `${path}.description`),
+    mode: oneOf(o.mode, FIELD_MODES, `${path}.mode`),
+    valueType: oneOf(o.value_type, FIELD_VALUE_TYPES, `${path}.value_type`),
+    choices:
+      o.choices === undefined || o.choices === null
+        ? []
+        : array(o.choices, `${path}.choices`).map((c, i) => string(c, `${path}.choices[${i}]`)),
+    multiple: bool(o.multiple, `${path}.multiple`),
+  };
+}
+
+function parseRecordType(value: unknown, path: string): RecordType {
+  const o = object(value, path);
+  return {
+    id: string(o.id, `${path}.id`),
+    name: string(o.name, `${path}.name`),
+    description: string(o.description, `${path}.description`),
+    fields: array(o.fields, `${path}.fields`).map((f, i) =>
+      parseFieldDef(f, `${path}.fields[${i}]`),
+    ),
+  };
+}
+
+function bool(value: unknown, path: string): boolean {
+  if (typeof value !== "boolean") invalid(path, "true or false");
+  return value;
+}
+
+function parseDefinitionBody(value: unknown, path: string): ExtractionDefinitionDraft {
+  const o = object(value, path);
+  const output = object(o.output, `${path}.output`);
+  return {
+    prompt: string(o.prompt, `${path}.prompt`),
+    recordTypes: array(o.record_types, `${path}.record_types`).map((t, i) =>
+      parseRecordType(t, `${path}.record_types[${i}]`),
+    ),
+    output: {
+      format: oneOf(output.format, OUTPUT_FORMATS, `${path}.output.format`),
+      template: string(output.template, `${path}.output.template`),
+    },
+  };
+}
+
+export function parseDefinition(value: unknown): ExtractionDefinition {
+  return {
+    version: number(object(value, "definition").version, "definition.version"),
+    ...parseDefinitionBody(value, "definition"),
+  };
+}
+
+/** The definition as the API takes it (without `version`). */
+export function toWireDefinition(draft: ExtractionDefinitionDraft) {
+  return {
+    prompt: draft.prompt,
+    record_types: draft.recordTypes.map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      fields: t.fields.map((f) => ({
+        id: f.id,
+        key: f.key,
+        name: f.name,
+        description: f.description,
+        mode: f.mode,
+        value_type: f.valueType,
+        choices: f.choices,
+        multiple: f.multiple,
+      })),
+    })),
+    output: { format: draft.output.format, template: draft.output.template },
+  };
+}
+
+function parseSpan(value: unknown, path: string): TextSpan {
+  const o = object(value, path);
+  return {
+    start: number(o.start, `${path}.start`),
+    end: number(o.end, `${path}.end`),
+    quote: string(o.quote, `${path}.quote`),
+  };
+}
+
+function parseFieldValue(value: unknown, path: string): FieldValue {
+  const o = object(value, path);
+  return {
+    id: string(o.id, `${path}.id`),
+    fieldId: string(o.field_id, `${path}.field_id`),
+    value: nullable(o.value, (v) => string(v, `${path}.value`)),
+    spans: array(o.spans, `${path}.spans`).map((s, i) => parseSpan(s, `${path}.spans[${i}]`)),
+    origin: oneOf(o.origin, ORIGINS, `${path}.origin`),
+    review: oneOf(o.review, REVIEW_STATES, `${path}.review`),
+    anchored: bool(o.anchored, `${path}.anchored`),
+  };
+}
+
+function parseRecord(value: unknown, path: string): ExtractionRecord {
+  const o = object(value, path);
+  return {
+    id: string(o.id, `${path}.id`),
+    fileId: string(o.file_id, `${path}.file_id`),
+    recordTypeId: string(o.record_type_id, `${path}.record_type_id`),
+    span: nullable(o.span, (v) => parseSpan(v, `${path}.span`)),
+    fields: array(o.fields, `${path}.fields`).map((f, i) =>
+      parseFieldValue(f, `${path}.fields[${i}]`),
+    ),
+    origin: oneOf(o.origin, ORIGINS, `${path}.origin`),
+    review: oneOf(o.review, REVIEW_STATES, `${path}.review`),
+    useAsExample: bool(o.use_as_example, `${path}.use_as_example`),
+  };
+}
+
+export function parseFileExtraction(value: unknown): FileExtraction {
+  const o = object(value, "extraction");
+  return {
+    fileId: string(o.file_id, "extraction.file_id"),
+    revision: number(o.revision, "extraction.revision"),
+    sourceEtag: string(o.source_etag, "extraction.source_etag"),
+    definitionVersion: number(o.definition_version, "extraction.definition_version"),
+    records: array(o.records, "extraction.records").map((r, i) =>
+      parseRecord(r, `extraction.records[${i}]`),
+    ),
+  };
+}
+
+/** A WebSocket message: `{ type: "extraction.changed", file_id, revision }`. Other types give null. */
+export function parseExtractionChangedMessage(value: unknown): ExtractionChange | null {
+  const o = object(value, "message");
+  if (o.type !== "extraction.changed") return null;
+  return {
+    fileId: string(o.file_id, "message.file_id"),
+    revision: number(o.revision, "message.revision"),
+  };
+}
+
+const toWireSpan = (span: TextSpan) => ({ start: span.start, end: span.end, quote: span.quote });
+
+const toWireValues = (values: FieldValueInput[]) =>
+  values.map((v) => ({ value: v.value, spans: v.spans.map(toWireSpan) }));
+
+/** Body of `POST …/extraction/records`. */
+export function toWireNewRecord(input: NewRecordInput, revision: number) {
+  return {
+    revision,
+    record_type_id: input.recordTypeId,
+    span: input.span ? toWireSpan(input.span) : null,
+    fields: (input.fields ?? []).map((f) => ({
+      field_id: f.fieldId,
+      values: toWireValues(f.values),
+    })),
+  };
+}
+
+/** Body of `PATCH …/records/{id}`: only the keys present in the patch. `span: null` is sent. */
+export function toWireRecordPatch(patch: RecordPatch, revision: number) {
+  const body: {
+    revision: number;
+    review?: ReviewState;
+    span?: ReturnType<typeof toWireSpan> | null;
+    use_as_example?: boolean;
+  } = { revision };
+  if (patch.review !== undefined) body.review = patch.review;
+  if (patch.span !== undefined) body.span = patch.span ? toWireSpan(patch.span) : null;
+  if (patch.useAsExample !== undefined) body.use_as_example = patch.useAsExample;
+  return body;
+}
+
+/** Body of `PUT …/fields/{id}`. An empty list resets the field to "not found". */
+export function toWireFieldValues(values: FieldValueInput[], revision: number) {
+  return { revision, values: toWireValues(values) };
+}
+
+/** Body of `PATCH …/values/{id}`. */
+export function toWireValueReview(review: ReviewState, revision: number) {
+  return { revision, review };
+}
+
+// ── Assistant and publishing ────────────────────────────────────────────
+
+function parseProposal(value: unknown, path: string): AssistantProposal {
+  const o = object(value, path);
+  return {
+    definition: parseDefinitionBody(o.definition, `${path}.definition`),
+    reasons:
+      o.reasons === undefined || o.reasons === null
+        ? []
+        : array(o.reasons, `${path}.reasons`).map((r, i) => {
+            const reason = object(r, `${path}.reasons[${i}]`);
+            return {
+              path: string(reason.path, `${path}.reasons[${i}].path`),
+              reason: string(reason.reason, `${path}.reasons[${i}].reason`),
+            };
+          }),
+  };
+}
+
+export function parseAssistantMessage(value: unknown, path = "message"): AssistantMessage {
+  const o = object(value, path);
+  return {
+    id: string(o.id, `${path}.id`),
+    role: oneOf(o.role, ROLES, `${path}.role`),
+    text: string(o.text, `${path}.text`),
+    proposal: nullable(o.proposal, (v) => parseProposal(v, `${path}.proposal`)),
+    status: oneOf(o.status, MESSAGE_STATUSES, `${path}.status`),
+    createdAt: string(o.created_at, `${path}.created_at`),
+  };
+}
+
+/** `{ messages: message[] }` */
+export function parseAssistantMessages(value: unknown): AssistantMessage[] {
+  return array(object(value, "response").messages, "messages").map((m, i) =>
+    parseAssistantMessage(m, `messages[${i}]`),
+  );
+}
+
+/** A WebSocket message of type `assistant.delta`, `assistant.proposal` or `assistant.done`. Other types give null. */
+export function parseAssistantEventMessage(value: unknown): AssistantEvent | null {
+  const o = object(value, "message");
+  switch (o.type) {
+    case "assistant.delta":
+      return {
+        type: "delta",
+        messageId: string(o.message_id, "message.message_id"),
+        text: string(o.text, "message.text"),
+      };
+    case "assistant.proposal":
+      return {
+        type: "proposal",
+        messageId: string(o.message_id, "message.message_id"),
+        proposal: parseProposal(o.proposal, "message.proposal"),
+      };
+    case "assistant.done":
+      return { type: "done", messageId: string(o.message_id, "message.message_id") };
+    default:
+      return null;
+  }
+}
+
+/** `{ pipeline_config_version, examples }` */
+export function parsePublishResult(value: unknown): PublishResult {
+  const o = object(value, "publish");
+  return {
+    pipelineConfigVersion: number(o.pipeline_config_version, "publish.pipeline_config_version"),
+    examples: number(o.examples, "publish.examples"),
+  };
 }

@@ -10,6 +10,22 @@ const MESSAGES: Record<string, string> = {
   upstream_not_ready: "The previous stage hasn't finished for every file yet.",
   run_not_found: "This run no longer exists. Select your files again to start a new one.",
   output_not_found: "This file has no output for this stage yet.",
+  definition_conflict:
+    "The extraction definition was changed somewhere else. Reload it and make your changes again.",
+  invalid_definition:
+    "The extraction definition isn't complete. Check the names, keys and allowed values.",
+  revision_conflict:
+    "These records were changed somewhere else. They have been reloaded; make your change again.",
+  record_not_found: "This record no longer exists.",
+  value_not_found: "This value no longer exists.",
+  extraction_not_found: "This file has not been extracted yet.",
+  unknown_field: "This field is not part of the record type any more. Reload the definition.",
+  invalid_span: "The selected text doesn't match the document. Select it again.",
+  not_deletable: "Only records you added can be deleted. Reject this one instead.",
+  too_many_values: "This field takes one value only.",
+  assistant_busy: "The assistant is still answering. Wait for it to finish.",
+  empty_message: "Write a message first.",
+  nothing_to_publish: "Save a definition with at least one record type before publishing.",
   no_files: "Select at least one file.",
 };
 
