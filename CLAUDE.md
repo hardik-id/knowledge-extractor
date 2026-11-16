@@ -13,6 +13,12 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 - One primary (orange) button per view. Status always pairs an icon with a word.
 - Breakpoints are Polder's: `sm` 600px, `md` 960px, `lg` 1280px (they override Tailwind's defaults).
 
+## Apps and branches
+
+- One codebase builds more than one app. `NEXT_PUBLIC_APP_MODE` picks a profile in `src/config/app-profile.ts`: the stages shown, the file sources, the product name, the storage key prefix and where extraction reads its text. Code that differs per app reads `appProfile`, never the env directly. Stage wording per app goes in `STAGE_WORDING_BY_MODE` (`features/stages/config.ts`); extraction's input goes through `features/run/use-extraction-input.ts`.
+- `main` is the pipeline app plus every shared seam. **Knowledge Studio** (extraction only, over enriched Markdown in a storage container) lives on the long-lived branch `experiment/knowledge-studio`; studio work goes in `studio/<topic>` branches with PRs into it.
+- Backlog is GitHub issues. `track: shared` is fixed on `main`, then `main` is merged into the experiment branch. `track: studio` targets the experiment branch. Milestone "Knowledge Studio experiment", tracking issue #29.
+
 ## Structure
 
 - `src/app/pipeline/[stage]/page.tsx`: one route for all stages. The URL is the selected stage.
