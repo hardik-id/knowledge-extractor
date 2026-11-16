@@ -1,13 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { STAGE_IDS } from "@/types/pipeline";
+import { isStageId } from "@/lib/stages";
 
 /**
- * Unknown stages get a real 404 status. Without this, the static app shell is
- * already streaming (200) by the time the page calls notFound().
+ * Stages this app doesn't have (unknown, or left out of its profile) get a
+ * real 404 status. Without this, the static app shell is already streaming
+ * (200) by the time the page calls notFound().
  */
 export function proxy(request: NextRequest) {
   const stage = request.nextUrl.pathname.split("/")[2];
-  if (stage && !(STAGE_IDS as readonly string[]).includes(stage)) {
+  if (stage && !isStageId(stage)) {
     return NextResponse.rewrite(new URL("/__unknown-stage", request.url));
   }
   return NextResponse.next();

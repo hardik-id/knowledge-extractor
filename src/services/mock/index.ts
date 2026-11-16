@@ -1,4 +1,5 @@
-import type { Services } from "../contracts";
+import { appProfile } from "@/config/app-profile";
+import { isWorkStageId, type Services } from "../contracts";
 import { MockBackend } from "./mock-backend";
 
 declare global {
@@ -9,7 +10,12 @@ declare global {
 }
 
 /** The service contract, served by the in-browser mock. */
-export function createMockServices(backend: MockBackend = new MockBackend()): Services {
+export function createMockServices(
+  backend: MockBackend = new MockBackend({
+    workStages: appProfile.stages.filter(isWorkStageId),
+    storageKey: `${appProfile.storagePrefix}:mock-backend`,
+  }),
+): Services {
   if (typeof window !== "undefined") window.__mockBackend = backend;
 
   return {

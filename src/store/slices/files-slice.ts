@@ -1,3 +1,4 @@
+import { appProfile } from "@/config/app-profile";
 import type { SourceFile } from "@/types/pipeline";
 import type { FilesSlice, SliceCreator } from "../types";
 
@@ -12,7 +13,7 @@ export const createFilesSlice: SliceCreator<FilesSlice> = (set, get) => {
   };
 
   return {
-    activeSource: "confluence",
+    activeSource: appProfile.sources[0],
     searchQuery: "",
     selectedFiles: [],
 

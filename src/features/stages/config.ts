@@ -8,6 +8,8 @@ import {
   Tags,
   type LucideIcon,
 } from "lucide-react";
+import { appProfile } from "@/config/app-profile";
+import type { AppMode } from "@/config/env";
 import type { StageId } from "@/types/pipeline";
 
 export interface StageMeta {
@@ -22,11 +24,11 @@ export interface StageMeta {
 }
 
 /**
- * Stage metadata: order comes from STAGE_IDS in types/pipeline.ts.
+ * Stage metadata. Order comes from the app profile (`config/app-profile.ts`).
  * Safe to import from server and client components (no React state).
  * The panel for each stage lives in ./panels.ts.
  */
-export const STAGE_META: Record<StageId, StageMeta> = {
+const BASE_STAGE_META: Record<StageId, StageMeta> = {
   select: {
     id: "select",
     label: "File selector",
@@ -78,3 +80,20 @@ export const STAGE_META: Record<StageId, StageMeta> = {
     icon: DatabaseZap,
   },
 };
+
+type StageWording = Partial<Pick<StageMeta, "label" | "description" | "actionLabel">>;
+
+/** Wording an app uses in place of the defaults above. The full pipeline needs none. */
+export const STAGE_WORDING_BY_MODE: Partial<
+  Record<AppMode, Partial<Record<StageId, StageWording>>>
+> = {};
+
+const overrides = STAGE_WORDING_BY_MODE[appProfile.mode] ?? {};
+
+/** The metadata consumers use: the defaults with this app's wording applied. */
+export const STAGE_META: Record<StageId, StageMeta> = Object.fromEntries(
+  Object.entries(BASE_STAGE_META).map(([id, meta]) => [
+    id,
+    { ...meta, ...overrides[id as StageId] },
+  ]),
+) as Record<StageId, StageMeta>;

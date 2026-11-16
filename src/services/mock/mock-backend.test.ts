@@ -1137,4 +1137,35 @@ describe("assistant and publishing", () => {
       assert.equal(backend.lastExamplesUsed(run.id), 1);
     });
   });
+
+  describe("workStages", () => {
+    const limited = () =>
+      new MockBackend({
+        speed: 0,
+        storage: null,
+        workStages: ["transform", "classify", "enrich", "extract"],
+      });
+
+    test("only the given stages get cells", async () => {
+      const run = await limited().createRun(FILES);
+      assert.equal(run.cells.length, FILES.length * 4);
+      assert.deepEqual(statuses(run, "ingest"), []);
+    });
+
+    test("the first given stage runs without an upstream one", async () => {
+      const backend = limited();
+      const run = await backend.createRun(FILES);
+      await runStage(backend, run.id, "transform");
+      assert.deepEqual(statuses(await backend.getRun(run.id), "transform"), [
+        "succeeded",
+        "succeeded",
+      ]);
+    });
+
+    test("later stages still wait for the one before them in the list", async () => {
+      const backend = limited();
+      const run = await backend.createRun(FILES);
+      await rejectsWithCode(backend.executeStage(run.id, "classify"), "upstream_not_ready", 422);
+    });
+  });
 });
