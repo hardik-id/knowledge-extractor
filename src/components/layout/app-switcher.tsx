@@ -24,12 +24,14 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Switch app, current: ${current.name}`}
-        className="-ml-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-xl leading-7 font-bold text-ink-heading outline-none hover:bg-surface-tint focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="-ml-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-lg leading-6 font-bold text-ink-heading outline-none hover:bg-surface-tint focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-md bg-hero">
           <span className="size-3 rounded-full bg-brand-orange" />
         </span>
-        <span className={compact ? "hidden truncate sm:inline" : "truncate"}>{current.name}</span>
+        <span className={compact ? "hidden truncate sm:inline" : "line-clamp-2 leading-5"}>
+          {current.name}
+        </span>
         <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[min(22rem,calc(100vw-2rem))]">
