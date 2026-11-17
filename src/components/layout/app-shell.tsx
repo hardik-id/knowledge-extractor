@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { UserMenu } from "@/features/auth/user-menu";
 import { ConnectionBanner } from "@/features/run/connection-banner";
 import { AppSwitcher } from "./app-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -48,6 +49,7 @@ export function AppShell({
           <div className="ml-auto flex items-center gap-2">
             {mobileNav}
             <ThemeToggle />
+            <UserMenu compact />
           </div>
         </div>
       </header>
@@ -61,6 +63,9 @@ export function AppShell({
           <ThemeToggle />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">{nav}</div>
+        <div className="shrink-0 border-t border-border-subtle p-3 empty:hidden">
+          <UserMenu />
+        </div>
       </aside>
 
       <main id="main" className="flex min-w-0 flex-1 flex-col p-4 sm:p-6 md:min-h-0">

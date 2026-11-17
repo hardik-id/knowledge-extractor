@@ -12,7 +12,7 @@ import type {
   WorkStageId,
 } from "../contracts";
 import { DEFAULT_EXTRACTION_DEFINITION } from "@/mocks/extraction";
-import { MockBackend } from "./mock-backend";
+import { MockBackend, type MockBackendOptions } from "./mock-backend";
 
 /**
  * The mock has to follow the same rules as the real backend, or the UI is
@@ -21,7 +21,7 @@ import { MockBackend } from "./mock-backend";
 
 const FILES = MOCK_FILES.slice(0, 2);
 
-const fastBackend = (storage: Pick<Storage, "getItem" | "setItem"> | null = null) =>
+const fastBackend = (storage: MockBackendOptions["storage"] = null) =>
   new MockBackend({ speed: 0, storage });
 
 async function until(condition: () => boolean | Promise<boolean>, what: string) {
@@ -1209,5 +1209,28 @@ describe("storage documents (Knowledge Studio)", () => {
     assert.equal(updated.revision, extraction.revision + 1);
     assert.equal(updated.sourceEtag, adr.etag);
     assert.equal(updated.records[0].review, "accepted");
+  });
+
+  test("reset forgets every run, its saved copy and its live subscriptions", async () => {
+    const items = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => void items.set(key, value),
+      removeItem: (key: string) => void items.delete(key),
+    };
+    const backend = fastBackend(storage);
+    const run = await backend.createRun(FILES);
+    await backend.executeStage(run.id, "ingest");
+    assert.equal(items.size, 1);
+    let opened = 0;
+    backend.subscribe(run.id, { onCell: () => {}, onOpen: () => void opened++ });
+
+    backend.reset();
+
+    assert.equal(items.size, 0);
+    await rejectsWithCode(backend.getRun(run.id), "run_not_found", 404);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(opened, 0);
+    assert.equal((await fastBackend(storage).createRun(FILES)).files.length, FILES.length);
   });
 });

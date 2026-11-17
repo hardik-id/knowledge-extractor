@@ -103,4 +103,70 @@ describe("authMiddleware", () => {
     assert.equal(seen.length, 2);
     assert.equal(calls.unauthenticated, 1);
   });
+
+  test("a refresh that throws fails the request with that error and does not sign out", async () => {
+    const { next } = server("new");
+    const { provider, calls } = tokens("old", "new");
+    const boom = new Error("offline");
+    provider.refresh = async () => {
+      calls.refresh++;
+      throw boom;
+    };
+
+    await assert.rejects(authMiddleware(provider)(request(), next), (error) => error === boom);
+    assert.equal(calls.unauthenticated, 0);
+  });
+
+  test("calls sharing a failing refresh all get its error", async () => {
+    const { next } = server("new");
+    const { provider, calls } = tokens("old", "new");
+    const boom = new Error("offline");
+    provider.refresh = async () => {
+      calls.refresh++;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      throw boom;
+    };
+    const middleware = authMiddleware(provider);
+
+    const results = await Promise.allSettled([
+      middleware(request(), next),
+      middleware(request(), next),
+    ]);
+
+    assert.equal(calls.refresh, 1);
+    assert.equal(calls.unauthenticated, 0);
+    for (const result of results) {
+      assert.equal(result.status, "rejected");
+      assert.equal(result.status === "rejected" && result.reason, boom);
+    }
+  });
+
+  test("after a failed refresh the next 401 refreshes again", async () => {
+    const { next } = server("new");
+    const { provider, calls } = tokens("old", "new");
+    const real = provider.refresh;
+    let fail = true;
+    provider.refresh = () => (fail ? Promise.reject(new Error("offline")) : real());
+    const middleware = authMiddleware(provider);
+
+    await assert.rejects(middleware(request(), next));
+    fail = false;
+    const response = await middleware(request(), next);
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.unauthenticated, 0);
+  });
+
+  test("an error from getAccessToken fails the request without signing out", async () => {
+    const { next, seen } = server("good");
+    const { provider, calls } = tokens("good", null);
+    const boom = new Error("token service down");
+    provider.getAccessToken = async () => {
+      throw boom;
+    };
+
+    await assert.rejects(authMiddleware(provider)(request(), next), (error) => error === boom);
+    assert.equal(seen.length, 0);
+    assert.equal(calls.unauthenticated, 0);
+  });
 });

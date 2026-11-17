@@ -15,9 +15,9 @@ Status: the UI uses every section. The endpoint names are open (see the question
 
 ## 1. Auth
 
-- Every call carries the person's bearer token, as today.
-- The API reads the storage container **on the person's behalf** (for example the on-behalf-of flow to Azure Storage), not with its own service identity. That way nobody lists or reads a document they cannot open.
-- The extraction service reads the document with the same rule. It runs for the person who started the run.
+- Every call carries the person's bearer token. What the API checks in it is in [auth-api.md](auth-api.md).
+- The API decides what a person may open with **its own permissions**, and reads the storage container with its own identity, not the person's. It must apply that decision on every call, so nobody lists or reads a document they may not open.
+- The extraction service reads the document with its own identity too. It only reads documents that the person who started the run may open.
 
 | Status | Code                 | When                                                        |
 | ------ | -------------------- | ----------------------------------------------------------- |
@@ -92,7 +92,7 @@ Errors: 401, 403, 404 as in section 1.
 ## 5. How extraction reads the document
 
 - `extract` has no earlier stage to wait for. `POST /runs/{run_id}/stages/extract/executions` can run as soon as the run exists.
-- For each file the service reads the document by `source_ref`, with the person's access, and works on that text: the front matter and the body, as for the enriched file in the pipeline. Spans count code points from the start of that text.
+- For each file the service reads the document by `source_ref`, and works on that text: the front matter and the body, as for the enriched file in the pipeline. Spans count code points from the start of that text.
 - The document's ETag at the time of reading is stored on the file's extraction as `source_etag`. This is how the UI knows which version the records belong to.
 - Corrections (records, values, review) are checked against the text of the same version. If the document has changed since the extraction, see below.
 

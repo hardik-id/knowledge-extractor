@@ -1,8 +1,10 @@
 import { env } from "@/config/env";
-import { createApiClient, createMemoryTokenProvider } from "@/lib/api";
+import { createApiClient } from "@/lib/api";
+import { authTokens } from "./auth";
 import type { Services } from "./contracts";
 import { createHttpServices } from "./http";
 import { createMockServices } from "./mock";
+import { MockBackend } from "./mock/mock-backend";
 
 /**
  * The boundary to the backend. Everything else imports `services` from here
@@ -10,12 +12,9 @@ import { createMockServices } from "./mock";
  * set NEXT_PUBLIC_BACKEND_MODE to switch.
  */
 
-/**
- * The access token for the Django API. Sign-in is not connected yet: when it
- * is, call `authTokens.setAccessToken()` after login and pass `refresh` and
- * `onUnauthenticated` here.
- */
-export const authTokens = createMemoryTokenProvider({ initialToken: env.devAccessToken });
+export { authClient, authSession, authTokens } from "./auth";
+
+const mockBackend = env.backendMode === "http" ? null : new MockBackend();
 
 export const services: Services =
   env.backendMode === "http"
@@ -23,4 +22,9 @@ export const services: Services =
         client: createApiClient({ baseUrl: env.apiBaseUrl, tokens: authTokens }),
         wsBaseUrl: env.wsBaseUrl,
       })
-    : createMockServices();
+    : createMockServices(mockBackend ?? undefined);
+
+/** Removes what the previous person left in this browser (the mock's runs). The real backend keeps its own data. */
+export function clearLocalData(): void {
+  mockBackend?.reset();
+}

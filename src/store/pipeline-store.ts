@@ -59,3 +59,24 @@ export { usePipelineStore, useRunStoreApi } from "./use-run-store";
 export const pipelineRunStore = createRunStore("knowledge-extractor:run");
 /** Knowledge Studio's run. */
 export const studioRunStore = createRunStore("knowledge-studio:run");
+
+/**
+ * Puts both run stores back to their initial state and removes what they
+ * saved in sessionStorage. Never calls the backend: the person may have no
+ * valid token, and the server's runs are not ours to delete here.
+ *
+ * `hasHydrated` keeps its current value. If the stores were never hydrated
+ * (signed out, nothing mounted), <StoreHydrator> still will, and finds nothing
+ * saved. If they were (the session ended with the app mounted), they stay
+ * hydrated, so <RunSync> and the panels carry on with an empty run instead of
+ * waiting for a rehydration that never comes.
+ */
+export function resetAllRunStores(): void {
+  if (typeof window === "undefined") return;
+  for (const store of [pipelineRunStore, studioRunStore]) {
+    const hasHydrated = store.getState().hasHydrated;
+    store.setState({ ...store.getInitialState(), hasHydrated }, true);
+    // After the reset: the reset itself writes the initial state to storage.
+    store.persist.clearStorage();
+  }
+}

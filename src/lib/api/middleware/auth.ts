@@ -11,17 +11,18 @@ function withToken(request: ApiRequest, token: string | null): ApiRequest {
 /**
  * Adds the bearer token. On a 401 it refreshes the token once and sends the
  * request again. Calls that fail at the same time share one refresh.
+ *
+ * Only a refresh that resolves to null means the session is over
+ * (`onUnauthenticated`). A token source that throws (the network is down)
+ * fails the request with that error and signs nobody out.
  */
 export function authMiddleware(tokens: TokenProvider): Middleware {
   let refreshing: Promise<string | null> | null = null;
 
   const refreshOnce = () => {
-    refreshing ??= tokens
-      .refresh()
-      .catch(() => null)
-      .finally(() => {
-        refreshing = null;
-      });
+    refreshing ??= tokens.refresh().finally(() => {
+      refreshing = null;
+    });
     return refreshing;
   };
 

@@ -33,7 +33,101 @@ describe("parseEnv", () => {
 
   test("the dev token is ignored in production", () => {
     const raw = { backendMode: "http", apiBaseUrl: "http://x.test", devAccessToken: "t" };
+    const entra = { authMode: "entra", entraTenantId: "t", entraClientId: "c" };
     assert.equal(parseEnv({ ...raw, nodeEnv: "development" }).devAccessToken, "t");
-    assert.equal(parseEnv({ ...raw, nodeEnv: "production" }).devAccessToken, null);
+    assert.equal(parseEnv({ ...raw, ...entra, nodeEnv: "production" }).devAccessToken, null);
+  });
+
+  test("auth mode defaults to none, with no Entra settings", () => {
+    for (const raw of [{}, { authMode: "  " }]) {
+      const env = parseEnv(raw);
+      assert.equal(env.authMode, "none");
+      assert.equal(env.entra, null);
+    }
+    assert.deepEqual(parseEnv({}), {
+      backendMode: "mock",
+      apiBaseUrl: "",
+      wsBaseUrl: "",
+      devAccessToken: null,
+      authMode: "none",
+      entra: null,
+    });
+  });
+
+  test("an unknown auth mode throws", () => {
+    assert.throws(() => parseEnv({ authMode: "x" }), /NEXT_PUBLIC_AUTH_MODE/);
+  });
+
+  test("entra mode needs the tenant id and the client id", () => {
+    assert.throws(() => parseEnv({ authMode: "entra", entraClientId: "c" }), /ENTRA_TENANT_ID/);
+    assert.throws(
+      () => parseEnv({ authMode: "entra", entraTenantId: "t", entraClientId: " " }),
+      /ENTRA_CLIENT_ID/,
+    );
+  });
+
+  test("entra settings are honoured in mock mode, with the default scope", () => {
+    const env = parseEnv({ authMode: "entra", entraTenantId: " t ", entraClientId: " c " });
+    assert.equal(env.backendMode, "mock");
+    assert.equal(env.authMode, "entra");
+    assert.deepEqual(env.entra, {
+      tenantId: "t",
+      clientId: "c",
+      apiScope: "api://c/access_as_user",
+    });
+  });
+
+  test("an explicit scope is used; a blank one falls back to the default", () => {
+    const raw = { authMode: "entra", entraTenantId: "t", entraClientId: "c" };
+    assert.equal(parseEnv({ ...raw, entraApiScope: " api://x/y " }).entra?.apiScope, "api://x/y");
+    assert.equal(
+      parseEnv({ ...raw, entraApiScope: " " }).entra?.apiScope,
+      "api://c/access_as_user",
+    );
+  });
+
+  test("entra is null in none and fake modes, whatever the variables hold", () => {
+    const vars = { entraTenantId: "t", entraClientId: "c", entraApiScope: "s" };
+    assert.equal(parseEnv({ ...vars, authMode: "none" }).entra, null);
+    const fake = parseEnv({ ...vars, authMode: "fake", nodeEnv: "development" });
+    assert.equal(fake.authMode, "fake");
+    assert.equal(fake.entra, null);
+  });
+
+  test("fake auth is refused in production", () => {
+    assert.throws(
+      () => parseEnv({ authMode: "fake", nodeEnv: "production" }),
+      /for local checks only/,
+    );
+  });
+
+  test("production against the real API needs entra sign-in", () => {
+    const raw = {
+      backendMode: "http",
+      apiBaseUrl: "https://api.example.com",
+      nodeEnv: "production",
+    };
+    assert.throws(() => parseEnv(raw), /needs sign-in/);
+    assert.throws(() => parseEnv({ ...raw, authMode: "none" }), /needs sign-in/);
+    const env = parseEnv({
+      ...raw,
+      authMode: "entra",
+      entraTenantId: "t",
+      entraClientId: "c",
+    });
+    assert.equal(env.authMode, "entra");
+    assert.equal(env.apiBaseUrl, "https://api.example.com");
+  });
+
+  test("production with the mock backend and no sign-in stays allowed", () => {
+    const env = parseEnv({ nodeEnv: "production" });
+    assert.equal(env.backendMode, "mock");
+    assert.equal(env.authMode, "none");
+  });
+
+  test("http mode outside production allows any auth mode", () => {
+    const raw = { backendMode: "http", apiBaseUrl: "http://x.test", nodeEnv: "development" };
+    assert.equal(parseEnv(raw).authMode, "none");
+    assert.equal(parseEnv({ ...raw, authMode: "fake" }).authMode, "fake");
   });
 });

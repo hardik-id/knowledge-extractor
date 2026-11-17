@@ -16,14 +16,30 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 ## Apps and branches
 
 - One shell hosts several apps by route; a dropdown in the shell switches between them. `src/apps/registry.ts` lists them (id, name, description, href, `experimental`) and `appForPath(pathname)` finds the app a URL belongs to; icons are in `src/apps/icons.ts`. `components/layout/app-shell.tsx` is app-agnostic (`nav`, `mobileNav`, `navLabel`, `skipLabel`); each app's layout fills it.
-- Each app has its own routes (`src/app/<id>/`), its own run store (`RunStoreProvider` in its layout) and its own folder for app-only code (`src/apps/<id>/`). Anything two apps both need is a shared component (`components/`, `features/file-picker`, `features/extraction`), not a copy and not an `if` on the app. Adding an app: an entry in the registry and the icon map, a route folder with a layout, a store, and a proxy matcher only if it needs one.
+- Each app has its own routes (`src/app/(apps)/<id>/`, a route group: its layout puts every app behind sign-in, and the URLs don't include `(apps)`), its own run store (`RunStoreProvider` in its layout) and its own folder for app-only code (`src/apps/<id>/`). Anything two apps both need is a shared component (`components/`, `features/file-picker`, `features/extraction`), not a copy and not an `if` on the app. Adding an app: an entry in the registry and the icon map, a route folder in `src/app/(apps)/` with a layout, a store, and a proxy matcher only if it needs one.
 - Apps: **Knowledge Extractor** (`pipeline`, `/pipeline/[stage]`) and **Knowledge Studio** (`studio`, `/studio`, experimental): extraction only, over enriched Markdown documents in a storage container. Its documents come from `services.documents` and `catalog.list("storage")`; extraction reads the document by the run file's `sourceRef` and keeps its ETag as `sourceEtag`. What the backend has to provide is in `docs/studio-api.md`. Routes: `/studio` (Documents: pick, then "Open in extraction" creates the run) and `/studio/extract` (the extraction workspace, no stage sidebar or proceed footer, no Publish). Its code is in `src/apps/studio/`: `studio-nav.tsx` (sidebar and mobile nav, rules in `nav-steps.ts`), `studio-panel.tsx` (the StagePanel look without "Stage N of M" or footer), `documents-panel.tsx`, `extract-page-content.tsx`.
-- Trunk-based: everything merges to `main` through short-lived branches (`studio/<topic>` for studio work). Experiments live in `main` as their own app; dropping one means deleting its registry entry, its routes and `src/apps/<id>/`.
+- Trunk-based: everything merges to `main` through short-lived branches (`studio/<topic>` for studio work). Experiments live in `main` as their own app; dropping one means deleting its registry entry, its routes (`src/app/(apps)/<id>/`) and `src/apps/<id>/`.
 - Backlog is GitHub issues. `track: studio` and the milestone "Knowledge Studio experiment" mark studio work, `track: shared` work that affects every app. Tracking issue #29.
+
+## Sign-in
+
+- Microsoft Entra ID, in the browser: `@azure/msal-browser` v5 (authorization code flow with Proof Key for Code Exchange, by redirect). The token is kept in `sessionStorage`, one sign-in per tab. The Next.js server takes no part. What the backend must set up and check is in `docs/auth-api.md`: keep it in step.
+- `NEXT_PUBLIC_AUTH_MODE`: `none` (default, no sign-in; the dev token works in http mode), `entra` (sign-in for every app; needs `NEXT_PUBLIC_ENTRA_TENANT_ID` and `NEXT_PUBLIC_ENTRA_CLIENT_ID`; `NEXT_PUBLIC_ENTRA_API_SCOPE` is optional and defaults to `api://<client-id>/access_as_user`), `fake` (a pretend account for local checks; production builds refuse it). It is independent of `NEXT_PUBLIC_BACKEND_MODE`, so it works with the mock. A production build with `http` and without `entra` fails at build time.
+- One app registration serves the UI and the backend. The UI sends the access token on every call as `Authorization: Bearer …`. The backend reads the person from the claims and applies its own permissions; there is no on-behalf-of exchange. Sign-in returns to `<origin>/auth/redirect`, sign-out to `<origin>/`.
+- Code: `src/app/(apps)/layout.tsx` puts every app behind sign-in. With sign-in on it also renders a request-time marker (`await connection()` in `<Suspense>`): the gate keeps pages out of the prerendered HTML, and without the marker Next.js refuses to build `/pipeline/[stage]`, whose title depends on the URL. Check a change to that layout with a build in `entra` mode (placeholder ids are enough). `src/app/auth/redirect/` is outside the group: the page Microsoft returns to, which only runs MSAL's redirect bridge.
+- `src/lib/auth`: `auth-client.ts` is the interface (`AuthClient`); `msal-auth-client.ts` implements it (the only file that imports MSAL, loaded on demand); `fake-auth-client.ts` is the pretend one; `auth-token-provider.ts` adapts a client to the HTTP client's `TokenProvider`; `auth-controller.ts` holds the rules, with pure helpers in `auth-state.ts`.
+- `src/services/auth.ts` builds the client from the settings. Import `authClient`, `authSession` and `clearLocalData` from `@/services`. `src/features/auth`: `auth-provider.tsx`, `auth-gate.tsx`, `sign-in-screen.tsx`, `session-ended-dialog.tsx`, `user-menu.tsx`.
+- With no session in the tab the app goes to Microsoft once, automatically. After a sign-out or a failed attempt it shows the sign-in screen and waits for the button (a flag in `sessionStorage`), so a broken setup can't loop.
+- The account is the one the sign-in returned, never a pick among several cached ones.
+- A call still refused after a token refresh means the session has ended: the app stays mounted under a dialog, and signing in again happens in a separate window so unsaved work is kept.
+- A token that can't be renewed because the network is down fails the call ("Can't reach the server"). It does not sign the person out.
+- Sign-out, and a different person signing in, clear both apps' run stores and the mock's stored runs. Sign-out also signs out the person's other tabs.
+- In `fake` mode, `window.__auth.expire()` in the console acts out an ended session.
+- With sign-in on, open the app at `http://localhost:3000`, not the WSL `172.x` address: Microsoft only accepts http for localhost, and MSAL needs a secure context.
 
 ## Structure
 
-- `src/app/pipeline/[stage]/page.tsx`: one route for all stages. The URL is the selected stage.
+- `src/app/(apps)/pipeline/[stage]/page.tsx`: one route for all stages. The URL is the selected stage.
 - `src/features/stages/config.ts` holds stage labels, icons and descriptions. `panels.ts` maps stage → panel. Stage order is `STAGE_IDS` in `src/types/pipeline.ts`.
 - `src/components/layout`: the app shell, the app switcher, the pipeline sidebar and mobile stage sheet.
 - `src/components/pipeline`: reusable stage building blocks (StagePanel, StageFooter, FileList, SplitView, MarkdownViewer, EmptyState, StageStatusBadge).
@@ -35,7 +51,8 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 - `src/services`: the boundary to the backend. `contracts.ts` is the interface; `http/` (Django) and `mock/` (in the browser) implement it; `index.ts` picks one from `NEXT_PUBLIC_BACKEND_MODE`; `errors.ts` turns error codes into sentences. Import `services` from `@/services`, never an implementation.
 - `src/features/run`: keeps the store in step with the run on the server (`run-sync.tsx`, `attach-run.ts`), plus the hooks and components panels share (`use-execute-stage.ts`, `use-stage-output.ts`, `stage-summary.tsx`, `connection-banner.tsx`).
 - `src/lib/api`: the HTTP client and its middleware (request id, auth, retry, timeout, errors). `src/lib/realtime`: the reconnecting WebSocket. Neither knows about runs.
-- `src/config/env.ts`: the checked `NEXT_PUBLIC_*` settings (see `.env.example`).
+- `src/config/env.ts`: the checked `NEXT_PUBLIC_*` settings, the backend ones and the auth ones (see `.env.example`).
+- `src/lib/auth`: sign-in without React (see "Sign-in"). `src/features/auth`: its React side.
 - `src/lib`: pure helpers (`stages.ts`, `format.ts`, `utils.ts`) and generic hooks (`use-async-data.ts`, `use-debounced-value.ts`).
 
 ## How the UI talks to the backend
