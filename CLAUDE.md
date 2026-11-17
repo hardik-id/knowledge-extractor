@@ -15,10 +15,10 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 
 ## Apps and branches
 
-- One codebase builds more than one app. `NEXT_PUBLIC_APP_MODE` picks a profile in `src/config/app-profile.ts`: the stages shown, the file sources, the product name, the storage key prefix and where extraction reads its text. Code that differs per app reads `appProfile`, never the env directly. Stage wording per app goes in `STAGE_WORDING_BY_MODE` (`features/stages/config.ts`); extraction's input goes through `features/run/use-extraction-input.ts`.
-- `main` is the pipeline app plus every shared seam. **Knowledge Studio** (extraction only, over enriched Markdown in a storage container) lives on the long-lived branch `experiment/knowledge-studio`; studio work goes in `studio/<topic>` branches with PRs into it.
-- On the experiment branch: `npm run dev:studio` runs Knowledge Studio on port 3001 (stages select and extract, source `storage`). Its documents come from `services.documents` and `catalog.list("storage")`; extraction reads the document by the run file's `sourceRef` and keeps its ETag as `sourceEtag`. What the backend has to provide is in `docs/studio-api.md`. Wording that differs per app is a profile field (`itemNoun`, `searchHint`, …), not an `if` on the mode.
-- Backlog is GitHub issues. `track: shared` is fixed on `main`, then `main` is merged into the experiment branch. `track: studio` targets the experiment branch. Milestone "Knowledge Studio experiment", tracking issue #29.
+- One codebase builds more than one app. `NEXT_PUBLIC_APP_MODE` picks a profile in `src/config/app-profile.ts`: the stages shown, the file sources, the product name, the storage key prefix and where extraction reads its text. Code that differs per app reads `appProfile`, never the env directly. Stage wording per app goes in `STAGE_WORDING_BY_MODE` (`features/stages/config.ts`); other wording that differs is a profile field (`itemNoun`, `searchHint`, …), not an `if` on the mode. Extraction's input goes through `features/run/use-extraction-input.ts`.
+- Apps: `pipeline` (default, `npm run dev`) and **Knowledge Studio** (`studio`, `npm run dev:studio` on port 3001): extraction only, over enriched Markdown documents in a storage container. Its documents come from `services.documents` and `catalog.list("storage")`; extraction reads the document by the run file's `sourceRef` and keeps its ETag as `sourceEtag`. What the backend has to provide is in `docs/studio-api.md`.
+- Trunk-based: everything merges to `main` through short-lived branches (`studio/<topic>` for studio work). Experiments live in `main` behind their app mode; dropping one means deleting its profile and its own files.
+- Backlog is GitHub issues. `track: studio` and the milestone "Knowledge Studio experiment" mark studio work, `track: shared` work that affects every app. Tracking issue #29.
 
 ## Structure
 
