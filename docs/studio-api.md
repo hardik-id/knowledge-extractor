@@ -1,6 +1,6 @@
 # Knowledge Studio: API for the backend
 
-Knowledge Studio is a second app built from the same UI (`NEXT_PUBLIC_APP_MODE=studio`). It has two stages: select and extract. Its files are enriched Markdown documents that already sit in an Azure storage container. This page is what the studio needs from the Django API on top of what [extraction-api.md](extraction-api.md) describes. Everything run-scoped there stays as it is.
+Knowledge Studio is a second app in the same UI (the `/studio` route). It has two stages: select and extract. Its files are enriched Markdown documents that already sit in an Azure storage container. This page is what the studio needs from the Django API on top of what [extraction-api.md](extraction-api.md) describes. Everything run-scoped there stays as it is.
 
 The UI side is `src/services/contracts.ts` (`DocumentsApi`, `SourceFile.etag`), `src/services/http/` and `src/services/mock/`. If the real API has to differ, change this document and those places together.
 
@@ -85,7 +85,7 @@ Errors: 401, 403, 404 as in section 1.
 ```
 
 - `source_ref` is the document id from the listing.
-- The run has only the `extract` stage: one cell per file, starting `pending`. It has no ingest, transform, classify or enrich cells.
+- A run whose files are all storage documents (`source: "storage"`) has only the `extract` stage: one cell per file, starting `pending`. It has no ingest, transform, classify or enrich cells. A run can't mix storage documents with other files: the API answers 422 `mixed_sources`. Any other run is the full pipeline.
 - The API should check that the person may open each document, and answer 403 `forbidden` or 404 `document_not_found` for the first that fails, rather than failing later in the stage.
 - The response is the run, as in extraction-api.md. Executing, snapshots, live updates, definitions, records, corrections and the assistant are all run-scoped and work as described there.
 

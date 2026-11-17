@@ -15,7 +15,7 @@ import type { ExtractionDefinition, OutputFormat } from "@/services/contracts";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { useSelectedFiles } from "@/store/selectors";
-import { STAGE_META } from "../config";
+import { STAGE_META } from "@/features/stages/config";
 
 const FORMAT_LABEL: Record<OutputFormat, string> = {
   json: "JSON",

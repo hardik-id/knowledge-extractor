@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Code_Pro, Source_Sans_3 } from "next/font/google";
-import { appProfile } from "@/config/app-profile";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -17,8 +16,8 @@ const sourceCode = Source_Code_Pro({
 });
 
 export const metadata: Metadata = {
-  title: { default: appProfile.name, template: `%s · ${appProfile.name}` },
-  description: "Select, ingest, transform, classify, enrich, extract and index documents.",
+  title: { default: "Knowledge apps", template: "%s" },
+  description: "Turn documents into structured knowledge.",
 };
 
 export const viewport: Viewport = {

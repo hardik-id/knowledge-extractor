@@ -1138,47 +1138,32 @@ describe("assistant and publishing", () => {
       assert.equal(backend.lastExamplesUsed(run.id), 1);
     });
   });
-
-  describe("workStages", () => {
-    const limited = () =>
-      new MockBackend({
-        speed: 0,
-        storage: null,
-        workStages: ["transform", "classify", "enrich", "extract"],
-      });
-
-    test("only the given stages get cells", async () => {
-      const run = await limited().createRun(FILES);
-      assert.equal(run.cells.length, FILES.length * 4);
-      assert.deepEqual(statuses(run, "ingest"), []);
-    });
-
-    test("the first given stage runs without an upstream one", async () => {
-      const backend = limited();
-      const run = await backend.createRun(FILES);
-      await runStage(backend, run.id, "transform");
-      assert.deepEqual(statuses(await backend.getRun(run.id), "transform"), [
-        "succeeded",
-        "succeeded",
-      ]);
-    });
-
-    test("later stages still wait for the one before them in the list", async () => {
-      const backend = limited();
-      const run = await backend.createRun(FILES);
-      await rejectsWithCode(backend.executeStage(run.id, "classify"), "upstream_not_ready", 422);
-    });
-  });
 });
 
 describe("storage documents (Knowledge Studio)", () => {
-  const studio = () =>
-    new MockBackend({
-      speed: 0,
-      storage: null,
-      workStages: ["extract"],
-      extractionInput: "document",
-    });
+  const studio = () => fastBackend();
+  const DOCS = MOCK_DOCUMENTS.slice(0, 2);
+
+  test("a run of documents has only the extract stage, which runs without an upstream one", async () => {
+    const backend = studio();
+    const run = await backend.createRun(DOCS);
+    assert.equal(run.cells.length, DOCS.length);
+    assert.deepEqual(statuses(run, "extract"), ["pending", "pending"]);
+    assert.deepEqual(statuses(run, "ingest"), []);
+    await runStage(backend, run.id, "extract");
+    assert.deepEqual(statuses(await backend.getRun(run.id), "extract"), ["succeeded", "succeeded"]);
+  });
+
+  test("a run can't mix storage documents with other files", async () => {
+    await rejectsWithCode(studio().createRun([FILES[0], DOCS[0]]), "mixed_sources", 422);
+  });
+
+  test("a run of other files is still the full pipeline beside a run of documents", async () => {
+    const backend = studio();
+    await backend.createRun(DOCS);
+    const run = await backend.createRun(FILES);
+    assert.equal(run.cells.length, FILES.length * 6);
+  });
 
   test("the storage listing has the documents and is filtered like the other sources", async () => {
     const backend = fastBackend();

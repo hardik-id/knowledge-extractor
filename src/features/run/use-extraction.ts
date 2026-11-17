@@ -13,7 +13,7 @@ import type {
   ReviewState,
 } from "@/services/contracts";
 import { describeApiError } from "@/services/errors";
-import { usePipelineStore } from "@/store/pipeline-store";
+import { usePipelineStore, useRunStoreApi } from "@/store/pipeline-store";
 import { extractionInputEtag } from "./use-extraction-input";
 
 /**
@@ -90,12 +90,13 @@ export interface ExtractionActions {
  * `extraction` is what `useFileExtraction` returned for the same file.
  */
 export function useExtractionActions(extraction: FileExtraction | undefined): ExtractionActions {
+  const runStore = useRunStoreApi();
   const [pending, setPending] = useState(0);
 
   const send = async (
     change: (runId: string, current: FileExtraction) => Promise<FileExtraction>,
   ): Promise<FileExtraction | null> => {
-    const store = usePipelineStore.getState();
+    const store = runStore.getState();
     const runId = store.runId;
     if (!runId || !extraction) return null;
     const { fileId } = extraction;
@@ -109,7 +110,7 @@ export function useExtractionActions(extraction: FileExtraction | undefined): Ex
         keyFor(runId, fileId, `${inputEtag ?? ""}|${runEtag ?? ""}`, next.revision),
         next,
       );
-      usePipelineStore.getState().setExtractionRevision(fileId, next.revision);
+      runStore.getState().setExtractionRevision(fileId, next.revision);
       return next;
     } catch (error) {
       if (isApiError(error) && error.code === "revision_conflict") {
@@ -120,7 +121,7 @@ export function useExtractionActions(extraction: FileExtraction | undefined): Ex
         for (const key of [...extractions.keys()]) {
           if (key.startsWith(JSON.stringify([runId, fileId]).slice(0, -1))) extractions.delete(key);
         }
-        usePipelineStore.getState().setExtractionRevision(fileId, extraction.revision + 1);
+        runStore.getState().setExtractionRevision(fileId, extraction.revision + 1);
       } else {
         toast.error("Couldn't save the change", { description: describeApiError(error) });
       }

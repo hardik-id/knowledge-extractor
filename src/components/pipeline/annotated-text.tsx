@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { labelStyle } from "@/features/stages/extract/labels";
+import { labelStyle } from "@/features/extraction/labels";
 import { TEXT_START } from "@/lib/dom-selection";
 import { segmentText, type Mark } from "@/lib/text-spans";
 import { cn } from "@/lib/utils";

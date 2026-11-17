@@ -6,13 +6,7 @@
 
 export type BackendMode = "mock" | "http";
 
-/** Which app this build is. See `config/app-profile.ts`. */
-export const APP_MODES = ["pipeline", "studio"] as const;
-export type AppMode = (typeof APP_MODES)[number];
-
 export interface Env {
-  /** `pipeline`: the full pipeline. `studio`: Knowledge Studio. Set with NEXT_PUBLIC_APP_MODE. */
-  appMode: AppMode;
   /** `mock`: everything runs in the browser. `http`: the Django API and its WebSocket. */
   backendMode: BackendMode;
   /** e.g. "https://api.example.com/api/v1". Empty in mock mode. */
@@ -24,7 +18,6 @@ export interface Env {
 }
 
 export interface RawEnv {
-  appMode?: string;
   backendMode?: string;
   apiBaseUrl?: string;
   wsBaseUrl?: string;
@@ -45,24 +38,13 @@ function requireUrl(name: string, value: string, protocols: string[]): string {
   return value.replace(/\/+$/, "");
 }
 
-function parseAppMode(value: string | undefined): AppMode {
-  const mode = value?.trim() || "pipeline";
-  if (!(APP_MODES as readonly string[]).includes(mode)) {
-    throw new Error(
-      `NEXT_PUBLIC_APP_MODE must be ${APP_MODES.map((m) => `"${m}"`).join(" or ")}, got "${mode}".`,
-    );
-  }
-  return mode as AppMode;
-}
-
 export function parseEnv(raw: RawEnv): Env {
-  const appMode = parseAppMode(raw.appMode);
   const backendMode = raw.backendMode?.trim() || "mock";
   if (backendMode !== "mock" && backendMode !== "http") {
     throw new Error(`NEXT_PUBLIC_BACKEND_MODE must be "mock" or "http", got "${backendMode}".`);
   }
   if (backendMode === "mock") {
-    return { appMode, backendMode, apiBaseUrl: "", wsBaseUrl: "", devAccessToken: null };
+    return { backendMode, apiBaseUrl: "", wsBaseUrl: "", devAccessToken: null };
   }
 
   const api = raw.apiBaseUrl?.trim();
@@ -77,12 +59,11 @@ export function parseEnv(raw: RawEnv): Env {
   const devAccessToken =
     raw.nodeEnv !== "production" && raw.devAccessToken?.trim() ? raw.devAccessToken.trim() : null;
 
-  return { appMode, backendMode, apiBaseUrl, wsBaseUrl, devAccessToken };
+  return { backendMode, apiBaseUrl, wsBaseUrl, devAccessToken };
 }
 
 // Each variable is named in full: Next.js only inlines literal `process.env.NEXT_PUBLIC_*` reads.
 export const env: Env = parseEnv({
-  appMode: process.env.NEXT_PUBLIC_APP_MODE,
   backendMode: process.env.NEXT_PUBLIC_BACKEND_MODE,
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
   wsBaseUrl: process.env.NEXT_PUBLIC_WS_BASE_URL,

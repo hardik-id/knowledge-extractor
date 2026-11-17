@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { appProfile } from "@/config/app-profile";
 import { BoundedCache, useAsyncData, type AsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
 import type { DocumentContent } from "@/services/contracts";
 import { usePipelineStore } from "@/store/pipeline-store";
 import type { PipelineState } from "@/store/types";
+import { extractionInputKind } from "./extraction-input-kind";
 import { useStageOutput } from "./use-stage-output";
 
 /** The text extraction works on for one file, with its content type and version. */
@@ -19,12 +19,7 @@ export interface ExtractionInput {
 /** Documents already fetched. The key contains the ETag, so an entry never goes out of date. */
 const documents = new BoundedCache<DocumentContent>(30);
 
-/** Shown when the app's profile names an input kind this code does not know. */
-function unknownKind(kind: never): never {
-  throw new Error(`Unknown extraction input: ${String(kind)}`);
-}
-
-/** Whether the file has the text extraction works on (pipeline: an enrich output; studio: any file of the run). Plain function over store state, usable in selectors. */
+/** Whether the file has the text extraction works on (pipeline: an enrich output; documents: the document). Plain function over store state, usable in selectors. */
 export function hasExtractionInput(
   state: Pick<PipelineState, "cells" | "runFiles">,
   fileId: string,
@@ -37,31 +32,24 @@ export function extractionInputEtag(
   state: Pick<PipelineState, "cells" | "runFiles">,
   fileId: string,
 ): string | null {
-  const kind = appProfile.extractionInput;
-  switch (kind) {
-    case "enrich":
-      return state.cells[fileId]?.enrich?.output?.etag ?? null;
-    case "document":
-      return state.runFiles.find((f) => f.id === fileId)?.etag ?? null;
-    default:
-      return unknownKind(kind);
-  }
+  const file = state.runFiles.find((f) => f.id === fileId);
+  if (!file) return null;
+  return extractionInputKind(file) === "document"
+    ? (file.etag ?? null)
+    : (state.cells[fileId]?.enrich?.output?.etag ?? null);
 }
 
 /** Loads the text extraction works on for a file. Pass `null` when no file is chosen. */
 export function useExtractionInput(fileId: string | null): AsyncData<ExtractionInput> {
-  const kind = appProfile.extractionInput;
-  switch (kind) {
-    case "enrich":
-      // The profile never changes at runtime, so the same hook runs every render.
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      return useEnrichInput(fileId);
-    case "document":
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      return useDocumentInput(fileId);
-    default:
-      return unknownKind(kind);
-  }
+  const kind = usePipelineStore((s) => {
+    const file = fileId ? s.runFiles.find((f) => f.id === fileId) : undefined;
+    return file ? extractionInputKind(file) : null;
+  });
+  // Both loaders always run, so the hooks are the same on every render. The one
+  // that is not needed gets no file and stays idle.
+  const enrich = useEnrichInput(kind === "enrich" ? fileId : null);
+  const document = useDocumentInput(kind === "document" ? fileId : null);
+  return kind === "document" ? document : enrich;
 }
 
 function useEnrichInput(fileId: string | null): AsyncData<ExtractionInput> {
