@@ -1,6 +1,5 @@
 "use client";
 
-import { appProfile } from "@/config/app-profile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FILE_TYPE_LABEL, SOURCE_LABEL, formatBytes, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -16,6 +15,8 @@ interface FileListProps {
   renderTrailing?: (file: SourceFile) => React.ReactNode;
   /** Accessible name for the list. */
   label: string;
+  /** Prefix each location with its source. Off when every file comes from one source. */
+  showSource?: boolean;
   className?: string;
 }
 
@@ -26,6 +27,7 @@ export function FileList({
   onToggle,
   renderTrailing,
   label,
+  showSource = true,
   className,
 }: FileListProps) {
   const selectable = selectedIds !== undefined && onToggle !== undefined;
@@ -70,9 +72,7 @@ export function FileList({
                 <p className="truncate font-semibold text-ink">{file.name}</p>
               )}
               <p className="truncate text-[13px] leading-[18px] text-ink-muted">
-                {appProfile.sources.length > 1
-                  ? `${SOURCE_LABEL[file.source]} · ${file.location}`
-                  : file.location}
+                {showSource ? `${SOURCE_LABEL[file.source]} · ${file.location}` : file.location}
               </p>
             </div>
             <dl className="hidden shrink-0 grid-cols-[auto_auto_auto] gap-x-6 text-right text-[15px] leading-[22px] text-ink-muted tabular-nums sm:grid">

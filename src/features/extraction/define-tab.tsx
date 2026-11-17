@@ -2,7 +2,6 @@
 
 import { AlertCircle, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { useId } from "react";
-import { appProfile } from "@/config/app-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +40,13 @@ function sampleValues(recordType: RecordType): TemplateValues {
   return values;
 }
 
-export function DefineTab({ definition }: { definition: ExtractionDefinitionState }) {
+interface DefineTabProps {
+  definition: ExtractionDefinitionState;
+  /** Opening line, which says what the definition applies to. */
+  definitionNote: string;
+}
+
+export function DefineTab({ definition, definitionNote }: DefineTabProps) {
   const { draft, saved, setDraft, errors, showErrors, dirty, saving, save, discard } = definition;
   const promptId = useId();
   if (!draft || !saved) return null;
@@ -53,7 +58,7 @@ export function DefineTab({ definition }: { definition: ExtractionDefinitionStat
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-8">
       <div className="flex min-w-0 flex-col gap-8">
-        <p className="max-w-[68ch] text-ink-muted">{appProfile.definitionNote}</p>
+        <p className="max-w-[68ch] text-ink-muted">{definitionNote}</p>
 
         {showErrors && errors.general.length > 0 && (
           <div role="alert" className="space-y-1">

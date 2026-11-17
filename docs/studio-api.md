@@ -1,6 +1,6 @@
 # Knowledge Studio: API for the backend
 
-Knowledge Studio is a second app built from the same UI (`NEXT_PUBLIC_APP_MODE=studio`). It has two stages: select and extract. Its files are enriched Markdown documents that already sit in an Azure storage container. This page is what the studio needs from the Django API on top of what [extraction-api.md](extraction-api.md) describes. Everything run-scoped there stays as it is.
+Knowledge Studio is a second app in the same UI (the `/studio` route). It has two stages: select and extract. Its files are enriched Markdown documents that already sit in an Azure storage container. This page is what the studio needs from the Django API on top of what [extraction-api.md](extraction-api.md) describes. Everything run-scoped there stays as it is.
 
 The UI side is `src/services/contracts.ts` (`DocumentsApi`, `SourceFile.etag`), `src/services/http/` and `src/services/mock/`. If the real API has to differ, change this document and those places together.
 

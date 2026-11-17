@@ -3,19 +3,10 @@ import { describe, test } from "node:test";
 import { parseEnv } from "./env";
 
 describe("parseEnv", () => {
-  test("defaults to the pipeline app and the mock backend", () => {
+  test("defaults to the mock backend", () => {
     const env = parseEnv({});
-    assert.equal(env.appMode, "pipeline");
     assert.equal(env.backendMode, "mock");
     assert.equal(env.apiBaseUrl, "");
-  });
-
-  test("blank app mode falls back to pipeline", () => {
-    assert.equal(parseEnv({ appMode: "  " }).appMode, "pipeline");
-  });
-
-  test("an unknown app mode throws", () => {
-    assert.throws(() => parseEnv({ appMode: "nope" }), /NEXT_PUBLIC_APP_MODE/);
   });
 
   test("an unknown backend mode throws", () => {

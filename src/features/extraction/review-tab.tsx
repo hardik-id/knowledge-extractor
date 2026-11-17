@@ -31,7 +31,7 @@ import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { useSelectedFiles } from "@/store/selectors";
 import type { SourceFile } from "@/types/pipeline";
-import { STAGE_META } from "../config";
+import { STAGE_META } from "@/features/stages/config";
 import { fieldLabels } from "./labels";
 import { RecordsPane } from "./records-pane";
 import { buildReviewMarks } from "./review-marks";
