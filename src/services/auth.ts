@@ -13,7 +13,7 @@ import type { AuthTokenProvider } from "@/lib/auth/auth-token-provider";
 
 declare global {
   interface Window {
-    /** Fake sign-in only. `__auth.expire()` makes token requests fail as if the session ended. */
+    /** Fake sign-in only. `__auth.expire()` ends the session: token requests fail and the app is told. */
     __auth?: { expire(): void };
   }
 }
@@ -31,7 +31,16 @@ function createAuthClient(): AuthClient | null {
       return lazyAuthClient(() =>
         import("@/lib/auth/fake-auth-client").then((m) => {
           const client = m.createFakeAuthClient();
-          if (typeof window !== "undefined") window.__auth = { expire: () => client.expire() };
+          if (typeof window !== "undefined") {
+            window.__auth = {
+              expire: () => {
+                client.expire();
+                // Say so at once. A real session is found to have ended at the next
+                // refused call, and the mock backend makes no calls.
+                authSession?.onUnauthenticated();
+              },
+            };
+          }
           return client;
         }),
       );
