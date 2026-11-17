@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CloudOff, Lock } from "lucide-react";
+import { appProfile } from "@/config/app-profile";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
@@ -49,7 +50,7 @@ export function StageGate({ stageId, children }: { stageId: StageId; children: R
         <EmptyState
           icon={Lock}
           title={`${STAGE_META[stageId].label} isn't available yet`}
-          description={`Finish ${STAGE_META[frontier].label.toLowerCase()} first. Each stage works on the output of the one before it.`}
+          description={`Finish ${STAGE_META[frontier].label.toLowerCase()} first. ${appProfile.stageGateNote}`}
           action={
             <Button asChild>
               <Link href={stageHref(frontier)}>

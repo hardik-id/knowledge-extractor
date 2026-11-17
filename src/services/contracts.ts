@@ -424,8 +424,28 @@ export interface RunEvents {
   subscribe(runId: string, handlers: RunEventHandlers): () => void;
 }
 
+/** One document's text as stored, with its version. */
+export interface DocumentContent {
+  text: string;
+  contentType: string;
+  /** Changes whenever the document changes. Extraction keeps it as `sourceEtag`. */
+  etag: string;
+}
+
+/**
+ * Documents in the storage container (Knowledge Studio). The API reads them
+ * with the signed-in person's own access, so a person only ever gets
+ * documents they may open. Listing goes through `catalog.list("storage", …)`.
+ * Rejects with an ApiError: `document_not_found` (404), `forbidden` (403).
+ */
+export interface DocumentsApi {
+  /** `documentId` is the id the catalog listed (a run file's `sourceRef`). */
+  get(documentId: string, signal?: AbortSignal): Promise<DocumentContent>;
+}
+
 export interface Services {
   catalog: SourceCatalog;
+  documents: DocumentsApi;
   runs: RunsApi;
   extraction: ExtractionApi;
   events: RunEvents;

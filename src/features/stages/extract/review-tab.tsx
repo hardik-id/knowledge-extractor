@@ -49,11 +49,14 @@ import { SELECTION_MENU_WIDTH, SelectionMenu } from "./selection-menu";
 export function ReviewTab({ definition }: { definition: ExtractionDefinition }) {
   const files = useSelectedFiles();
   const cells = usePipelineStore((s) => s.cells);
+  const runFiles = usePipelineStore((s) => s.runFiles);
   const activeDocId = usePipelineStore((s) => s.activeDocId);
 
   // Every file with the text extraction works on can be reviewed and labelled by hand.
   const rows: Row[] = files.flatMap((file) =>
-    hasExtractionInput({ cells }, file.id) ? [{ file, cell: cells[file.id]?.extract }] : [],
+    hasExtractionInput({ cells, runFiles }, file.id)
+      ? [{ file, cell: cells[file.id]?.extract }]
+      : [],
   );
   const active = rows.find((row) => row.file.id === activeDocId) ?? rows[0];
 
@@ -107,7 +110,9 @@ function ReviewWorkspace({
 
   const text = useExtractionInput(fileId);
   const extraction = useFileExtraction(fileId);
-  const inputEtag = usePipelineStore((s) => (fileId ? extractionInputEtag(s, fileId) : null));
+  const listedEtag = usePipelineStore((s) => (fileId ? extractionInputEtag(s, fileId) : null));
+  // The loaded text is the truth; until it arrives, the version the store knows.
+  const inputEtag = text.data?.etag ?? listedEtag;
 
   const [view, setView] = useState<"rendered" | "source">("rendered");
   const [activeValueId, setActiveValueId] = useState<string | null>(null);

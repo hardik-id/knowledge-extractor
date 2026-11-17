@@ -13,6 +13,7 @@ declare global {
 export function createMockServices(
   backend: MockBackend = new MockBackend({
     workStages: appProfile.stages.filter(isWorkStageId),
+    extractionInput: appProfile.extractionInput,
     storageKey: `${appProfile.storagePrefix}:mock-backend`,
   }),
 ): Services {
@@ -21,6 +22,9 @@ export function createMockServices(
   return {
     catalog: {
       list: (source, query, signal) => backend.listFiles(source, query, signal),
+    },
+    documents: {
+      get: (id, signal) => backend.getDocument(id, signal),
     },
     runs: {
       createRun: (files) => backend.createRun(files),

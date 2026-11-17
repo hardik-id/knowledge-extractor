@@ -7,11 +7,11 @@
 export type BackendMode = "mock" | "http";
 
 /** Which app this build is. See `config/app-profile.ts`. */
-export const APP_MODES = ["pipeline"] as const;
+export const APP_MODES = ["pipeline", "studio"] as const;
 export type AppMode = (typeof APP_MODES)[number];
 
 export interface Env {
-  /** `pipeline`: the full pipeline. Set with NEXT_PUBLIC_APP_MODE. */
+  /** `pipeline`: the full pipeline. `studio`: Knowledge Studio. Set with NEXT_PUBLIC_APP_MODE. */
   appMode: AppMode;
   /** `mock`: everything runs in the browser. `http`: the Django API and its WebSocket. */
   backendMode: BackendMode;

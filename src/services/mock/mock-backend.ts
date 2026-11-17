@@ -3,6 +3,7 @@ import { toMarkdownName } from "@/lib/format";
 import { newId } from "@/lib/id";
 import { codePointToIndex } from "@/lib/text-spans";
 import { DEFAULT_EXTRACTION_DEFINITION } from "@/mocks/extraction";
+import { MOCK_DOCUMENTS, mockDocumentText } from "@/mocks/documents";
 import { MOCK_FILES } from "@/mocks/files";
 import {
   mockClassifiedMarkdownFor,
@@ -15,6 +16,7 @@ import {
   type AssistantEvent,
   type AssistantMessage,
   type ConnectionState,
+  type DocumentContent,
   type ExecuteStageOptions,
   type ExtractionChange,
   type Execution,
@@ -119,6 +121,11 @@ export interface MockBackendOptions {
   storageKey?: string;
   /** The stages this backend runs, in order. Default: all of them. */
   workStages?: readonly WorkStageId[];
+  /**
+   * Where extraction reads its text. `enrich`: the enrich stage's output.
+   * `document`: the stored document named by the run file's `sourceRef`.
+   */
+  extractionInput?: "enrich" | "document";
 }
 
 const key = (fileId: string, stage: WorkStageId) => `${fileId}:${stage}`;
@@ -209,6 +216,7 @@ export class MockBackend {
   private unanchorNextExtraction = false;
   private readonly examplesUsed = new Map<string, number>();
   private readonly workStages: readonly WorkStageId[];
+  private readonly extractionSource: "enrich" | "document";
   private speed: number;
   private connected = true;
   private lastTimestamp = 0;
@@ -216,6 +224,7 @@ export class MockBackend {
   constructor(options: MockBackendOptions = {}) {
     this.speed = options.speed ?? 1;
     this.workStages = options.workStages ?? WORK_STAGE_IDS;
+    this.extractionSource = options.extractionInput ?? "enrich";
     this.storage = options.storage === undefined ? defaultStorage() : options.storage;
     this.storageKey = options.storageKey ?? DEFAULT_STORAGE_KEY;
     this.restore();
@@ -227,11 +236,28 @@ export class MockBackend {
     await this.wait(LATENCY_MS);
     signal?.throwIfAborted();
     const q = query.trim().toLowerCase();
-    return MOCK_FILES.filter(
+    return [...MOCK_FILES, ...MOCK_DOCUMENTS].filter(
       (f) =>
         f.source === source &&
         (!q || f.name.toLowerCase().includes(q) || f.location.toLowerCase().includes(q)),
     );
+  }
+
+  // ── Documents ─────────────────────────────────────────────────────────
+
+  async getDocument(documentId: string, signal?: AbortSignal): Promise<DocumentContent> {
+    await this.wait(LATENCY_MS);
+    signal?.throwIfAborted();
+    const text = mockDocumentText(documentId);
+    const document = MOCK_DOCUMENTS.find((d) => d.id === documentId);
+    if (text === undefined || !document?.etag) {
+      throw new ApiError({
+        status: 404,
+        code: "document_not_found",
+        message: "This document does not exist, or you may not open it.",
+      });
+    }
+    return { text, contentType: CONTENT_TYPE.md, etag: document.etag };
   }
 
   // ── Runs ──────────────────────────────────────────────────────────────
@@ -750,11 +776,17 @@ export class MockBackend {
 
   /**
    * The text extraction works on for a file and its version, or null when there
-   * is none yet. The one place that says where that text comes from: today the
-   * copy classify and enrich share, as getOutput(…, "enrich") returns it.
+   * is none yet. The one place that says where that text comes from: the copy
+   * classify and enrich share, as getOutput(…, "enrich") returns it, or, for
+   * Knowledge Studio, the stored document the run file points at.
    */
   private extractionInput(run: MockRun, fileId: string): { text: string; etag: string } | null {
     const file = run.files.find((f) => f.id === fileId);
+    if (this.extractionSource === "document") {
+      const text = file && mockDocumentText(file.sourceRef);
+      const etag = file && MOCK_DOCUMENTS.find((d) => d.id === file.sourceRef)?.etag;
+      return text !== undefined && text !== null && etag ? { text, etag } : null;
+    }
     const etag = run.cells[key(fileId, "enrich")]?.output?.etag;
     if (!file || !etag) return null;
     return { text: outputText(file, run.sharedWriter?.[fileId] ?? "enrich"), etag };

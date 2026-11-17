@@ -1,7 +1,14 @@
 import type { HttpClient } from "@/lib/api";
 import { createSocketClient } from "@/lib/realtime/socket-client";
 import type { SourceFile } from "@/types/pipeline";
-import type { ExtractionApi, RunEvents, RunsApi, Services, SourceCatalog } from "../contracts";
+import type {
+  DocumentsApi,
+  ExtractionApi,
+  RunEvents,
+  RunsApi,
+  Services,
+  SourceCatalog,
+} from "../contracts";
 import {
   parseAssistantEventMessage,
   parseAssistantMessage,
@@ -9,6 +16,7 @@ import {
   parseCellMessage,
   parseDefinition,
   parseExecution,
+  parseEtagHeader,
   parseExtractionChangedMessage,
   parseFileExtraction,
   parsePublishResult,
@@ -32,10 +40,30 @@ const enc = encodeURIComponent;
 export function createHttpSourceCatalog(client: HttpClient): SourceCatalog {
   return {
     // The first page only: the picker has no paging yet.
+    // Storage documents have their own endpoint: they are read with the person's own access.
     list: async (source, query, signal) =>
       parseSourceFiles(
-        await client.get(`sources/${enc(source)}/items`, { query: { q: query }, signal }),
+        await client.get(source === "storage" ? "documents" : `sources/${enc(source)}/items`, {
+          query: { q: query },
+          signal,
+        }),
       ),
+  };
+}
+
+export function createHttpDocumentsApi(client: HttpClient): DocumentsApi {
+  return {
+    get: async (documentId, signal) => {
+      const response = await client.request("GET", `documents/${enc(documentId)}`, {
+        signal,
+        headers: { Accept: "text/markdown, text/plain" },
+      });
+      return {
+        text: await response.text(),
+        contentType: response.headers.get("Content-Type") ?? "text/markdown",
+        etag: parseEtagHeader(response.headers.get("ETag")),
+      };
+    },
   };
 }
 
@@ -216,6 +244,7 @@ export function createHttpRunEvents({
 export function createHttpServices(options: HttpRunEventsOptions): Services {
   return {
     catalog: createHttpSourceCatalog(options.client),
+    documents: createHttpDocumentsApi(options.client),
     runs: createHttpRunsApi(options.client),
     extraction: createHttpExtractionApi(options.client),
     events: createHttpRunEvents(options),

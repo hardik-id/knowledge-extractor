@@ -24,7 +24,8 @@ export type StageRunStatus = "idle" | "running" | "ready" | "done" | "error";
 /** What the sidebar shows: run status plus whether the stage can be opened yet. */
 export type StageAccess = "locked" | "current" | "available" | "done";
 
-export type SourceKind = "confluence" | "sharepoint" | "upload";
+/** `storage`: documents already enriched, read from a storage container (Knowledge Studio). */
+export type SourceKind = "confluence" | "sharepoint" | "upload" | "storage";
 
 export type FileType = "pdf" | "docx" | "xlsx" | "pptx" | "html" | "md" | "txt";
 
@@ -37,4 +38,6 @@ export interface SourceFile {
   /** Space / site path shown under the name, e.g. "HR / Policies" */
   location: string;
   modifiedAt: string; // ISO-8601
+  /** The file's version in its source, when the source reports one (storage documents do). */
+  etag?: string;
 }
