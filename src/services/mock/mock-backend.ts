@@ -123,7 +123,7 @@ export interface MockBackendOptions {
   /** Multiplies every delay. 0 makes the mock as fast as timers allow (for tests). */
   speed?: number;
   /** Where to keep state between reloads. Default: sessionStorage when there is one. */
-  storage?: Pick<Storage, "getItem" | "setItem"> | null;
+  storage?: (Pick<Storage, "getItem" | "setItem"> & { removeItem?(key: string): void }) | null;
   /** The key the state is kept under. One per app, so two apps on one origin keep apart. */
   storageKey?: string;
 }
@@ -678,6 +678,22 @@ export class MockBackend {
     await this.wait(LATENCY_MS);
     this.runs.delete(runId);
     this.save();
+  }
+
+  /**
+   * Forgets every run and its saved copy, for when another person signs in.
+   * Work still queued stops by itself, because its run is gone. Live
+   * subscriptions are detached, so nothing more reaches them.
+   */
+  reset(): void {
+    this.runs.clear();
+    this.subscriptions.clear();
+    this.examplesUsed.clear();
+    try {
+      this.storage?.removeItem?.(this.storageKey);
+    } catch {
+      // Storage blocked: nothing was saved there that we could remove.
+    }
   }
 
   // ── Events ────────────────────────────────────────────────────────────

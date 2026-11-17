@@ -1,0 +1,10 @@
+export { SignInWindowError } from "./auth-client";
+export type { AuthAccount, AuthClient, AuthInitResult } from "./auth-client";
+export { createAuthController } from "./auth-controller";
+export type { AuthController, AuthControllerOptions } from "./auth-controller";
+export { accountChanged, createAuthFlags, initialAuthState, shouldAutoSignIn } from "./auth-state";
+export type { AuthFlags, AuthState, AuthStatus } from "./auth-state";
+export { createAuthTokenProvider } from "./auth-token-provider";
+export type { AuthTokenProvider } from "./auth-token-provider";
+export { createFakeAuthClient } from "./fake-auth-client";
+export { lazyAuthClient } from "./lazy-auth-client";
