@@ -85,7 +85,7 @@ Errors: 401, 403, 404 as in section 1.
 ```
 
 - `source_ref` is the document id from the listing.
-- The run has only the `extract` stage: one cell per file, starting `pending`. It has no ingest, transform, classify or enrich cells.
+- A run whose files are all storage documents (`source: "storage"`) has only the `extract` stage: one cell per file, starting `pending`. It has no ingest, transform, classify or enrich cells. A run can't mix storage documents with other files: the API answers 422 `mixed_sources`. Any other run is the full pipeline.
 - The API should check that the person may open each document, and answer 403 `forbidden` or 404 `document_not_found` for the first that fails, rather than failing later in the stage.
 - The response is the run, as in extraction-api.md. Executing, snapshots, live updates, definitions, records, corrections and the assistant are all run-scoped and work as described there.
 

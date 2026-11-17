@@ -27,6 +27,7 @@ const MESSAGES: Record<string, string> = {
   empty_message: "Write a message first.",
   nothing_to_publish: "Save a definition with at least one record type before publishing.",
   no_files: "Select at least one file.",
+  mixed_sources: "A run can't mix storage documents with other files. Select one kind only.",
 };
 
 /**

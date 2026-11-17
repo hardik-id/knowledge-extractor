@@ -1,6 +1,6 @@
 import { services } from "@/services";
 import type { StageCell } from "@/services/contracts";
-import { usePipelineStore } from "@/store/pipeline-store";
+import type { RunStore } from "@/store/pipeline-store";
 
 /** Live updates are applied in batches, so a burst of them is one render, not hundreds. */
 const CELL_BATCH_MS = 50;
@@ -14,10 +14,14 @@ export interface AttachRunOptions {
  * Keeps the store in step with one run on the server until the returned
  * function is called. It holds the live connection, and fetches the snapshot
  * every time that connection opens, because updates sent while it was down
- * are gone. No React: <RunSync> calls this for the current run.
+ * are gone. No React: <RunSync> calls this for the current run of its store.
  */
-export function attachRun(runId: string, { onGone }: AttachRunOptions): () => void {
-  const store = usePipelineStore.getState;
+export function attachRun(
+  runStore: RunStore,
+  runId: string,
+  { onGone }: AttachRunOptions,
+): () => void {
+  const store = runStore.getState;
   const controller = new AbortController();
 
   const load = async () => {

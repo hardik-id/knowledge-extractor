@@ -102,6 +102,13 @@ interface MockRun {
   assistant?: AssistantMessage[];
   /** How often the definition was published. Older runs don't have it. */
   publishedVersion?: number;
+  /** The stages this run has, in order. Older runs don't have it: they are the full pipeline. */
+  workStages?: readonly WorkStageId[];
+  /**
+   * Where extraction reads its text. `enrich`: the enrich stage's output.
+   * `document`: the stored document named by the run file's `sourceRef`. Older runs don't have it.
+   */
+  extractionInput?: "enrich" | "document";
 }
 
 type SharedWriter = "classify" | "enrich";
@@ -119,13 +126,24 @@ export interface MockBackendOptions {
   storage?: Pick<Storage, "getItem" | "setItem"> | null;
   /** The key the state is kept under. One per app, so two apps on one origin keep apart. */
   storageKey?: string;
-  /** The stages this backend runs, in order. Default: all of them. */
-  workStages?: readonly WorkStageId[];
-  /**
-   * Where extraction reads its text. `enrich`: the enrich stage's output.
-   * `document`: the stored document named by the run file's `sourceRef`.
-   */
-  extractionInput?: "enrich" | "document";
+}
+
+/** What a run is made of decides its stages and where extraction reads its text. */
+function planFor(files: readonly SourceFile[]): {
+  workStages: readonly WorkStageId[];
+  extractionInput: "enrich" | "document";
+} {
+  const documents = files.filter((f) => f.source === "storage").length;
+  if (documents > 0 && documents < files.length) {
+    throw new ApiError({
+      status: 422,
+      code: "mixed_sources",
+      message: "A run can't mix storage documents with other files.",
+    });
+  }
+  return documents > 0
+    ? { workStages: ["extract"], extractionInput: "document" }
+    : { workStages: WORK_STAGE_IDS, extractionInput: "enrich" };
 }
 
 const key = (fileId: string, stage: WorkStageId) => `${fileId}:${stage}`;
@@ -215,16 +233,12 @@ export class MockBackend {
   private readonly failNextStages = new Set<WorkStageId>();
   private unanchorNextExtraction = false;
   private readonly examplesUsed = new Map<string, number>();
-  private readonly workStages: readonly WorkStageId[];
-  private readonly extractionSource: "enrich" | "document";
   private speed: number;
   private connected = true;
   private lastTimestamp = 0;
 
   constructor(options: MockBackendOptions = {}) {
     this.speed = options.speed ?? 1;
-    this.workStages = options.workStages ?? WORK_STAGE_IDS;
-    this.extractionSource = options.extractionInput ?? "enrich";
     this.storage = options.storage === undefined ? defaultStorage() : options.storage;
     this.storageKey = options.storageKey ?? DEFAULT_STORAGE_KEY;
     this.restore();
@@ -268,15 +282,17 @@ export class MockBackend {
       throw new ApiError({ status: 422, code: "no_files", message: "Select at least one file." });
     }
 
+    const plan = planFor(files);
     const run: MockRun = {
       id: `run_${newId()}`,
       createdAt: this.timestamp(),
       files: files.map((file) => ({ ...file, id: `file_${newId()}`, sourceRef: file.id })),
       cells: {},
       sharedWriter: {},
+      ...plan,
     };
     for (const file of run.files) {
-      for (const stage of this.workStages) {
+      for (const stage of plan.workStages) {
         run.cells[key(file.id, stage)] = {
           fileId: file.id,
           stage,
@@ -328,8 +344,9 @@ export class MockBackend {
       });
     }
 
-    const stageAt = this.workStages.indexOf(stage);
-    const previous = this.workStages[stageAt - 1];
+    const workStages = run.workStages ?? WORK_STAGE_IDS;
+    const stageAt = workStages.indexOf(stage);
+    const previous = workStages[stageAt - 1];
     if (previous && fileIds.some((id) => run.cells[key(id, previous)].status !== "succeeded")) {
       throw new ApiError({
         status: 422,
@@ -339,7 +356,7 @@ export class MockBackend {
     }
 
     // Work built on the old output of this stage is now out of date.
-    for (const later of this.workStages.slice(stageAt + 1)) {
+    for (const later of workStages.slice(stageAt + 1)) {
       for (const id of fileIds) {
         if (run.cells[key(id, later)].status !== "pending") {
           this.update(run, id, later, { status: "stale", progress: null });
@@ -782,7 +799,7 @@ export class MockBackend {
    */
   private extractionInput(run: MockRun, fileId: string): { text: string; etag: string } | null {
     const file = run.files.find((f) => f.id === fileId);
-    if (this.extractionSource === "document") {
+    if (run.extractionInput === "document") {
       const text = file && mockDocumentText(file.sourceRef);
       const etag = file && MOCK_DOCUMENTS.find((d) => d.id === file.sourceRef)?.etag;
       return text !== undefined && text !== null && etag ? { text, etag } : null;

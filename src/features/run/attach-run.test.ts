@@ -26,7 +26,8 @@ Object.assign(globalThis, {
 
 const FILES = MOCK_FILES.slice(0, 2);
 
-let store: typeof import("@/store/pipeline-store").usePipelineStore;
+let store: import("@/store/pipeline-store").RunStore;
+let createRunStore: typeof import("@/store/pipeline-store").createRunStore;
 let selectors: typeof import("@/store/selectors");
 let attachRun: typeof import("./attach-run").attachRun;
 let backend: MockBackend;
@@ -48,7 +49,7 @@ let goneCalls = 0;
 function attach() {
   const runId = state().runId;
   assert.ok(runId, "there is a run to attach to");
-  detach = attachRun(runId, { onGone: () => goneCalls++ });
+  detach = attachRun(store, runId, { onGone: () => goneCalls++ });
 }
 
 /** Select files and proceed, as the footer does on the first stage. */
@@ -67,7 +68,8 @@ async function runToReady(stage: Exclude<StageId, "select">) {
 
 describe("a run, from file selection to live updates", () => {
   before(async () => {
-    ({ usePipelineStore: store } = await import("@/store/pipeline-store"));
+    ({ createRunStore } = await import("@/store/pipeline-store"));
+    store = createRunStore("knowledge-extractor:run");
     selectors = await import("@/store/selectors");
     ({ attachRun } = await import("./attach-run"));
     const mock = window.__mockBackend;
