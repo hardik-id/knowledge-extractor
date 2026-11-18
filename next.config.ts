@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
-import { STAGE_IDS } from "./src/types/pipeline";
+import { FIRST_APP, APPS } from "./src/apps/registry";
 
-const FIRST_STAGE_HREF = `/pipeline/${STAGE_IDS[0]}`;
+const offersPipeline = APPS.some((app) => app.id === "pipeline");
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -14,10 +14,11 @@ const nextConfig: NextConfig = {
   // Redirect index routes here rather than with redirect() in a page:
   // a page that only redirects can't be prerendered for instant validation.
   async redirects() {
-    return [
-      { source: "/", destination: FIRST_STAGE_HREF, permanent: false },
-      { source: "/pipeline", destination: FIRST_STAGE_HREF, permanent: false },
-    ];
+    const redirects = [{ source: "/", destination: FIRST_APP.href, permanent: false }];
+    if (offersPipeline) {
+      redirects.push({ source: "/pipeline", destination: "/pipeline/select", permanent: false });
+    }
+    return redirects;
   },
   turbopack: {
     rules: {

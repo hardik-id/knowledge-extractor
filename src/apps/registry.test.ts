@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { APPS, appForPath } from "./registry";
+import { parseEnv } from "@/config/env";
+import { ALL_APPS, appForPath, isHiddenAppPath, offeredApps } from "./registry";
 
 describe("appForPath", () => {
   test("matches the app root and anything below it", () => {
@@ -18,6 +19,36 @@ describe("appForPath", () => {
   });
 
   test("every app's href belongs to that app", () => {
-    for (const app of APPS) assert.equal(appForPath(app.href)?.id, app.id);
+    for (const app of ALL_APPS) assert.equal(appForPath(app.href)?.id, app.id);
+  });
+});
+
+describe("offered apps", () => {
+  const studioOnly = offeredApps(["studio"]);
+  const reversed = offeredApps(["studio", "pipeline"]);
+
+  test("unset: every app, pipeline first", () => {
+    assert.deepEqual(
+      offeredApps(parseEnv({}).apps).map((a) => a.id),
+      ["pipeline", "studio"],
+    );
+  });
+
+  test("studio only: / goes to studio, pipeline is not found", () => {
+    assert.equal(studioOnly[0].href, "/studio");
+    assert.equal(appForPath("/studio/extract", studioOnly)?.id, "studio");
+    assert.equal(appForPath("/pipeline/select", studioOnly), undefined);
+    assert.equal(isHiddenAppPath("/pipeline/select", studioOnly), true);
+    assert.equal(isHiddenAppPath("/pipeline", studioOnly), true);
+    assert.equal(isHiddenAppPath("/studio", studioOnly), false);
+    assert.equal(isHiddenAppPath("/other", studioOnly), false);
+  });
+
+  test("the setting's order is the order offered", () => {
+    assert.deepEqual(
+      reversed.map((a) => a.id),
+      ["studio", "pipeline"],
+    );
+    assert.equal(isHiddenAppPath("/pipeline/select", reversed), false);
   });
 });

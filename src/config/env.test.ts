@@ -50,6 +50,7 @@ describe("parseEnv", () => {
       wsBaseUrl: "",
       devAccessToken: null,
       authMode: "none",
+      apps: ["pipeline", "studio"],
       entra: null,
     });
   });
@@ -129,5 +130,23 @@ describe("parseEnv", () => {
     const raw = { backendMode: "http", apiBaseUrl: "http://x.test", nodeEnv: "development" };
     assert.equal(parseEnv(raw).authMode, "none");
     assert.equal(parseEnv({ ...raw, authMode: "fake" }).authMode, "fake");
+  });
+});
+
+describe("parseEnv apps", () => {
+  test("left out: every app, pipeline first", () => {
+    assert.deepEqual(parseEnv({}).apps, ["pipeline", "studio"]);
+  });
+
+  test("keeps the order given and ignores spaces and repeats", () => {
+    assert.deepEqual(parseEnv({ apps: "studio" }).apps, ["studio"]);
+    assert.deepEqual(parseEnv({ apps: " studio , pipeline,studio" }).apps, ["studio", "pipeline"]);
+  });
+
+  test("an unknown id or an empty list fails and names the variable", () => {
+    assert.throws(() => parseEnv({ apps: "nope" }), /NEXT_PUBLIC_APPS.*"nope"/);
+    assert.throws(() => parseEnv({ apps: "studio," }), /NEXT_PUBLIC_APPS/);
+    assert.throws(() => parseEnv({ apps: "" }), /NEXT_PUBLIC_APPS/);
+    assert.throws(() => parseEnv({ apps: "  " }), /NEXT_PUBLIC_APPS/);
   });
 });

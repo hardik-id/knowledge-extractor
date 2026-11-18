@@ -4,6 +4,8 @@
  * `NEXT_PUBLIC_*` values into the browser bundle.
  */
 
+import { APP_IDS, type AppId } from "../apps/app-ids";
+
 export type BackendMode = "mock" | "http";
 
 /** `none`: no sign-in. `entra`: Microsoft Entra ID. `fake`: a pretend account, for local checks. */
@@ -26,6 +28,8 @@ export interface Env {
   /** Local development only: a token to use when the auth mode is `none`. */
   devAccessToken: string | null;
   authMode: AuthMode;
+  /** The apps the shell offers, in order. Every app when the setting is left out. */
+  apps: AppId[];
   /** Set only when the auth mode is `entra`. */
   entra: EntraSettings | null;
 }
@@ -36,6 +40,7 @@ export interface RawEnv {
   wsBaseUrl?: string;
   devAccessToken?: string;
   authMode?: string;
+  apps?: string;
   entraTenantId?: string;
   entraClientId?: string;
   entraApiScope?: string;
@@ -55,7 +60,27 @@ function requireUrl(name: string, value: string, protocols: string[]): string {
   return value.replace(/\/+$/, "");
 }
 
+function parseApps(value: string | undefined): AppId[] {
+  if (value === undefined || value.trim() === "") {
+    // An empty value is left-out only for an unset variable; a set-but-blank one is an empty list.
+    if (value === undefined) return [...APP_IDS];
+    throw new Error(`NEXT_PUBLIC_APPS is empty: list at least one of ${APP_IDS.join(", ")}.`);
+  }
+  const apps: AppId[] = [];
+  for (const part of value.split(",")) {
+    const id = part.trim();
+    if (!(APP_IDS as readonly string[]).includes(id)) {
+      throw new Error(
+        `NEXT_PUBLIC_APPS has an unknown app "${id}": use ${APP_IDS.join(", ")}, comma-separated.`,
+      );
+    }
+    if (!apps.includes(id as AppId)) apps.push(id as AppId);
+  }
+  return apps;
+}
+
 export function parseEnv(raw: RawEnv): Env {
+  const apps = parseApps(raw.apps);
   const backendMode = raw.backendMode?.trim() || "mock";
   if (backendMode !== "mock" && backendMode !== "http") {
     throw new Error(`NEXT_PUBLIC_BACKEND_MODE must be "mock" or "http", got "${backendMode}".`);
@@ -84,7 +109,15 @@ export function parseEnv(raw: RawEnv): Env {
   }
 
   if (backendMode === "mock") {
-    return { backendMode, apiBaseUrl: "", wsBaseUrl: "", devAccessToken: null, authMode, entra };
+    return {
+      backendMode,
+      apiBaseUrl: "",
+      wsBaseUrl: "",
+      devAccessToken: null,
+      authMode,
+      apps,
+      entra,
+    };
   }
   if (raw.nodeEnv === "production" && authMode !== "entra") {
     throw new Error(
@@ -104,7 +137,7 @@ export function parseEnv(raw: RawEnv): Env {
   const devAccessToken =
     raw.nodeEnv !== "production" && raw.devAccessToken?.trim() ? raw.devAccessToken.trim() : null;
 
-  return { backendMode, apiBaseUrl, wsBaseUrl, devAccessToken, authMode, entra };
+  return { backendMode, apiBaseUrl, wsBaseUrl, devAccessToken, authMode, apps, entra };
 }
 
 // Each variable is named in full: Next.js only inlines literal `process.env.NEXT_PUBLIC_*` reads.
@@ -114,6 +147,7 @@ export const env: Env = parseEnv({
   wsBaseUrl: process.env.NEXT_PUBLIC_WS_BASE_URL,
   devAccessToken: process.env.NEXT_PUBLIC_DEV_ACCESS_TOKEN,
   authMode: process.env.NEXT_PUBLIC_AUTH_MODE,
+  apps: process.env.NEXT_PUBLIC_APPS,
   entraTenantId: process.env.NEXT_PUBLIC_ENTRA_TENANT_ID,
   entraClientId: process.env.NEXT_PUBLIC_ENTRA_CLIENT_ID,
   entraApiScope: process.env.NEXT_PUBLIC_ENTRA_API_SCOPE,

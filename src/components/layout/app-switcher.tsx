@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check, ChevronsUpDown, FlaskConical } from "lucide-react";
 import { APP_ICONS } from "@/apps/icons";
-import { APPS, appForPath, getApp } from "@/apps/registry";
+import { APPS, appForPath } from "@/apps/registry";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -13,12 +13,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+function Mark() {
+  return (
+    <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-md bg-hero">
+      <span className="size-3 rounded-full bg-brand-orange" />
+    </span>
+  );
+}
+
 /**
  * The product mark and the current app's name; opens a menu of every app.
  * `compact` is for the mobile header: the mark only below 600px.
  */
 export function AppSwitcher({ compact = false }: { compact?: boolean }) {
-  const current = appForPath(usePathname()) ?? getApp("pipeline");
+  const current = appForPath(usePathname()) ?? APPS[0];
+  // One app on offer: nothing to switch to, so only the product mark and name.
+  if (APPS.length < 2) {
+    return (
+      <div className="flex min-w-0 items-center gap-2 text-lg leading-6 font-bold text-ink-heading">
+        <Mark />
+        <span className={compact ? "hidden truncate sm:inline" : "line-clamp-2 leading-5"}>
+          {current.name}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu>
@@ -26,9 +45,7 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
         aria-label={`Switch app, current: ${current.name}`}
         className="-ml-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-lg leading-6 font-bold text-ink-heading outline-none hover:bg-surface-tint focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
-        <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-md bg-hero">
-          <span className="size-3 rounded-full bg-brand-orange" />
-        </span>
+        <Mark />
         <span className={compact ? "hidden truncate sm:inline" : "line-clamp-2 leading-5"}>
           {current.name}
         </span>
