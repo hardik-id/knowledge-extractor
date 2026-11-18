@@ -4,8 +4,11 @@
  * tests and server components can import it. Icons live in `icons.ts`.
  */
 
-export const APP_IDS = ["pipeline", "studio"] as const;
-export type AppId = (typeof APP_IDS)[number];
+// Relative imports: next.config.ts loads this file and cannot resolve the "@/" alias.
+import { env } from "../config/env";
+import { APP_IDS, type AppId } from "./app-ids";
+
+export { APP_IDS, type AppId };
 
 export interface AppInfo {
   id: AppId;
@@ -18,7 +21,7 @@ export interface AppInfo {
   experimental: boolean;
 }
 
-export const APPS: readonly AppInfo[] = [
+export const ALL_APPS: readonly AppInfo[] = [
   {
     id: "pipeline",
     name: "Knowledge Extractor",
@@ -35,11 +38,28 @@ export const APPS: readonly AppInfo[] = [
   },
 ];
 
-export function getApp(id: AppId): AppInfo {
-  return APPS.find((app) => app.id === id)!;
+/** The apps named by `ids`, in that order. */
+export function offeredApps(ids: readonly AppId[], all: readonly AppInfo[] = ALL_APPS): AppInfo[] {
+  return ids.map((id) => all.find((app) => app.id === id)!);
 }
 
-/** The app whose route prefix matches `pathname`, if any. `/studio-x` is not `/studio`. */
-export function appForPath(pathname: string): AppInfo | undefined {
-  return APPS.find((app) => pathname === `/${app.id}` || pathname.startsWith(`/${app.id}/`));
+/** The apps this deployment offers (`NEXT_PUBLIC_APPS`), in order. */
+export const APPS: readonly AppInfo[] = offeredApps(env.apps);
+
+export function getApp(id: AppId): AppInfo {
+  return ALL_APPS.find((app) => app.id === id)!;
+}
+
+/** The first offered app: where `/` goes. */
+export const FIRST_APP: AppInfo = APPS[0];
+
+/** True when `pathname` is under an app this deployment does not offer. */
+export function isHiddenAppPath(pathname: string, offered: readonly AppInfo[] = APPS): boolean {
+  const owner = appForPath(pathname, ALL_APPS);
+  return owner !== undefined && !offered.some((app) => app.id === owner.id);
+}
+
+/** The offered app whose route prefix matches `pathname`, if any. `/studio-x` is not `/studio`. */
+export function appForPath(pathname: string, apps: readonly AppInfo[] = APPS): AppInfo | undefined {
+  return apps.find((app) => pathname === `/${app.id}` || pathname.startsWith(`/${app.id}/`));
 }

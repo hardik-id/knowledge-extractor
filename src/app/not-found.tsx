@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FIRST_APP } from "@/apps/registry";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
@@ -8,9 +9,9 @@ export default function NotFound() {
         Error 404
       </p>
       <h1 className="text-[32px] leading-10 font-bold">This page doesn’t exist</h1>
-      <p className="text-ink-muted">The link may be mistyped, or the stage was renamed.</p>
+      <p className="text-ink-muted">The link may be mistyped, or the page was moved.</p>
       <Button asChild>
-        <Link href="/pipeline/select">Go to the first stage</Link>
+        <Link href={FIRST_APP.href}>Go to {FIRST_APP.name}</Link>
       </Button>
     </main>
   );
