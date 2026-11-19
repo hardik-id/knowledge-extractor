@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { describeApiError } from "@/services/errors";
+import { describeApiError, type ExtractionNoun } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { useCanProceed, useStageStatus } from "@/store/selectors";
 import { useExtractionDefinition } from "./use-extraction-definition";
@@ -10,8 +10,8 @@ import { useExtractionDefinition } from "./use-extraction-definition";
 export type ExtractionTab = "define" | "review" | "output";
 
 /** The definition, the open tab and the Run action, shared by the actions and the workspace. */
-export function useExtractionRun() {
-  const definition = useExtractionDefinition();
+export function useExtractionRun(noun: ExtractionNoun = "definition") {
+  const definition = useExtractionDefinition(noun);
   const status = useStageStatus("extract");
   const canProceed = useCanProceed("extract");
   const executeStage = usePipelineStore((s) => s.executeStage);
@@ -28,7 +28,7 @@ export function useExtractionRun() {
     if (!definition.valid) {
       definition.revealErrors();
       setChosen("define");
-      toast.error("Fix the definition first", {
+      toast.error(`Fix the ${noun} first`, {
         description: "Some fields on the Define tab need attention.",
       });
       return;
@@ -39,11 +39,11 @@ export function useExtractionRun() {
       await executeStage("extract", { config: { definitionVersion: current.version } });
       setChosen("review");
     } catch (error) {
-      toast.error("Couldn't start extraction", { description: describeApiError(error) });
+      toast.error("Couldn't start extraction", { description: describeApiError(error, noun) });
     }
   };
 
-  return { definition, tab, setTab: setChosen, running, ranBefore, run };
+  return { noun, definition, tab, setTab: setChosen, running, ranBefore, run };
 }
 
 export type ExtractionRun = ReturnType<typeof useExtractionRun>;

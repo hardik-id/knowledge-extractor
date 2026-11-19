@@ -3,21 +3,29 @@
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PublishButton } from "./publish-button";
+import { SaveConfigurationButton } from "./save-configuration-button";
 import type { ExtractionRun } from "./use-extraction-run";
 
 interface ExtractionActionsProps {
   extraction: ExtractionRun;
   /** Writing the definition back to the pipeline only makes sense inside the pipeline. */
   showPublish?: boolean;
+  /** "Save configuration": saves the draft as a new version, with a note. */
+  showSave?: boolean;
 }
 
-/** Publish and Run / Run again. Nothing shows until the definition has loaded. */
-export function ExtractionActions({ extraction, showPublish = true }: ExtractionActionsProps) {
+/** Publish or Save configuration, and Run / Run again. Nothing shows until the definition has loaded. */
+export function ExtractionActions({
+  extraction,
+  showPublish = true,
+  showSave = false,
+}: ExtractionActionsProps) {
   const { definition, running, ranBefore, run } = extraction;
   const { saved } = definition;
   if (!saved) return null;
   return (
     <>
+      {showSave && <SaveConfigurationButton extraction={extraction} />}
       {showPublish && (
         <PublishButton
           ready={saved.recordTypes.length > 0 && !definition.dirty}

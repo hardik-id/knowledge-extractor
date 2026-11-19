@@ -6,7 +6,7 @@ import { useAsyncData } from "@/lib/use-async-data";
 import { isApiError } from "@/lib/api/api-error";
 import { services } from "@/services";
 import type { ExtractionDefinition } from "@/services/contracts";
-import { describeApiError } from "@/services/errors";
+import { describeApiError, type ExtractionNoun } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import {
   isDirty,
@@ -32,15 +32,19 @@ export interface ExtractionDefinitionState {
   showErrors: boolean;
   revealErrors: () => void;
   saving: boolean;
-  /** Saves the draft. Resolves to the saved definition, or null if it was not saved. */
-  save: () => Promise<ExtractionDefinition | null>;
+  /** Saves the draft as a new version, with an optional note. Resolves to it, or null if it was not saved. */
+  save: (note?: string) => Promise<ExtractionDefinition | null>;
+  /** Makes an older version the newest one and loads it as the draft. Resolves to it, or null. */
+  restore: (version: number) => Promise<ExtractionDefinition | null>;
   discard: () => void;
 }
 
 const NO_ERRORS: DraftErrors = { types: {}, fields: {}, general: [] };
 
 /** The run's extraction definition: the saved version and the person's unsaved edits. */
-export function useExtractionDefinition(): ExtractionDefinitionState {
+export function useExtractionDefinition(
+  noun: ExtractionNoun = "definition",
+): ExtractionDefinitionState {
   const runId = usePipelineStore((s) => s.runId);
   const { data, error, isLoading, retry } = useAsyncData(runId, (signal) =>
     runId ? services.extraction.getDefinition(runId, signal) : Promise.reject(new Error("No run.")),
@@ -75,7 +79,18 @@ export function useExtractionDefinition(): ExtractionDefinitionState {
       prev ? { ...prev, draft: typeof next === "function" ? next(prev.draft) : next } : prev,
     );
 
-  const save = async (): Promise<ExtractionDefinition | null> => {
+  const reportFailure = (e: unknown, title: string) => {
+    if (isApiError(e) && e.code === "definition_conflict") {
+      toast.error(`The ${noun} changed elsewhere`, {
+        description: "We loaded the latest version. Make your changes again.",
+      });
+      retry();
+    } else {
+      toast.error(title, { description: describeApiError(e, noun) });
+    }
+  };
+
+  const save = async (note?: string): Promise<ExtractionDefinition | null> => {
     if (!runId || !current) return null;
     if (!valid) {
       setShowErrors(true);
@@ -88,18 +103,28 @@ export function useExtractionDefinition(): ExtractionDefinitionState {
         runId,
         current.draft,
         current.saved.version,
+        note?.trim() || undefined,
       );
       setLocal((prev) => (prev ? { ...prev, saved: result, draft: toDraft(result) } : prev));
       return result;
     } catch (e) {
-      if (isApiError(e) && e.code === "definition_conflict") {
-        toast.error("The definition changed elsewhere", {
-          description: "We loaded the latest version. Make your changes again.",
-        });
-        retry();
-      } else {
-        toast.error("Couldn't save the definition", { description: describeApiError(e) });
-      }
+      reportFailure(e, `Couldn't save the ${noun}`);
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const restore = async (version: number): Promise<ExtractionDefinition | null> => {
+    if (!runId || !current) return null;
+    setSaving(true);
+    try {
+      const result = await services.extraction.restoreDefinitionVersion(runId, version);
+      setLocal((prev) => (prev ? { ...prev, saved: result, draft: toDraft(result) } : prev));
+      setShowErrors(false);
+      return result;
+    } catch (e) {
+      reportFailure(e, `Couldn't restore that version`);
       return null;
     } finally {
       setSaving(false);
@@ -120,6 +145,7 @@ export function useExtractionDefinition(): ExtractionDefinitionState {
     revealErrors: () => setShowErrors(true),
     saving,
     save,
+    restore,
     discard: () => {
       setLocal((prev) => (prev ? { ...prev, draft: toDraft(prev.saved) } : prev));
       setShowErrors(false);

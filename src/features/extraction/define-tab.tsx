@@ -44,9 +44,11 @@ interface DefineTabProps {
   definition: ExtractionDefinitionState;
   /** Opening line, which says what the definition applies to. */
   definitionNote: string;
+  /** Offer Save next to "Unsaved changes". Off where saving is its own action in the page header. */
+  showSave?: boolean;
 }
 
-export function DefineTab({ definition, definitionNote }: DefineTabProps) {
+export function DefineTab({ definition, definitionNote, showSave = true }: DefineTabProps) {
   const { draft, saved, setDraft, errors, showErrors, dirty, saving, save, discard } = definition;
   const promptId = useId();
   if (!draft || !saved) return null;
@@ -292,9 +294,11 @@ export function DefineTab({ definition, definitionNote }: DefineTabProps) {
           >
             <AlertCircle aria-hidden className="size-4 text-warning" />
             <span className="text-sm text-ink-muted">Unsaved changes</span>
-            <Button variant="outline" size="sm" onClick={() => void save()} disabled={saving}>
-              Save
-            </Button>
+            {showSave && (
+              <Button variant="outline" size="sm" onClick={() => void save()} disabled={saving}>
+                Save
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={discard} disabled={saving}>
               Discard
             </Button>

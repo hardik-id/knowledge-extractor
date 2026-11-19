@@ -60,7 +60,7 @@ export function ExtractPageContent() {
 }
 
 function ExtractPanel({ projectId }: { projectId: string }) {
-  const extraction = useExtractionRun();
+  const extraction = useExtractionRun("configuration");
   return (
     <StudioPanel
       id="studio-extract"
@@ -77,11 +77,12 @@ function ExtractPanel({ projectId }: { projectId: string }) {
           </Button>
         </div>
       }
-      actions={<ExtractionActions extraction={extraction} showPublish={false} />}
+      actions={<ExtractionActions extraction={extraction} showPublish={false} showSave />}
     >
       <ExtractionWorkspace
         extraction={extraction}
-        definitionNote="This definition applies to this workspace only."
+        definitionNote="This extraction configuration applies to this workspace only."
+        versioned
       />
     </StudioPanel>
   );
