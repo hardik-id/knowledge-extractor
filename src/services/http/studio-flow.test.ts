@@ -12,7 +12,8 @@ import { describeFailure, runStudioFlow, StudioFlowError } from "./studio-flow";
  * checks are tested without a server.
  */
 
-const mockServices = () => createMockServices(new MockBackend({ speed: 0, storage: null }));
+const mockServices = () =>
+  createMockServices(new MockBackend({ speed: 0, storage: null, persistentStorage: null }));
 
 describe("runStudioFlow", () => {
   test("walks every step against a backend that keeps the contract", async () => {
@@ -20,13 +21,13 @@ describe("runStudioFlow", () => {
 
     await runStudioFlow(mockServices(), { log: (line) => lines.push(line), eventTimeoutMs: 5000 });
 
-    assert.equal(lines.length, 20);
+    assert.equal(lines.length, 27);
     assert.ok(
       lines.every((line) => / ok /.test(line)),
       lines.join("\n"),
     );
     assert.match(lines[0], /^ 1\. List documents/);
-    assert.match(lines.at(-1)!, /^20\. Every live update was readable/);
+    assert.match(lines.at(-1)!, /^27\. Every live update was readable/);
   });
 
   test("stops at the first call the server refuses, naming the step and the answer", async () => {
@@ -40,10 +41,10 @@ describe("runStudioFlow", () => {
         requestId: "req-1",
       });
     };
-    const createRun = services.runs.createRun;
-    services.runs.createRun = (files) => {
+    const create = services.projects.create;
+    services.projects.create = (input) => {
       created++;
-      return createRun(files);
+      return create(input);
     };
     const lines: string[] = [];
 
@@ -61,24 +62,24 @@ describe("runStudioFlow", () => {
     assert.equal(created, 0);
   });
 
-  test("deletes the run it created when a later step fails", async () => {
+  test("deletes the project it created when a later step fails", async () => {
     const services: Services = mockServices();
     let deleted: string | null = null;
     services.extraction.getDefinition = async () => {
       throw new ApiError({ status: 500, code: "http_500", message: "Server Error" });
     };
-    const deleteRun = services.runs.deleteRun;
-    services.runs.deleteRun = async (runId) => {
-      deleted = runId;
-      await deleteRun(runId);
+    const remove = services.projects.remove;
+    services.projects.remove = async (projectId) => {
+      deleted = projectId;
+      await remove(projectId);
     };
 
     await assert.rejects(
       runStudioFlow(services, { log: () => {}, eventTimeoutMs: 5000 }),
       (error: unknown) =>
-        error instanceof StudioFlowError && error.step === "5. Read the definition",
+        error instanceof StudioFlowError && error.step === "7. Read the definition",
     );
-    assert.ok(deleted, "the run was deleted");
+    assert.ok(deleted, "the project was deleted");
   });
 
   test("fails when the server breaks the contract", async () => {
@@ -93,7 +94,7 @@ describe("runStudioFlow", () => {
       runStudioFlow(services, { log: () => {}, eventTimeoutMs: 5000 }),
       (error: unknown) =>
         error instanceof StudioFlowError &&
-        error.step === "11. Read the snapshot" &&
+        error.step === "15. Read the snapshot" &&
         /Not every extract cell/.test(error.message),
     );
   });

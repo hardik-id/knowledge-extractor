@@ -19,7 +19,15 @@ export function createMockServices(backend: MockBackend = new MockBackend()): Se
     documents: {
       get: (id, signal) => backend.getDocument(id, signal),
     },
+    projects: {
+      list: (signal) => backend.listProjects(signal),
+      create: (input) => backend.createProject(input),
+      get: (projectId, signal) => backend.getProject(projectId, signal),
+      rename: (projectId, patch) => backend.updateProject(projectId, patch),
+      remove: (projectId) => backend.deleteProject(projectId),
+    },
     runs: {
+      setDocuments: (runId, files) => backend.setDocuments(runId, files),
       createRun: (files) => backend.createRun(files),
       getRun: (runId, signal) => backend.getRun(runId, signal),
       executeStage: (runId, stage, options) => backend.executeStage(runId, stage, options),
@@ -28,8 +36,14 @@ export function createMockServices(backend: MockBackend = new MockBackend()): Se
     },
     extraction: {
       getDefinition: (runId, signal) => backend.getDefinition(runId, signal),
-      saveDefinition: (runId, draft, baseVersion) =>
-        backend.saveDefinition(runId, draft, baseVersion),
+      saveDefinition: (runId, draft, baseVersion, note) =>
+        backend.saveDefinition(runId, draft, baseVersion, note),
+      listDefinitionVersions: (runId, signal) => backend.listDefinitionVersions(runId, signal),
+      getDefinitionVersion: (runId, version, signal) =>
+        backend.getDefinitionVersion(runId, version, signal),
+      restoreDefinitionVersion: (runId, version) =>
+        backend.restoreDefinitionVersion(runId, version),
+      clearAssistantMessages: (runId) => backend.clearAssistantMessages(runId),
       getFileExtraction: (runId, fileId, signal) =>
         backend.getFileExtraction(runId, fileId, signal),
       addRecord: (runId, fileId, input, revision) =>

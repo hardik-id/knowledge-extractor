@@ -139,7 +139,60 @@ export interface RunsApi {
     stage: WorkStageId,
     signal?: AbortSignal,
   ): Promise<StageOutputContent>;
+  /**
+   * Replaces the documents of a run. A document that is in both lists keeps
+   * its run file (same id, its cell, its records); one left out is dropped
+   * with everything on it; a new one starts pending. The configuration and
+   * the conversation are kept. Resolves with the run as it is now.
+   * Rejects with `mixed_sources` (422).
+   */
+  setDocuments(runId: string, files: SourceFile[]): Promise<Run>;
+  /** Rejects with `run_belongs_to_project` (409) for the run of a project: delete the project instead. */
   deleteRun(runId: string): Promise<void>;
+}
+
+// ── Projects ────────────────────────────────────────────────────────────
+
+/** A name on a run: the run with its documents, configuration, conversation and records. */
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  /** The project's run. It exists from the start, empty. Everything inside goes through the run's own calls. */
+  runId: string;
+  documentCount: number;
+  /** The latest saved version of the run's extraction configuration, or null before the first. */
+  configurationVersion: number | null;
+  createdAt: string; // ISO-8601
+  /** The last activity in the project, not only a rename. */
+  updatedAt: string; // ISO-8601
+}
+
+export interface NewProjectInput {
+  /** Required, not blank, at most 120 characters. */
+  name: string;
+  description?: string;
+}
+
+export interface ProjectPatch {
+  name?: string;
+  description?: string;
+}
+
+/**
+ * A project is private to its owner. Codes the UI handles: `project_not_found`
+ * (404), `validation_error` (422, a name that is blank or too long).
+ */
+export interface ProjectsApi {
+  /** The first page, last activity first. */
+  list(signal?: AbortSignal): Promise<Project[]>;
+  /** Makes the project and its empty run. */
+  create(input: NewProjectInput): Promise<Project>;
+  get(projectId: string, signal?: AbortSignal): Promise<Project>;
+  /** Changes the name and/or the description. */
+  rename(projectId: string, patch: ProjectPatch): Promise<Project>;
+  /** Deletes the project, its run and everything on it. */
+  remove(projectId: string): Promise<void>;
 }
 
 // ── Extraction ──────────────────────────────────────────────────────────
@@ -202,9 +255,27 @@ export interface ExtractionDefinition {
   prompt: string;
   recordTypes: RecordType[];
   output: ExtractionOutputSettings;
+  /** Why this version was saved. Empty when the person gave none. */
+  note: string;
+  createdAt: string; // ISO-8601
 }
 
-export type ExtractionDefinitionDraft = Omit<ExtractionDefinition, "version">;
+export type ExtractionDefinitionDraft = Omit<
+  ExtractionDefinition,
+  "version" | "note" | "createdAt"
+>;
+
+/** One saved version in the list of versions. */
+export interface DefinitionVersionSummary {
+  version: number;
+  note: string;
+  createdAt: string; // ISO-8601
+  recordTypeCount: number;
+  fieldCount: number;
+}
+
+/** The longest note a version takes. */
+export const MAX_DEFINITION_NOTE_LENGTH = 200;
 
 /**
  * A stretch of the stage's input text (the enriched Markdown file, front
@@ -330,12 +401,26 @@ export interface PublishResult {
 export interface ExtractionApi {
   /** The run's definition. It starts as a copy of the pipeline's extraction config. */
   getDefinition(runId: string, signal?: AbortSignal): Promise<ExtractionDefinition>;
-  /** Saves a new version. Rejects with `definition_conflict` if `baseVersion` is not the latest. */
+  /**
+   * Saves a new version, with an optional note (`MAX_DEFINITION_NOTE_LENGTH`
+   * characters). Rejects with `definition_conflict` if `baseVersion` is not the latest.
+   */
   saveDefinition(
     runId: string,
     draft: ExtractionDefinitionDraft,
     baseVersion: number,
+    note?: string,
   ): Promise<ExtractionDefinition>;
+  /** Every saved version, newest first. Versions are never changed or deleted. */
+  listDefinitionVersions(runId: string, signal?: AbortSignal): Promise<DefinitionVersionSummary[]>;
+  /** One saved version. Rejects with `definition_version_not_found` (404). */
+  getDefinitionVersion(
+    runId: string,
+    version: number,
+    signal?: AbortSignal,
+  ): Promise<ExtractionDefinition>;
+  /** Saves a copy of that version as the newest one (note "Restored from version N") and returns it. */
+  restoreDefinitionVersion(runId: string, version: number): Promise<ExtractionDefinition>;
   /** The records of one file. Rejects with `extraction_not_found` before the first run. */
   getFileExtraction(runId: string, fileId: string, signal?: AbortSignal): Promise<FileExtraction>;
   /** Adds a record a person marked. Works before any extraction run: the file then starts at revision 1. */
@@ -393,6 +478,8 @@ export interface ExtractionApi {
     text: string,
     definition: ExtractionDefinitionDraft,
   ): Promise<AssistantMessage>;
+  /** Removes the whole conversation. The definition and the records stay. `assistant_busy` (409) while a reply is being written. */
+  clearAssistantMessages(runId: string): Promise<void>;
   /**
    * Writes the saved definition, and the accepted records marked as examples,
    * to the pipeline's extraction config, so every document of the pipeline is
@@ -414,6 +501,10 @@ export interface RunEventHandlers {
   onExtractionChanged?(change: ExtractionChange): void;
   /** Part of a reply from the assistant. */
   onAssistantEvent?(event: AssistantEvent): void;
+  /** The run's documents changed: fetch the snapshot again. */
+  onRunChanged?(): void;
+  /** The conversation with the assistant was cleared (here or elsewhere). */
+  onAssistantCleared?(): void;
   onStateChange?(state: ConnectionState): void;
   /** The connection is (back) up. Cells may have been missed: fetch the snapshot. */
   onOpen?(): void;
@@ -446,6 +537,7 @@ export interface DocumentsApi {
 export interface Services {
   catalog: SourceCatalog;
   documents: DocumentsApi;
+  projects: ProjectsApi;
   runs: RunsApi;
   extraction: ExtractionApi;
   events: RunEvents;

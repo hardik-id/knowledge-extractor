@@ -18,6 +18,8 @@ import {
 
 const saved: ExtractionDefinition = {
   version: 3,
+  note: "",
+  createdAt: "2026-01-01T00:00:00.000Z",
   prompt: "Find ADRs",
   recordTypes: [
     {

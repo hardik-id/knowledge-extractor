@@ -4,6 +4,7 @@ import type { SourceFile } from "@/types/pipeline";
 import type {
   DocumentsApi,
   ExtractionApi,
+  ProjectsApi,
   RunEvents,
   RunsApi,
   Services,
@@ -15,7 +16,12 @@ import {
   parseAssistantMessages,
   parseCellMessage,
   parseDefinition,
+  isAssistantClearedMessage,
+  isRunChangedMessage,
+  parseDefinitionVersions,
   parseExecution,
+  parseProject,
+  parseProjects,
   parseEtagHeader,
   parseExtractionChangedMessage,
   parseFileExtraction,
@@ -26,6 +32,7 @@ import {
   toWireExecutionConfig,
   toWireFieldValues,
   toWireNewRecord,
+  toWireProjectPatch,
   toWireRecordPatch,
   toWireValueReview,
 } from "./parsers";
@@ -78,6 +85,33 @@ const toWireItem = (file: SourceFile) => ({
   modified_at: file.modifiedAt,
 });
 
+export function createHttpProjectsApi(client: HttpClient): ProjectsApi {
+  return {
+    list: async (signal) => parseProjects(await client.get("projects", { signal })),
+
+    create: async (input) =>
+      parseProject(
+        await client.post("projects", {
+          body: { name: input.name, description: input.description },
+        }),
+      ),
+
+    get: async (projectId, signal) =>
+      parseProject(await client.get(`projects/${enc(projectId)}`, { signal })),
+
+    rename: async (projectId, patch) => {
+      const response = await client.request("PATCH", `projects/${enc(projectId)}`, {
+        body: toWireProjectPatch(patch),
+      });
+      return parseProject(await response.json().catch(() => undefined));
+    },
+
+    remove: async (projectId) => {
+      await client.delete(`projects/${enc(projectId)}`);
+    },
+  };
+}
+
 export function createHttpRunsApi(client: HttpClient): RunsApi {
   return {
     createRun: async (files) =>
@@ -102,6 +136,13 @@ export function createHttpRunsApi(client: HttpClient): RunsApi {
         text: await response.text(),
         contentType: response.headers.get("Content-Type") ?? "text/plain",
       };
+    },
+
+    setDocuments: async (runId, files) => {
+      const response = await client.request("PUT", `runs/${enc(runId)}/documents`, {
+        body: { items: files.map(toWireItem) },
+      });
+      return parseRun(await response.json().catch(() => undefined));
     },
 
     deleteRun: async (runId) => {
@@ -129,10 +170,26 @@ export function createHttpExtractionApi(client: HttpClient): ExtractionApi {
     getDefinition: async (runId, signal) =>
       parseDefinition(await client.get(definitionPath(runId), { signal })),
 
-    saveDefinition: async (runId, draft, baseVersion) => {
+    saveDefinition: async (runId, draft, baseVersion, note) => {
       const response = await client.request("PUT", definitionPath(runId), {
-        body: { base_version: baseVersion, ...toWireDefinition(draft) },
+        body: { base_version: baseVersion, note, ...toWireDefinition(draft) },
       });
+      return parseDefinition(await response.json().catch(() => undefined));
+    },
+
+    listDefinitionVersions: async (runId, signal) =>
+      parseDefinitionVersions(await client.get(`${definitionPath(runId)}/versions`, { signal })),
+
+    getDefinitionVersion: async (runId, version, signal) =>
+      parseDefinition(
+        await client.get(`${definitionPath(runId)}/versions/${enc(String(version))}`, { signal }),
+      ),
+
+    restoreDefinitionVersion: async (runId, version) => {
+      const response = await client.request(
+        "POST",
+        `${definitionPath(runId)}/versions/${enc(String(version))}/restore`,
+      );
       return parseDefinition(await response.json().catch(() => undefined));
     },
 
@@ -178,6 +235,10 @@ export function createHttpExtractionApi(client: HttpClient): ExtractionApi {
         body: { text, definition: toWireDefinition(definition) },
       });
       return parseAssistantMessage(await response.json().catch(() => undefined));
+    },
+
+    clearAssistantMessages: async (runId) => {
+      await client.delete(assistantPath(runId));
     },
 
     publishDefinition: async (runId) => {
@@ -228,6 +289,14 @@ export function createHttpRunEvents({
               handlers.onExtractionChanged?.(change);
               return;
             }
+            if (isRunChangedMessage(data)) {
+              handlers.onRunChanged?.();
+              return;
+            }
+            if (isAssistantClearedMessage(data)) {
+              handlers.onAssistantCleared?.();
+              return;
+            }
             const assistant = parseAssistantEventMessage(data);
             if (assistant) handlers.onAssistantEvent?.(assistant);
           } catch (error) {
@@ -246,6 +315,7 @@ export function createHttpServices(options: HttpRunEventsOptions): Services {
   return {
     catalog: createHttpSourceCatalog(options.client),
     documents: createHttpDocumentsApi(options.client),
+    projects: createHttpProjectsApi(options.client),
     runs: createHttpRunsApi(options.client),
     extraction: createHttpExtractionApi(options.client),
     events: createHttpRunEvents(options),

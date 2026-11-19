@@ -8,6 +8,7 @@ import type {
   ExtractionRecord,
   FieldDef,
   FileExtraction,
+  Project,
   Services,
   StageCell,
   TextSpan,
@@ -61,12 +62,16 @@ type LiveEvent =
   | { kind: "open" }
   | { kind: "cell"; cell: StageCell }
   | { kind: "extraction"; change: ExtractionChange }
-  | { kind: "assistant"; event: AssistantEvent };
+  | { kind: "assistant"; event: AssistantEvent }
+  /** `n` counts these events, so a step can wait for one newer than it has seen. */
+  | { kind: "run"; n: number }
+  | { kind: "cleared"; n: number };
 
 /** Live events as they arrive, and a way to wait for one. */
 function liveEvents(timeoutMs: number) {
   const seen: LiveEvent[] = [];
   const waiters = new Set<() => void>();
+  const count = (kind: LiveEvent["kind"]) => seen.filter((e) => e.kind === kind).length;
   const push = (event: LiveEvent) => {
     seen.push(event);
     for (const wake of [...waiters]) wake();
@@ -95,8 +100,10 @@ function liveEvents(timeoutMs: number) {
       waiters.add(look);
       look();
     });
-  return { seen, push, waitFor };
+  return { seen, push, waitFor, count };
 }
+
+const SAVE_NOTE = "Checked by test:api";
 
 const draftOf = ({
   prompt,
@@ -150,8 +157,8 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
   };
 
   /** What to clean up if a step fails half way. */
-  const open: { runId: string | null; unsubscribe: (() => void) | null } = {
-    runId: null,
+  const open: { projectId: string | null; unsubscribe: (() => void) | null } = {
+    projectId: null,
     unsubscribe: null,
   };
   const checkLiveUpdates = () => {
@@ -187,63 +194,185 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       ];
     });
 
-    const run = await step("Create a run", async () => {
-      const created = await services.runs.createRun(documents);
+    const projectName = `test:api ${new Date().toISOString()}`;
+    const project = await step("Create a project", async () => {
+      const created = await services.projects.create({
+        name: projectName,
+        description: "Made by test:api",
+      });
+      open.projectId = created.id;
+      check(created.name === projectName, `The project is named "${created.name}".`);
+      check(created.description === "Made by test:api", "The description is not the one sent.");
+      check(created.runId, "The project has no run.");
+      check(created.documentCount === 0, `The new project has ${created.documentCount} documents.`);
       check(
-        created.files.length === documents.length,
-        `The run has ${created.files.length} files, not ${documents.length}.`,
+        created.configurationVersion === null,
+        `The new project has configuration version ${created.configurationVersion}, not none.`,
       );
+      const emptyRun = await services.runs.getRun(created.runId);
       check(
-        created.files.every((f, i) => f.sourceRef === documents[i].id),
-        "The run's files are not the documents sent, in order.",
+        emptyRun.files.length === 0 && emptyRun.cells.length === 0,
+        "The run of a new project is not empty.",
       );
-      check(
-        created.files.every((f) =>
-          created.cells.some((c) => c.fileId === f.id && c.stage === "extract"),
-        ),
-        "A file of the run has no extract cell.",
-      );
-      check(
-        created.cells.every((c) => c.stage === "extract"),
-        "A run of documents has a stage other than extract.",
-      );
-      open.runId = created.id;
-      return [created, `run ${created.id}, ${created.files.length} file(s), extract cells only`];
+      return [created, `project ${created.id}, run ${created.runId}, empty`];
     });
-    const fileIds = run.files.map((f) => f.id);
+    const runId = project.runId;
+
+    await step("List projects", async () => {
+      const listed = await services.projects.list();
+      const found = listed.find((p) => p.id === project.id);
+      check(found, "The new project is not in the list.");
+      const read = await services.projects.get(project.id);
+      check(read.id === project.id && read.runId === runId, "get returned another project.");
+      for (let i = 1; i < listed.length; i++) {
+        check(
+          listed[i - 1].updatedAt >= listed[i].updatedAt,
+          "The projects are not ordered by last activity.",
+        );
+      }
+      return [listed, `${listed.length} project(s), the new one among them`];
+    });
 
     await step("Subscribe to the run's events", async () => {
-      open.unsubscribe = services.events.subscribe(run.id, {
+      open.unsubscribe = services.events.subscribe(runId, {
         onOpen: () => events.push({ kind: "open" }),
         onCell: (cell) => events.push({ kind: "cell", cell }),
         onExtractionChanged: (change) => events.push({ kind: "extraction", change }),
         onAssistantEvent: (event) => events.push({ kind: "assistant", event }),
+        onRunChanged: () => events.push({ kind: "run", n: events.count("run") + 1 }),
+        onAssistantCleared: () => events.push({ kind: "cleared", n: events.count("cleared") + 1 }),
       });
       await events.waitFor("open socket", (e) => (e.kind === "open" ? true : undefined));
       return [null, "ticket taken, socket open"];
     });
 
+    const run = await step("Set the documents, see what stays", async () => {
+      check(documents.length >= 2, "The flow needs at least two documents in the container.");
+      const sent = async (files: typeof documents) => {
+        const seen = events.count("run");
+        const result = await services.runs.setDocuments(runId, files);
+        await events.waitFor("run.changed", (e) =>
+          e.kind === "run" && e.n > seen ? true : undefined,
+        );
+        return result;
+      };
+      const firstTwo = documents.slice(0, 2);
+      const one = await sent(firstTwo);
+      check(
+        one.files.length === 2 && one.files.every((f, i) => f.sourceRef === firstTwo[i].id),
+        "The run's files are not the documents sent, in order.",
+      );
+      check(
+        one.files.every((f) =>
+          one.cells.some(
+            (c) => c.fileId === f.id && c.stage === "extract" && c.status === "pending",
+          ),
+        ),
+        "A file of the run has no pending extract cell.",
+      );
+      const stays = one.files[1];
+      const dropped = one.files[0];
+
+      const next = documents.length > 2 ? [documents[1], documents[2]] : [documents[1]];
+      const two = await sent(next);
+      check(
+        two.files.length === next.length && two.files.every((f, i) => f.sourceRef === next[i].id),
+        "The run's files are not the second set of documents, in order.",
+      );
+      check(
+        two.files[0].id === stays.id,
+        `The document that stays has a new file id (${two.files[0].id}, was ${stays.id}).`,
+      );
+      check(!two.files.some((f) => f.id === dropped.id), "The dropped document is still there.");
+      check(
+        two.cells.every((c) => two.files.some((f) => f.id === c.fileId)),
+        "A cell of a dropped file is left in the run.",
+      );
+      check(
+        two.cells.every((c) => c.stage === "extract"),
+        "A run of documents has a stage other than extract.",
+      );
+      const read = await services.projects.get(project.id);
+      check(
+        read.documentCount === next.length,
+        `The project counts ${read.documentCount} documents, not ${next.length}.`,
+      );
+      const fresh = await services.runs.getRun(runId);
+      check(
+        fresh.files.map((f) => f.id).join() === two.files.map((f) => f.id).join(),
+        "The snapshot's files are not the ones the call returned.",
+      );
+      return [
+        two,
+        `2 then ${next.length} document(s); "${stays.name}" kept its file id; run.changed twice`,
+      ];
+    });
+    const fileIds = run.files.map((f) => f.id);
+
     const definition = await step("Read the definition", async () => {
-      const read = await services.extraction.getDefinition(run.id);
+      const read = await services.extraction.getDefinition(runId);
       check(read.recordTypes.length > 0, "The definition has no record types.");
       return [read, `version ${read.version}, ${read.recordTypes.length} record type(s)`];
     });
 
-    const saved = await step("Save the definition", async () => {
+    const saved = await step("Save the definition with a note", async () => {
       const draft = draftOf(definition);
       draft.prompt = `${draft.prompt.trim()} (checked by test:api)`;
-      const next = await services.extraction.saveDefinition(run.id, draft, definition.version);
+      const next = await services.extraction.saveDefinition(
+        runId,
+        draft,
+        definition.version,
+        SAVE_NOTE,
+      );
       check(
         next.version === definition.version + 1,
         `The saved version is ${next.version}, not ${definition.version + 1}.`,
       );
       check(next.prompt === draft.prompt, "The saved prompt is not the one sent.");
-      return [next, `version ${next.version}`];
+      check(next.note === SAVE_NOTE, `The saved note is "${next.note}", not "${SAVE_NOTE}".`);
+      check(Boolean(next.createdAt), "The saved version has no creation time.");
+      return [next, `version ${next.version}, note "${next.note}"`];
+    });
+
+    await step("List the versions", async () => {
+      const versions = await services.extraction.listDefinitionVersions(runId);
+      check(
+        versions.length === saved.version && versions[0].version === saved.version,
+        `The list has ${versions.length} version(s), newest ${versions[0]?.version}; expected newest ${saved.version}.`,
+      );
+      check(
+        versions.every((v, i) => i === 0 || versions[i - 1].version > v.version),
+        "The versions are not newest first.",
+      );
+      check(versions[0].note === SAVE_NOTE, "The newest version does not carry its note.");
+      check(
+        versions[0].recordTypeCount === saved.recordTypes.length &&
+          versions[0].fieldCount === saved.recordTypes.reduce((n, t) => n + t.fields.length, 0),
+        "The newest version's record type and field counts are wrong.",
+      );
+      const first = await services.extraction.getDefinitionVersion(runId, definition.version);
+      check(
+        first.version === definition.version && first.prompt === definition.prompt,
+        "The first version, read again, is not what was read at first.",
+      );
+      try {
+        await services.extraction.getDefinitionVersion(runId, saved.version + 1000);
+      } catch (error) {
+        if (
+          isApiError(error) &&
+          error.status === 404 &&
+          error.code === "definition_version_not_found"
+        ) {
+          return [null, `${versions.length} version(s), newest first; 404 for an unknown one`];
+        }
+        throw error;
+      }
+      throw new Error("An unknown version was found; expected 404 definition_version_not_found.");
     });
 
     await step("Send an assistant message", async () => {
       const sent = await services.extraction.sendAssistantMessage(
-        run.id,
+        runId,
         "Add a field for the owner",
         draftOf(saved),
       );
@@ -262,7 +391,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       const proposals = parts.filter((p) => p.type === "proposal");
       check(deltas.length > 0, "The reply had no assistant.delta.");
       check(proposals.length === 1, `The reply had ${proposals.length} proposals, not 1.`);
-      const messages = await services.extraction.getAssistantMessages(run.id);
+      const messages = await services.extraction.getAssistantMessages(runId);
       const reply = messages.find((m) => m.id === replyId);
       check(reply, `The conversation has no message ${replyId}.`);
       check(reply.role === "assistant" && reply.status === "done", "The reply is not done.");
@@ -273,8 +402,21 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       ];
     });
 
+    await step("Clear the conversation", async () => {
+      const seen = events.count("cleared");
+      await services.extraction.clearAssistantMessages(runId);
+      await events.waitFor("assistant.cleared", (e) =>
+        e.kind === "cleared" && e.n > seen ? true : undefined,
+      );
+      const messages = await services.extraction.getAssistantMessages(runId);
+      check(messages.length === 0, `${messages.length} message(s) are left.`);
+      const after = await services.extraction.getDefinition(runId);
+      check(after.version === saved.version, "Clearing the conversation changed the definition.");
+      return [null, "no messages left, assistant.cleared received, definition kept"];
+    });
+
     await step("Execute extract", async () => {
-      const execution = await services.runs.executeStage(run.id, "extract", {
+      const execution = await services.runs.executeStage(runId, "extract", {
         fileIds,
         config: { definitionVersion: saved.version },
       });
@@ -321,7 +463,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
     });
 
     await step("Read the snapshot", async () => {
-      const snapshot = await services.runs.getRun(run.id);
+      const snapshot = await services.runs.getRun(runId);
       const extractCells = snapshot.cells.filter((c) => c.stage === "extract");
       check(
         extractCells.length === fileIds.length &&
@@ -333,7 +475,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
 
     const extractions = await step("Read the records", async () => {
       const read = await Promise.all(
-        run.files.map((f) => services.extraction.getFileExtraction(run.id, f.id)),
+        run.files.map((f) => services.extraction.getFileExtraction(runId, f.id)),
       );
       for (const [i, extraction] of read.entries()) {
         const f = run.files[i];
@@ -374,7 +516,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       heading = headingSpans(text);
       check(heading, `${file.sourceRef} has no Markdown heading to mark.`);
       const next = await services.extraction.addRecord(
-        run.id,
+        runId,
         file.id,
         {
           recordTypeId: recordType.id,
@@ -409,7 +551,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       const line = heading?.line;
       const values = field === quoteField && line ? [{ value: line.quote, spans: [line] }] : [];
       const next = await services.extraction.setFieldValues(
-        run.id,
+        runId,
         file.id,
         recordId,
         field.id,
@@ -439,7 +581,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
         record?.fields[0];
       check(record && value, "There is no value to review.");
       const next = await services.extraction.setValueReview(
-        run.id,
+        runId,
         file.id,
         record.id,
         value.id,
@@ -456,7 +598,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
 
     extraction = await step("Change a record", async () => {
       const next = await services.extraction.updateRecord(
-        run.id,
+        runId,
         file.id,
         recordId,
         { useAsExample: true },
@@ -469,7 +611,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
     await step("Write on an old revision (conflict)", async () => {
       try {
         await services.extraction.updateRecord(
-          run.id,
+          runId,
           file.id,
           recordId,
           { useAsExample: false },
@@ -486,7 +628,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
 
     extraction = await step("Delete the record", async () => {
       const next = await services.extraction.deleteRecord(
-        run.id,
+        runId,
         file.id,
         recordId,
         extraction.revision,
@@ -495,16 +637,69 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       return [next, `revision ${next.revision}`];
     });
 
-    await step("Delete the run", async () => {
-      await services.runs.deleteRun(run.id);
-      open.runId = null;
+    await step("Restore a version", async () => {
+      const restored = await services.extraction.restoreDefinitionVersion(
+        runId,
+        definition.version,
+      );
+      check(
+        restored.version === saved.version + 1,
+        `The restored copy is version ${restored.version}, not ${saved.version + 1}.`,
+      );
+      check(
+        restored.note === `Restored from version ${definition.version}`,
+        `The restored note is "${restored.note}".`,
+      );
+      check(restored.prompt === definition.prompt, "The restored prompt is not the old one.");
+      const versions = await services.extraction.listDefinitionVersions(runId);
+      check(
+        versions[0].version === restored.version && versions.length === saved.version + 1,
+        "The restored version is not the newest in the list.",
+      );
+      return [restored, `version ${restored.version}, "${restored.note}"`];
+    });
+
+    await step("Rename the project", async () => {
+      const name = `${projectName} (renamed)`;
+      const renamed = await services.projects.rename(project.id, { name });
+      check(renamed.name === name, `The name is "${renamed.name}".`);
+      check(renamed.description === project.description, "Renaming changed the description.");
+      const read: Project = await services.projects.get(project.id);
+      check(read.name === name, "The new name was not kept.");
+      check(
+        read.configurationVersion === saved.version + 1,
+        "The project's configuration version is not the latest.",
+      );
+      return [read, `"${read.name}", configuration version ${read.configurationVersion}`];
+    });
+
+    await step("The run of a project can't be deleted", async () => {
       try {
-        await services.runs.getRun(run.id);
+        await services.runs.deleteRun(runId);
       } catch (error) {
-        if (isApiError(error) && error.status === 404) return [null, `then 404 ${error.code}`];
+        if (isApiError(error) && error.status === 409 && error.code === "run_belongs_to_project") {
+          return [null, "409 run_belongs_to_project"];
+        }
         throw error;
       }
-      throw new Error("The run can still be read after it was deleted.");
+      throw new Error("The run of a project was deleted; expected 409 run_belongs_to_project.");
+    });
+
+    await step("Delete the project", async () => {
+      await services.projects.remove(project.id);
+      open.projectId = null;
+      for (const read of [
+        () => services.projects.get(project.id),
+        () => services.runs.getRun(runId),
+      ]) {
+        try {
+          await read();
+          throw new Error("The project or its run can still be read after the delete.");
+        } catch (error) {
+          if (!(isApiError(error) && error.status === 404)) throw error;
+        }
+      }
+      return [null, "project and run both 404"];
     });
 
     await step("Every live update was readable", async () => {
@@ -515,6 +710,6 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
     open.unsubscribe?.();
     console.warn = warn;
     // Leave nothing behind when a step failed half way.
-    if (open.runId) await services.runs.deleteRun(open.runId).catch(() => undefined);
+    if (open.projectId) await services.projects.remove(open.projectId).catch(() => undefined);
   }
 }

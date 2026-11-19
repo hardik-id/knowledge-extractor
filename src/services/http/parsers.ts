@@ -12,7 +12,10 @@ import {
   type AssistantEvent,
   type AssistantMessage,
   type AssistantProposal,
+  type DefinitionVersionSummary,
   type ExtractionChange,
+  type Project,
+  type ProjectPatch,
   type PublishResult,
   type ExtractionDefinition,
   type ExtractionDefinitionDraft,
@@ -286,10 +289,57 @@ function parseDefinitionBody(value: unknown, path: string): ExtractionDefinition
 }
 
 export function parseDefinition(value: unknown): ExtractionDefinition {
+  const o = object(value, "definition");
   return {
-    version: number(object(value, "definition").version, "definition.version"),
+    version: number(o.version, "definition.version"),
     ...parseDefinitionBody(value, "definition"),
+    note: string(o.note, "definition.note"),
+    createdAt: string(o.created_at, "definition.created_at"),
   };
+}
+
+/** `{ items: [{ version, note, created_at, record_type_count, field_count }] }` */
+export function parseDefinitionVersions(value: unknown): DefinitionVersionSummary[] {
+  return array(object(value, "versions").items, "versions.items").map((item, i) => {
+    const path = `versions.items[${i}]`;
+    const o = object(item, path);
+    return {
+      version: number(o.version, `${path}.version`),
+      note: string(o.note, `${path}.note`),
+      createdAt: string(o.created_at, `${path}.created_at`),
+      recordTypeCount: number(o.record_type_count, `${path}.record_type_count`),
+      fieldCount: number(o.field_count, `${path}.field_count`),
+    };
+  });
+}
+
+// ── Projects ────────────────────────────────────────────────────────────
+
+export function parseProject(value: unknown, path = "project"): Project {
+  const o = object(value, path);
+  return {
+    id: string(o.id, `${path}.id`),
+    name: string(o.name, `${path}.name`),
+    description: string(o.description, `${path}.description`),
+    runId: string(o.run_id, `${path}.run_id`),
+    documentCount: number(o.document_count, `${path}.document_count`),
+    configurationVersion: nullable(o.configuration_version, (v) =>
+      number(v, `${path}.configuration_version`),
+    ),
+    createdAt: string(o.created_at, `${path}.created_at`),
+    updatedAt: string(o.updated_at, `${path}.updated_at`),
+  };
+}
+
+/** `{ items: [project], next }` */
+export function parseProjects(value: unknown): Project[] {
+  return array(object(value, "projects").items, "projects.items").map((p, i) =>
+    parseProject(p, `projects.items[${i}]`),
+  );
+}
+
+export function toWireProjectPatch(patch: ProjectPatch) {
+  return { name: patch.name, description: patch.description };
 }
 
 /** The definition as the API takes it (without `version`). */
@@ -364,6 +414,16 @@ export function parseFileExtraction(value: unknown): FileExtraction {
       parseRecord(r, `extraction.records[${i}]`),
     ),
   };
+}
+
+/** A WebSocket message: `{ type: "run.changed" }`. */
+export function isRunChangedMessage(value: unknown): boolean {
+  return object(value, "message").type === "run.changed";
+}
+
+/** A WebSocket message: `{ type: "assistant.cleared" }`. */
+export function isAssistantClearedMessage(value: unknown): boolean {
+  return object(value, "message").type === "assistant.cleared";
 }
 
 /** A WebSocket message: `{ type: "extraction.changed", file_id, revision }`. Other types give null. */

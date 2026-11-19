@@ -16,6 +16,7 @@ import {
   type AssistantEvent,
   type AssistantMessage,
   type ConnectionState,
+  type DefinitionVersionSummary,
   type DocumentContent,
   type ExecuteStageOptions,
   type ExtractionChange,
@@ -27,11 +28,15 @@ import {
   type FieldValue,
   type FieldValueInput,
   type FileExtraction,
+  type NewProjectInput,
   type NewRecordInput,
+  type Project,
+  type ProjectPatch,
   type PublishResult,
   type RecordPatch,
   type ReviewState,
   type TextSpan,
+  MAX_DEFINITION_NOTE_LENGTH,
   type Run,
   type RunEventHandlers,
   type RunFile,
@@ -56,11 +61,15 @@ import { extractRecords } from "./mock-extractor";
  * share one file: after enrich, both return the enriched text, and running
  * classify again writes a fresh copy, which drops the enrichment.
  *
- * State is kept in sessionStorage so a page reload finds the run again, the
- * way it would on a real server.
+ * State is kept in the browser so a page reload finds the run again, the way
+ * it would on a real server. Runs that belong to a project, and the projects,
+ * are kept in localStorage, so they survive closing the browser. Other runs
+ * (the pipeline's) stay in sessionStorage, one per tab.
  */
 
 const DEFAULT_STORAGE_KEY = "knowledge-extractor:mock-backend";
+const DEFAULT_PROJECTS_KEY = "knowledge-extractor:mock-projects";
+const MAX_PROJECT_NAME_LENGTH = 120;
 
 const LATENCY_MS = 150;
 const QUEUE_STAGGER_MS = 250;
@@ -109,6 +118,21 @@ interface MockRun {
    * `document`: the stored document named by the run file's `sourceRef`. Older runs don't have it.
    */
   extractionInput?: "enrich" | "document";
+  /** The project that owns this run. Such a run is deleted with its project only. */
+  projectId?: string;
+  /** The saved versions of the definition before the current one, oldest first. */
+  previousDefinitions?: ExtractionDefinition[];
+  /** The last change a person made to the records or the documents. */
+  activityAt?: string;
+}
+
+interface MockProject {
+  id: string;
+  name: string;
+  description: string;
+  runId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 type SharedWriter = "classify" | "enrich";
@@ -123,10 +147,15 @@ export interface MockBackendOptions {
   /** Multiplies every delay. 0 makes the mock as fast as timers allow (for tests). */
   speed?: number;
   /** Where to keep state between reloads. Default: sessionStorage when there is one. */
-  storage?: (Pick<Storage, "getItem" | "setItem"> & { removeItem?(key: string): void }) | null;
+  storage?: MockStorage | null;
   /** The key the state is kept under. One per app, so two apps on one origin keep apart. */
   storageKey?: string;
+  /** Where to keep projects and their runs. Default: localStorage when there is one. */
+  persistentStorage?: MockStorage | null;
+  persistentStorageKey?: string;
 }
+
+type MockStorage = Pick<Storage, "getItem" | "setItem"> & { removeItem?(key: string): void };
 
 /** What a run is made of decides its stages and where extraction reads its text. */
 function planFor(files: readonly SourceFile[]): {
@@ -152,13 +181,37 @@ const isActive = (cell: StageCell) => cell.status === "queued" || cell.status ==
 
 const byteLength = (text: string) => new TextEncoder().encode(text).length;
 
-function defaultStorage(): MockBackendOptions["storage"] {
+function defaultStorage(): MockStorage | null {
   try {
     return typeof sessionStorage === "undefined" ? null : sessionStorage;
   } catch {
     return null; // storage blocked by the browser
   }
 }
+
+function defaultPersistentStorage(): MockStorage | null {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  } catch {
+    return null; // storage blocked by the browser
+  }
+}
+
+const badRequest = (message: string) =>
+  new ApiError({ status: 422, code: "validation_error", message });
+
+/** A project name as stored: trimmed, not blank, not too long. */
+function checkName(name: unknown): string {
+  const trimmed = typeof name === "string" ? name.trim() : "";
+  if (!trimmed) throw badRequest("A project needs a name.");
+  if (trimmed.length > MAX_PROJECT_NAME_LENGTH) {
+    throw badRequest(`A project name takes at most ${MAX_PROJECT_NAME_LENGTH} characters.`);
+  }
+  return trimmed;
+}
+
+const countFields = (definition: ExtractionDefinition) =>
+  definition.recordTypes.reduce((n, t) => n + t.fields.length, 0);
 
 /** The text a stage writes when it succeeds. */
 function outputText(file: RunFile, stage: WorkStageId): string {
@@ -228,8 +281,11 @@ function checkSpan(text: string, span: TextSpan) {
 export class MockBackend {
   private readonly runs = new Map<string, MockRun>();
   private readonly subscriptions = new Set<Subscription>();
-  private readonly storage: MockBackendOptions["storage"];
+  private readonly projects = new Map<string, MockProject>();
+  private readonly storage: MockStorage | null;
   private readonly storageKey: string;
+  private readonly persistentStorage: MockStorage | null;
+  private readonly persistentStorageKey: string;
   private readonly failNextStages = new Set<WorkStageId>();
   private unanchorNextExtraction = false;
   private readonly examplesUsed = new Map<string, number>();
@@ -241,6 +297,11 @@ export class MockBackend {
     this.speed = options.speed ?? 1;
     this.storage = options.storage === undefined ? defaultStorage() : options.storage;
     this.storageKey = options.storageKey ?? DEFAULT_STORAGE_KEY;
+    this.persistentStorage =
+      options.persistentStorage === undefined
+        ? defaultPersistentStorage()
+        : options.persistentStorage;
+    this.persistentStorageKey = options.persistentStorageKey ?? DEFAULT_PROJECTS_KEY;
     this.restore();
   }
 
@@ -272,6 +333,79 @@ export class MockBackend {
       });
     }
     return { text, contentType: CONTENT_TYPE.md, etag: document.etag };
+  }
+
+  // ── Projects ──────────────────────────────────────────────────────────
+
+  async listProjects(signal?: AbortSignal): Promise<Project[]> {
+    await this.wait(LATENCY_MS);
+    signal?.throwIfAborted();
+    return [...this.projects.values()]
+      .map((project) => this.projectView(project))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
+  }
+
+  async createProject(input: NewProjectInput): Promise<Project> {
+    await this.wait(LATENCY_MS);
+    const name = checkName(input.name);
+    if (input.description !== undefined && typeof input.description !== "string") {
+      throw badRequest("The description must be text.");
+    }
+    const now = this.timestamp();
+    const project: MockProject = {
+      id: `project_${newId()}`,
+      name,
+      description: input.description ?? "",
+      runId: `run_${newId()}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.runs.set(project.runId, {
+      id: project.runId,
+      createdAt: now,
+      files: [],
+      cells: {},
+      sharedWriter: {},
+      workStages: ["extract"],
+      extractionInput: "document",
+      projectId: project.id,
+    });
+    this.projects.set(project.id, project);
+    this.save();
+    return this.projectView(project);
+  }
+
+  async getProject(projectId: string, signal?: AbortSignal): Promise<Project> {
+    await this.wait(LATENCY_MS);
+    signal?.throwIfAborted();
+    return this.projectView(this.requireProject(projectId));
+  }
+
+  async updateProject(projectId: string, patch: ProjectPatch): Promise<Project> {
+    await this.wait(LATENCY_MS);
+    const project = this.requireProject(projectId);
+    const name = patch.name === undefined ? project.name : checkName(patch.name);
+    if (patch.description !== undefined && typeof patch.description !== "string") {
+      throw badRequest("The description must be text.");
+    }
+    project.name = name;
+    project.description = patch.description ?? project.description;
+    project.updatedAt = this.timestamp();
+    this.save();
+    return this.projectView(project);
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    await this.wait(LATENCY_MS);
+    const project = this.requireProject(projectId);
+    this.projects.delete(project.id);
+    this.runs.delete(project.runId);
+    for (const subscription of [...this.subscriptions]) {
+      if (subscription.runId !== project.runId) continue;
+      this.subscriptions.delete(subscription);
+      subscription.handlers.onStateChange?.("closed");
+    }
+    this.save();
   }
 
   // ── Runs ──────────────────────────────────────────────────────────────
@@ -307,6 +441,55 @@ export class MockBackend {
     }
     this.runs.set(run.id, run);
     this.save();
+    return this.snapshot(run);
+  }
+
+  async setDocuments(runId: string, files: SourceFile[]): Promise<Run> {
+    await this.wait(LATENCY_MS);
+    const run = this.requireRun(runId);
+    if (files.length > 0) {
+      const plan = planFor(files);
+      if (plan.extractionInput !== (run.extractionInput ?? "enrich")) {
+        throw new ApiError({
+          status: 422,
+          code: "mixed_sources",
+          message: "These files are not the kind of file this run takes.",
+        });
+      }
+    }
+    const workStages = run.workStages ?? WORK_STAGE_IDS;
+    const wanted = new Map<string, SourceFile>();
+    for (const file of files) if (!wanted.has(file.id)) wanted.set(file.id, file);
+
+    const kept = new Map(run.files.map((f) => [f.sourceRef, f]));
+    for (const file of run.files) {
+      if (wanted.has(file.sourceRef)) continue;
+      for (const stage of workStages) delete run.cells[key(file.id, stage)];
+      delete run.extractions?.[file.id];
+      delete run.sharedWriter?.[file.id];
+    }
+    const now = this.timestamp();
+    run.files = [...wanted.values()].map((file) => {
+      const existing = kept.get(file.id);
+      if (existing) return existing;
+      const added: RunFile = { ...file, id: `file_${newId()}`, sourceRef: file.id };
+      for (const stage of workStages) {
+        run.cells[key(added.id, stage)] = {
+          fileId: added.id,
+          stage,
+          status: "pending",
+          executionId: null,
+          progress: null,
+          error: null,
+          output: null,
+          updatedAt: now,
+        };
+      }
+      return added;
+    });
+    run.activityAt = now;
+    this.save();
+    this.notifyRun(run, (handlers) => handlers.onRunChanged?.());
     return this.snapshot(run);
   }
 
@@ -438,10 +621,18 @@ export class MockBackend {
     runId: string,
     draft: ExtractionDefinitionDraft,
     baseVersion: number,
+    note = "",
   ): Promise<ExtractionDefinition> {
     await this.wait(LATENCY_MS);
     const run = this.requireRun(runId);
     const current = this.ensureDefinition(run);
+    if (note.trim().length > MAX_DEFINITION_NOTE_LENGTH) {
+      throw new ApiError({
+        status: 422,
+        code: "invalid_definition",
+        message: `A note takes at most ${MAX_DEFINITION_NOTE_LENGTH} characters.`,
+      });
+    }
     if (baseVersion !== current.version) {
       throw new ApiError({
         status: 409,
@@ -460,9 +651,48 @@ export class MockBackend {
         });
       }
     }
-    run.definition = { ...structuredClone(draft), version: current.version + 1 };
-    this.save();
-    return structuredClone(run.definition);
+    return this.pushDefinition(run, draft, current.version + 1, note.trim());
+  }
+
+  async listDefinitionVersions(
+    runId: string,
+    signal?: AbortSignal,
+  ): Promise<DefinitionVersionSummary[]> {
+    await this.wait(LATENCY_MS);
+    signal?.throwIfAborted();
+    const run = this.requireRun(runId);
+    this.ensureDefinition(run);
+    return this.allDefinitions(run)
+      .reverse()
+      .map((d) => ({
+        version: d.version,
+        note: d.note,
+        createdAt: d.createdAt,
+        recordTypeCount: d.recordTypes.length,
+        fieldCount: countFields(d),
+      }));
+  }
+
+  async getDefinitionVersion(
+    runId: string,
+    version: number,
+    signal?: AbortSignal,
+  ): Promise<ExtractionDefinition> {
+    await this.wait(LATENCY_MS);
+    signal?.throwIfAborted();
+    return structuredClone(this.requireVersion(this.requireRun(runId), version));
+  }
+
+  async restoreDefinitionVersion(runId: string, version: number): Promise<ExtractionDefinition> {
+    await this.wait(LATENCY_MS);
+    const run = this.requireRun(runId);
+    const source = this.requireVersion(run, version);
+    return this.pushDefinition(
+      run,
+      source,
+      this.ensureDefinition(run).version + 1,
+      `Restored from version ${version}`,
+    );
   }
 
   async getFileExtraction(
@@ -659,6 +889,21 @@ export class MockBackend {
     return structuredClone(userMessage);
   }
 
+  async clearAssistantMessages(runId: string): Promise<void> {
+    await this.wait(LATENCY_MS);
+    const run = this.requireRun(runId);
+    if (run.assistant?.some((m) => m.status === "streaming")) {
+      throw new ApiError({
+        status: 409,
+        code: "assistant_busy",
+        message: "The assistant is still answering.",
+      });
+    }
+    run.assistant = [];
+    this.save();
+    this.notifyRun(run, (handlers) => handlers.onAssistantCleared?.());
+  }
+
   async publishDefinition(runId: string): Promise<PublishResult> {
     await this.wait(LATENCY_MS);
     const run = this.requireRun(runId);
@@ -676,6 +921,13 @@ export class MockBackend {
 
   async deleteRun(runId: string): Promise<void> {
     await this.wait(LATENCY_MS);
+    if (this.runs.get(runId)?.projectId) {
+      throw new ApiError({
+        status: 409,
+        code: "run_belongs_to_project",
+        message: "This run belongs to a project. Delete the project instead.",
+      });
+    }
     this.runs.delete(runId);
     this.save();
   }
@@ -687,10 +939,12 @@ export class MockBackend {
    */
   reset(): void {
     this.runs.clear();
+    this.projects.clear();
     this.subscriptions.clear();
     this.examplesUsed.clear();
     try {
       this.storage?.removeItem?.(this.storageKey);
+      this.persistentStorage?.removeItem?.(this.persistentStorageKey);
     } catch {
       // Storage blocked: nothing was saved there that we could remove.
     }
@@ -957,6 +1211,7 @@ export class MockBackend {
     });
     next.revision = extraction.revision + 1;
     (run.extractions ??= {})[fileId] = next;
+    run.activityAt = this.timestamp();
     this.save();
     this.notifyExtraction(run, { fileId, revision: next.revision });
     return structuredClone(next);
@@ -970,10 +1225,61 @@ export class MockBackend {
 
   private ensureDefinition(run: MockRun): ExtractionDefinition {
     if (!run.definition) {
-      run.definition = { ...structuredClone(DEFAULT_EXTRACTION_DEFINITION), version: 1 };
+      run.definition = {
+        ...structuredClone(DEFAULT_EXTRACTION_DEFINITION),
+        version: 1,
+        note: "",
+        createdAt: this.timestamp(),
+      };
       this.save();
     }
+    // Runs saved before versions had notes.
+    run.definition.note ??= "";
+    run.definition.createdAt ??= run.createdAt;
     return run.definition;
+  }
+
+  /** Makes `draft` the newest version of the run's definition. */
+  private pushDefinition(
+    run: MockRun,
+    draft: ExtractionDefinitionDraft,
+    version: number,
+    note: string,
+  ): ExtractionDefinition {
+    const current = this.ensureDefinition(run);
+    (run.previousDefinitions ??= []).push(current);
+    run.definition = {
+      prompt: draft.prompt,
+      recordTypes: structuredClone(draft.recordTypes),
+      output: structuredClone(draft.output),
+      version,
+      note,
+      createdAt: this.timestamp(),
+    };
+    this.save();
+    return structuredClone(run.definition);
+  }
+
+  /** Every saved version, oldest first. */
+  private allDefinitions(run: MockRun): ExtractionDefinition[] {
+    const current = this.ensureDefinition(run);
+    return [...(run.previousDefinitions ?? []), current].map((d) => ({
+      ...d,
+      note: d.note ?? "",
+      createdAt: d.createdAt ?? run.createdAt,
+    }));
+  }
+
+  private requireVersion(run: MockRun, version: number): ExtractionDefinition {
+    const found = this.allDefinitions(run).find((d) => d.version === version);
+    if (!found) {
+      throw new ApiError({
+        status: 404,
+        code: "definition_version_not_found",
+        message: "This version of the configuration does not exist.",
+      });
+    }
+    return found;
   }
 
   /** Writes the reply in a few chunks, keeping the stored message in step with what is sent. */
@@ -1040,6 +1346,45 @@ export class MockBackend {
     }
   }
 
+  /** Calls `send` for every open subscription on the run. */
+  private notifyRun(run: MockRun, send: (handlers: RunEventHandlers) => void) {
+    for (const subscription of this.subscriptions) {
+      if (subscription.open && subscription.runId === run.id) send(subscription.handlers);
+    }
+  }
+
+  private requireProject(projectId: string): MockProject {
+    const project = this.projects.get(projectId);
+    if (!project) {
+      throw new ApiError({
+        status: 404,
+        code: "project_not_found",
+        message: "This project does not exist.",
+      });
+    }
+    return project;
+  }
+
+  private projectView(project: MockProject): Project {
+    const run = this.runs.get(project.runId);
+    const times = [project.updatedAt, run?.activityAt ?? ""];
+    if (run) {
+      times.push(...Object.values(run.cells).map((c) => c.updatedAt));
+      times.push(...(run.assistant ?? []).map((m) => m.createdAt));
+      if (run.definition) times.push(...this.allDefinitions(run).map((d) => d.createdAt));
+    }
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      runId: project.runId,
+      documentCount: run?.files.length ?? 0,
+      configurationVersion: run?.definition?.version ?? null,
+      createdAt: project.createdAt,
+      updatedAt: times.reduce((a, b) => (b > a ? b : a)),
+    };
+  }
+
   private requireRun(runId: string): MockRun {
     const run = this.runs.get(runId);
     if (!run) {
@@ -1072,20 +1417,43 @@ export class MockBackend {
   }
 
   private save() {
+    const runs = [...this.runs.values()];
     try {
-      this.storage?.setItem(this.storageKey, JSON.stringify([...this.runs.values()]));
+      this.storage?.setItem(this.storageKey, JSON.stringify(runs.filter((r) => !r.projectId)));
     } catch {
       // Storage full or blocked: the mock still works until the next reload.
+    }
+    try {
+      const owned = runs.filter((r) => r.projectId);
+      if (this.projects.size === 0 && owned.length === 0) {
+        this.persistentStorage?.removeItem?.(this.persistentStorageKey);
+      } else {
+        this.persistentStorage?.setItem(
+          this.persistentStorageKey,
+          JSON.stringify({ projects: [...this.projects.values()], runs: owned }),
+        );
+      }
+    } catch {
+      // Same: kept in memory until the next reload.
     }
   }
 
   /** Load runs from before a reload and pick up the work that was in flight. */
   private restore() {
-    let saved: MockRun[];
+    let saved: MockRun[] = [];
     try {
       saved = JSON.parse(this.storage?.getItem(this.storageKey) ?? "[]") as MockRun[];
     } catch {
-      return;
+      // Nothing usable in this tab's storage.
+    }
+    try {
+      const stored = JSON.parse(this.persistentStorage?.getItem(this.persistentStorageKey) ?? "{}");
+      for (const project of (stored.projects ?? []) as MockProject[]) {
+        this.projects.set(project.id, project);
+      }
+      saved = [...saved, ...((stored.runs ?? []) as MockRun[])];
+    } catch {
+      // Nothing usable in the persistent storage.
     }
     for (const run of saved) {
       this.runs.set(run.id, run);
