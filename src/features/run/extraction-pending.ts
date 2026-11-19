@@ -2,8 +2,10 @@ import type { PipelineState } from "@/store/types";
 
 /**
  * Whether a file's records are better waited for than fetched: its extraction
- * is queued or running, and nothing in this session has told us it has records
- * (no "records changed" message, no change of ours). Fetching then would most
+ * is queued or running, and nothing in this session has told us it may have
+ * records (no "records changed" message, no change of ours, no extract cell
+ * with output, no run already under way when the page loaded: see
+ * `noteKnownExtractions` in `store/run-state.ts`). Fetching then would most
  * likely be answered 404 `extraction_not_found`, which the browser logs as an
  * error, and the records change when the cell finishes anyway.
  */

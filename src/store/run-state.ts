@@ -50,6 +50,34 @@ export function mergeSnapshot(current: CellMap, run: Run): CellMap {
 }
 
 /**
+ * Notes the files whose extraction records may already exist, from cells about
+ * to be merged into `current`: revision 0 for each one with no revision known.
+ * That doesn't change what is fetched, only that a file's records are fetched
+ * while it is extracted again (see `awaitsExtraction`), because these facts
+ * don't survive a reload and `markQueued` clears a cell's output.
+ * - an extract cell with output: the file was extracted before;
+ * - an extract cell first seen queued or running (the page was reloaded during
+ *   a run): it may be a re-run, and its records must not be hidden for the run.
+ * Returns `revisions` itself when nothing is added.
+ */
+export function noteKnownExtractions(
+  revisions: Record<string, number>,
+  current: CellMap,
+  incoming: readonly StageCell[],
+): Record<string, number> {
+  let next = revisions;
+  for (const cell of incoming) {
+    if (cell.stage !== "extract" || next[cell.fileId] !== undefined) continue;
+    const firstSeenActive =
+      !current[cell.fileId]?.extract && (cell.status === "queued" || cell.status === "running");
+    if (cell.output === null && !firstSeenActive) continue;
+    if (next === revisions) next = { ...revisions };
+    next[cell.fileId] = 0;
+  }
+  return next;
+}
+
+/**
  * Shows an accepted execution at once, without waiting for its first live
  * update. `updatedAt` is left alone so anything the server says later wins.
  */

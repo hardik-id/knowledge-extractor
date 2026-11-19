@@ -30,6 +30,7 @@ let store: import("@/store/pipeline-store").RunStore;
 let createRunStore: typeof import("@/store/pipeline-store").createRunStore;
 let selectors: typeof import("@/store/selectors");
 let attachRun: typeof import("./attach-run").attachRun;
+let awaitsExtraction: typeof import("./extraction-pending").awaitsExtraction;
 let backend: MockBackend;
 
 const state = (): PipelineState => store.getState();
@@ -72,6 +73,7 @@ describe("a run, from file selection to live updates", () => {
     store = createRunStore("knowledge-extractor:run");
     selectors = await import("@/store/selectors");
     ({ attachRun } = await import("./attach-run"));
+    ({ awaitsExtraction } = await import("./extraction-pending"));
     const mock = window.__mockBackend;
     assert.ok(mock, "the app runs on the mock backend by default");
     backend = mock;
@@ -196,6 +198,41 @@ describe("a run, from file selection to live updates", () => {
     assert.equal(state().runId, runId);
     assert.equal(state().runFiles.length, FILES.length);
     await until(() => status("ingest") === "ready", "the ingest that was running has finished");
+  });
+
+  test("a file extracted before a reload has its records fetched while it is extracted again", async () => {
+    await startRun();
+    for (const stage of ["ingest", "transform", "classify", "enrich", "extract"] as const) {
+      await runToReady(stage);
+    }
+    const fileId = state().runFiles[0].id;
+
+    // A reload: only the persisted fields survive, so no revision is known.
+    detach?.();
+    store.setState({
+      runFiles: [],
+      cells: {},
+      runLoad: "idle",
+      connection: "idle",
+      extractionRevisions: {},
+    });
+    attach();
+    await until(() => state().runLoad === "ready", "the snapshot is loaded");
+
+    await state().executeStage("extract");
+    assert.equal(state().cells[fileId]?.extract?.output, null, "queuing clears the cell's output");
+    assert.equal(awaitsExtraction(state(), fileId), false, "its records stay on screen");
+  });
+
+  test("a file's first extraction is waited for, not fetched", async () => {
+    await startRun();
+    for (const stage of ["ingest", "transform", "classify", "enrich"] as const) {
+      await runToReady(stage);
+    }
+    const fileId = state().runFiles[0].id;
+
+    await state().executeStage("extract");
+    assert.equal(awaitsExtraction(state(), fileId), true);
   });
 
   test("what is persisted is the run id and the person's choices, not the run's state", async () => {
