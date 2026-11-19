@@ -4,6 +4,14 @@ import { ChevronDown, Loader2, Sparkles } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { AssistantMessage } from "@/services/contracts";
@@ -69,6 +77,7 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
   const { messages, busy } = assistant;
   const [text, setText] = useState("");
   const [open, setOpen] = useState(true);
+  const [confirming, setConfirming] = useState(false);
   const [outcomes, setOutcomes] = useState<Record<string, ProposalOutcome>>({});
   const id = useId();
 
@@ -208,12 +217,54 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
             <span className="text-[12px] leading-4 text-ink-muted">
               Enter to send, Shift+Enter for a new line
             </span>
-            <Button type="submit" variant="outline" size="sm" disabled={busy || text.trim() === ""}>
-              Send
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy || messages.length === 0}
+                onClick={() => setConfirming(true)}
+              >
+                Clear conversation
+              </Button>
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                disabled={busy || text.trim() === ""}
+              >
+                Send
+              </Button>
+            </div>
           </div>
         </form>
       </div>
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear the conversation?</DialogTitle>
+            <DialogDescription>
+              This removes every message and proposal for everyone on this project. The definition
+              and the records stay.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+              Keep it
+            </Button>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                if (await assistant.clear()) setOutcomes({});
+                setConfirming(false);
+              }}
+            >
+              Clear conversation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

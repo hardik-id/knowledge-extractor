@@ -51,6 +51,10 @@ export function attachRun(
     onAssistantEvent: (event) => {
       if (store().runId === runId) store().applyAssistantEvent(event);
     },
+    // The conversation was cleared (here or in another tab).
+    onAssistantCleared: () => {
+      if (store().runId === runId) store().setAssistantMessages([]);
+    },
     // The run's documents changed (here or in another tab): the snapshot has them.
     onRunChanged: () => void load(),
     onStateChange: (state) => {
