@@ -295,8 +295,13 @@ describe("MockBackend", () => {
       const first = await backend.getDefinition(run.id);
       assert.equal(first.version, 1);
       assert.deepEqual(
-        { ...first, version: undefined },
-        { ...DEFAULT_EXTRACTION_DEFINITION, version: undefined },
+        { ...first, version: undefined, note: undefined, createdAt: undefined },
+        {
+          ...DEFAULT_EXTRACTION_DEFINITION,
+          version: undefined,
+          note: undefined,
+          createdAt: undefined,
+        },
       );
 
       const saved = await backend.saveDefinition(run.id, { ...first, prompt: "Other" }, 1);

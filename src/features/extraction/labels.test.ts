@@ -18,6 +18,8 @@ const definition = (counts: number[]): ExtractionDefinition => {
   let n = 0;
   return {
     version: 1,
+    note: "",
+    createdAt: "2026-01-01T00:00:00.000Z",
     prompt: "",
     output: { format: "json", template: "" },
     recordTypes: counts.map((count, t) => ({

@@ -68,6 +68,8 @@ const definition = (
   template = "",
 ): ExtractionDefinition => ({
   version: 1,
+  note: "",
+  createdAt: "2026-01-01T00:00:00.000Z",
   prompt: "",
   recordTypes: [adr, policy],
   output: { format, template },

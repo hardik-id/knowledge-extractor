@@ -6,11 +6,16 @@ import {
   parseAssistantMessage,
   parseAssistantMessages,
   parseCellMessage,
+  isAssistantClearedMessage,
+  isRunChangedMessage,
   parseDefinition,
+  parseDefinitionVersions,
   parseEtagHeader,
   parseExecution,
   parseExtractionChangedMessage,
   parseFileExtraction,
+  parseProject,
+  parseProjects,
   parsePublishResult,
   parseRun,
   parseSourceFiles,
@@ -140,6 +145,8 @@ describe("parsers", () => {
 
 const wireDefinition = {
   version: 3,
+  note: "Added a status",
+  created_at: "2026-02-01T10:00:00Z",
   prompt: "Find decisions",
   record_types: [
     {
@@ -225,6 +232,8 @@ describe("extraction parsers", () => {
   test("a definition comes out in the UI's shape; missing choices become []", () => {
     const d = parseDefinition(wireDefinition);
     assert.equal(d.version, 3);
+    assert.equal(d.note, "Added a status");
+    assert.equal(d.createdAt, "2026-02-01T10:00:00Z");
     assert.equal(d.output.format, "markdown");
     const [status, owners] = d.recordTypes[0].fields;
     assert.equal(status.valueType, "choice");
@@ -234,11 +243,14 @@ describe("extraction parsers", () => {
   });
 
   test("toWireDefinition is the inverse of parseDefinition", () => {
-    const { version, ...draft } = parseDefinition(wireDefinition);
+    const { version, note, createdAt, ...draft } = parseDefinition(wireDefinition);
     assert.equal(version, 3);
     const wire = toWireDefinition(draft);
-    assert.ok(!("version" in wire));
-    assert.deepEqual(parseDefinition({ version: 3, ...wire }), parseDefinition(wireDefinition));
+    assert.ok(!("version" in wire) && !("note" in wire));
+    assert.deepEqual(
+      parseDefinition({ version: 3, note, created_at: createdAt, ...wire }),
+      parseDefinition(wireDefinition),
+    );
     assert.equal(wire.record_types[0].fields[0].value_type, "choice");
   });
 
@@ -485,5 +497,74 @@ describe("storage documents", () => {
       max_items: 2,
     });
     assert.equal(toWireExecutionConfig(undefined), undefined);
+  });
+});
+
+describe("project and version parsers", () => {
+  const wireProject = {
+    id: "p1",
+    name: "Architecture decisions",
+    description: "",
+    run_id: "run_1",
+    document_count: 3,
+    configuration_version: null,
+    created_at: "2026-02-01T10:00:00Z",
+    updated_at: "2026-02-02T10:00:00Z",
+  };
+
+  test("a project comes out in the UI's shape; no configuration version is null", () => {
+    assert.deepEqual(parseProject(wireProject), {
+      id: "p1",
+      name: "Architecture decisions",
+      description: "",
+      runId: "run_1",
+      documentCount: 3,
+      configurationVersion: null,
+      createdAt: "2026-02-01T10:00:00Z",
+      updatedAt: "2026-02-02T10:00:00Z",
+    });
+    assert.equal(
+      parseProject({ ...wireProject, configuration_version: 2 }).configurationVersion,
+      2,
+    );
+  });
+
+  test("the list of projects reads its items; a project without a run is invalid", () => {
+    assert.equal(parseProjects({ items: [wireProject], next: null }).length, 1);
+    assert.throws(
+      () => parseProjects({ items: [{ ...wireProject, run_id: 4 }] }),
+      isInvalidResponse,
+    );
+    assert.throws(() => parseProjects([wireProject]), isInvalidResponse);
+  });
+
+  test("the list of versions reads its items", () => {
+    const versions = parseDefinitionVersions({
+      items: [
+        {
+          version: 2,
+          note: "Restored from version 1",
+          created_at: "t2",
+          record_type_count: 1,
+          field_count: 5,
+        },
+        { version: 1, note: "", created_at: "t1", record_type_count: 1, field_count: 4 },
+      ],
+    });
+    assert.deepEqual(versions[0], {
+      version: 2,
+      note: "Restored from version 1",
+      createdAt: "t2",
+      recordTypeCount: 1,
+      fieldCount: 5,
+    });
+    assert.throws(() => parseDefinitionVersions({ items: [{ version: 1 }] }), isInvalidResponse);
+  });
+
+  test("run.changed and assistant.cleared are recognised, nothing else is", () => {
+    assert.equal(isRunChangedMessage({ type: "run.changed" }), true);
+    assert.equal(isRunChangedMessage({ type: "cell" }), false);
+    assert.equal(isAssistantClearedMessage({ type: "assistant.cleared" }), true);
+    assert.equal(isAssistantClearedMessage({ type: "run.changed" }), false);
   });
 });

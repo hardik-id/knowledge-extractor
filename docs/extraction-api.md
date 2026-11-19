@@ -71,6 +71,15 @@ Body: the definition without `version`, plus `base_version`. Returns the saved d
 
 Keep earlier versions: an extraction names the version it used.
 
+### Notes and versions
+
+The UI calls the definition an "extraction configuration". Paths, code and error codes keep the word `definition`.
+
+- `GET` and `PUT` answer `note` (text, empty when none) and `created_at` besides the definition. `PUT` takes an optional `note` of at most 200 characters (longer: 422 `invalid_definition`).
+- `GET /runs/{run_id}/stages/extract/definition/versions` answers `{ items: [{ version, note, created_at, record_type_count, field_count }] }`, newest first.
+- `GET .../definition/versions/{version}` answers that version in the shape of the definition. An unknown one is 404 `definition_version_not_found`.
+- `POST .../definition/versions/{version}/restore` saves a copy of that version as the newest one, with the note `Restored from version N`, and answers it. Earlier versions stay.
+
 ## 2. Running the stage
 
 Extraction runs like every other stage:
@@ -199,7 +208,10 @@ A chat that turns a bare prompt into fields and a template, and adjusts them on 
 | ------------------------------------------------------- | ---------------------- | ---------------------------------------------------- |
 | `GET /runs/{run_id}/extraction/assistant/messages`      | none                   | `{ messages: [message] }`, oldest first              |
 | `POST /runs/{run_id}/extraction/assistant/messages`     | `{ text, definition }` | the stored user message (a `message`), once accepted |
+| `DELETE /runs/{run_id}/extraction/assistant/messages`   | none                   | 204: the whole conversation is removed               |
 | `POST /runs/{run_id}/stages/extract/definition/publish` | none                   | `{ pipeline_config_version, examples }` (section 7)  |
+
+Clearing the conversation changes nothing else (not the definition, not the records). While a reply is being written it answers 409 `assistant_busy`. The run's sockets get `{ "type": "assistant.cleared" }`, so a second tab empties its chat too.
 
 A `message` is:
 
