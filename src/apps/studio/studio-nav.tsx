@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ListOrdered, RotateCcw } from "lucide-react";
+import { ArrowLeft, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
@@ -16,29 +17,50 @@ import {
 import { plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/store/pipeline-store";
-import { studioSteps } from "./nav-steps";
+import { projectIdFromPath, STUDIO_HOME, studioSteps } from "./nav-steps";
 
-/** The studio's two steps, the document count and Start over. */
+/** The open project as the address names it: null until it has loaded here. */
+function useOpenProject() {
+  const projectId = projectIdFromPath(usePathname());
+  const project = usePipelineStore((s) =>
+    projectId !== null && s.projectId === projectId && s.projectLoad === "ready" ? s.project : null,
+  );
+  const documentCount = usePipelineStore((s) => (project ? s.runFiles.length : 0));
+  return { projectId, project, documentCount };
+}
+
+/** The project's name, its two steps and the way back to all projects. */
 export function StudioNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const hasRun = usePipelineStore((s) => s.runId !== null);
-  const count = usePipelineStore((s) => s.selectedFiles.length);
-  const resetRun = usePipelineStore((s) => s.resetRun);
-  const steps = studioSteps(pathname, hasRun);
+  const { projectId, project, documentCount } = useOpenProject();
+  const steps = studioSteps(pathname, documentCount > 0);
 
-  const startOver = () => {
-    resetRun();
-    onNavigate?.();
-    router.push("/studio");
-  };
+  if (projectId === null) {
+    return (
+      <p className="px-6 pt-2 pb-6 text-[15px] leading-[22px] text-ink-muted">
+        Open a project, or start a new one.
+      </p>
+    );
+  }
 
   return (
     <div className="flex min-h-full flex-col gap-4 px-6 pt-2 pb-6">
-      <p className="text-[15px] leading-[22px] text-ink-muted">
-        <span className="font-semibold text-ink">{plural(count, "document")}</span> in this
-        workspace
-      </p>
+      {project ? (
+        <div className="min-w-0 space-y-1">
+          <p className="truncate text-[17px] leading-6 font-semibold text-ink-heading">
+            {project.name}
+          </p>
+          <p className="text-[15px] leading-[22px] text-ink-muted">
+            <span className="font-semibold text-ink">{plural(documentCount, "document")}</span> in
+            this project
+          </p>
+        </div>
+      ) : (
+        <div aria-hidden className="space-y-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-5 w-32" />
+        </div>
+      )}
 
       <nav aria-label="Steps">
         <ol className="flex flex-col gap-2">
@@ -82,9 +104,11 @@ export function StudioNav({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto pt-2">
-        <Button variant="ghost" size="sm" onClick={startOver} className="-ml-3 text-ink-muted">
-          <RotateCcw data-icon="inline-start" />
-          Start over
+        <Button variant="ghost" size="sm" asChild className="-ml-3 text-ink-muted">
+          <Link href={STUDIO_HOME} onClick={onNavigate}>
+            <ArrowLeft data-icon="inline-start" />
+            All projects
+          </Link>
         </Button>
       </div>
     </div>
@@ -95,8 +119,9 @@ export function StudioNav({ onNavigate }: { onNavigate?: () => void }) {
 export function StudioMobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const hasRun = usePipelineStore((s) => s.runId !== null);
-  const current = studioSteps(pathname, hasRun).find((s) => s.current);
+  const { projectId, documentCount } = useOpenProject();
+  const current = studioSteps(pathname, documentCount > 0).find((s) => s.current);
+  if (projectId === null) return null;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
