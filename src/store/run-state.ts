@@ -1,5 +1,5 @@
-import type { Execution, Run, StageCell, WorkStageId } from "@/services/contracts";
-import type { StageId, StageRunStatus } from "@/types/pipeline";
+import type { Execution, Run, RunFile, StageCell, WorkStageId } from "@/services/contracts";
+import type { SourceFile, StageId, StageRunStatus } from "@/types/pipeline";
 
 /**
  * Pure rules for run state: how cell updates are merged and how a stage's
@@ -150,4 +150,19 @@ export function selectStageStatus(state: StageStatusSource, stage: StageId): Sta
     stage,
   );
   return work === "ready" && proceeded ? "done" : work;
+}
+
+/** The run's files as the catalog listed them: the selection a run stands for. */
+export function selectionFromRun(files: readonly RunFile[]): SourceFile[] {
+  return files.map(({ sourceRef, ...file }) => ({ ...file, id: sourceRef }));
+}
+
+/** True when the selection is exactly the run's documents, in any order. */
+export function sameDocuments(
+  selection: readonly SourceFile[],
+  files: readonly RunFile[],
+): boolean {
+  if (selection.length !== files.length) return false;
+  const refs = new Set(files.map((file) => file.sourceRef));
+  return selection.every((file) => refs.has(file.id));
 }

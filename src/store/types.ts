@@ -4,6 +4,7 @@ import type {
   AssistantMessage,
   ConnectionState,
   ExecuteStageOptions,
+  Project,
   Run,
   RunFile,
   StageCell,
@@ -69,7 +70,11 @@ export interface RunSlice {
   applyAssistantEvent: (event: AssistantEvent) => void;
   /** Live updates. A lower revision than the one known is ignored. */
   setExtractionRevision: (fileId: string, revision: number) => void;
-  /** Creates a run from the selected files unless there is one. Rejects with an ApiError. */
+  /**
+   * Creates a run from the selected files unless there is one. In a project's
+   * store the run always exists: it makes the selection the run's documents
+   * instead, and the run id stays. Rejects with an ApiError.
+   */
   ensureRun: () => Promise<void>;
   /** Fetches the snapshot of the current run. Never rejects. */
   loadRun: (signal?: AbortSignal) => Promise<RunLoadResult>;
@@ -87,6 +92,26 @@ export interface RunSlice {
   resetRun: () => void;
 }
 
-export type PipelineState = NavigationSlice & FilesSlice & RunSlice;
+/** Whether the project (and its run) has been fetched since it was opened here. */
+export type ProjectLoadState = "idle" | "loading" | "ready" | "gone" | "error";
+
+/**
+ * The project the store is open on. Knowledge Studio only: the pipeline's
+ * store never has one. The address names the project, the project names its
+ * run, and the selection is the run's files, so nothing here is kept in
+ * the browser except small conveniences (see `createProjectSlice`).
+ */
+export interface ProjectSlice {
+  projectId: string | null;
+  project: Project | null;
+  projectLoad: ProjectLoadState;
+  /**
+   * Starts over on this project: fetches it, then its run. Does nothing when
+   * it is already open (or opening). Never rejects: the outcome is `projectLoad`.
+   */
+  openProject: (projectId: string) => Promise<void>;
+}
+
+export type PipelineState = NavigationSlice & FilesSlice & RunSlice & ProjectSlice;
 
 export type SliceCreator<T> = StateCreator<PipelineState, [["zustand/persist", unknown]], [], T>;

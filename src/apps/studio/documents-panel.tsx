@@ -7,14 +7,19 @@ import { Button } from "@/components/ui/button";
 import { FileBrowser, SelectionSummary } from "@/features/file-picker/file-browser";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
+import { extractionHref } from "./nav-steps";
 import { StudioPanel } from "./studio-panel";
 
-/** Pick documents from storage; the one primary button creates the run and opens extraction. */
+/**
+ * Pick documents from storage; the one primary button makes them the
+ * project's documents and opens extraction. The project's run stays the same.
+ */
 export function DocumentsPanel() {
   const router = useRouter();
   const count = usePipelineStore((s) => s.selectedFiles.length);
   const ensureRun = usePipelineStore((s) => s.ensureRun);
   const starting = usePipelineStore((s) => s.creatingRun);
+  const projectId = usePipelineStore((s) => s.projectId);
 
   const open = async () => {
     try {
@@ -23,7 +28,7 @@ export function DocumentsPanel() {
       toast.error("Couldn't open the documents", { description: describeApiError(error) });
       return;
     }
-    router.push("/studio/extract");
+    if (projectId) router.push(extractionHref(projectId));
   };
 
   return (

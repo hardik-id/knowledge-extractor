@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { UserMenu } from "@/features/auth/user-menu";
 import { ConnectionBanner } from "@/features/run/connection-banner";
 import { AppSwitcher } from "./app-switcher";
@@ -45,7 +45,10 @@ export function AppShell({
 
       <header className="sticky top-0 z-30 border-b border-border-subtle bg-background md:hidden">
         <div className="flex h-16 items-center gap-3 px-[max(16px,env(safe-area-inset-left))]">
-          <AppSwitcher compact />
+          {/* The switcher reads the address, only known at request time under a dynamic route. */}
+          <Suspense>
+            <AppSwitcher compact />
+          </Suspense>
           <div className="ml-auto flex items-center gap-2">
             {mobileNav}
             <ThemeToggle />
@@ -59,7 +62,9 @@ export function AppShell({
         className="hidden w-80 shrink-0 flex-col border-r-2 border-border-subtle md:flex"
       >
         <div className="flex h-18 shrink-0 items-center justify-between gap-2 px-6">
-          <AppSwitcher />
+          <Suspense>
+            <AppSwitcher />
+          </Suspense>
           <ThemeToggle />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">{nav}</div>

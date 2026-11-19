@@ -10,18 +10,19 @@ import { ExtractionWorkspace } from "@/features/extraction/extraction-workspace"
 import { useExtractionRun } from "@/features/extraction/use-extraction-run";
 import { StageSummary } from "@/features/run/stage-summary";
 import { usePipelineStore } from "@/store/pipeline-store";
+import { projectHref } from "./nav-steps";
 import { StudioPanel } from "./studio-panel";
 
-/** Waits for the stored run to be read and loaded, then shows the workspace. */
+/** Inside an open project (see ProjectScope): the workspace once its run has documents. */
 export function ExtractPageContent() {
-  const hasHydrated = usePipelineStore((s) => s.hasHydrated);
-  const hasRun = usePipelineStore((s) => s.runId !== null);
+  const projectId = usePipelineStore((s) => s.projectId);
+  const hasDocuments = usePipelineStore((s) => s.runFiles.length > 0);
   const runLoad = usePipelineStore((s) => (s.runId ? s.runLoad : "ready"));
   const loadRun = usePipelineStore((s) => s.loadRun);
 
-  if (!hasHydrated || runLoad === "idle" || runLoad === "loading") return <ExtractSkeleton />;
+  if (!projectId || runLoad === "idle" || runLoad === "loading") return <ExtractSkeleton />;
 
-  if (!hasRun) {
+  if (!hasDocuments) {
     return (
       <div className="px-5 py-10 sm:px-8">
         <EmptyState
@@ -30,7 +31,7 @@ export function ExtractPageContent() {
           description="Choose the documents you want to extract from first."
           action={
             <Button asChild>
-              <Link href="/studio">Go to documents</Link>
+              <Link href={projectHref(projectId)}>Go to documents</Link>
             </Button>
           }
         />
@@ -55,10 +56,10 @@ export function ExtractPageContent() {
     );
   }
 
-  return <ExtractPanel />;
+  return <ExtractPanel projectId={projectId} />;
 }
 
-function ExtractPanel() {
+function ExtractPanel({ projectId }: { projectId: string }) {
   const extraction = useExtractionRun();
   return (
     <StudioPanel
@@ -69,7 +70,7 @@ function ExtractPanel() {
         <div className="space-y-2">
           <StageSummary stage="extract" />
           <Button variant="link" size="sm" asChild className="h-auto px-0">
-            <Link href="/studio">
+            <Link href={projectHref(projectId)}>
               <ArrowLeft data-icon="inline-start" />
               Change documents
             </Link>
