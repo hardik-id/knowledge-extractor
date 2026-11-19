@@ -15,6 +15,7 @@ import {
   parseRun,
   parseSourceFiles,
   toWireDefinition,
+  toWireExecutionConfig,
   toWireFieldValues,
   toWireNewRecord,
   toWireRecordPatch,
@@ -475,5 +476,14 @@ describe("storage documents", () => {
         (error) => isApiError(error) && error.code === "invalid_response",
       );
     }
+  });
+
+  test("an execution's config goes out with snake_case keys", () => {
+    assert.deepEqual(toWireExecutionConfig({ definitionVersion: 3 }), { definition_version: 3 });
+    assert.deepEqual(toWireExecutionConfig({ mode: "fast", maxItems: 2 }), {
+      mode: "fast",
+      max_items: 2,
+    });
+    assert.equal(toWireExecutionConfig(undefined), undefined);
   });
 });

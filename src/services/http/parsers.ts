@@ -42,6 +42,7 @@ import {
  *   cell  { file_id, stage, status, execution_id, progress, error: { code, message } | null,
  *           output: { name, content_type, size, etag } | null, updated_at }
  *   run   { id, created_at, files: file[], cells: cell[] }
+ *   execution request  { file_ids?, config?: { definition_version, … } }   (config keys in snake_case)
  *   span  { start, end, quote }   (start and end count Unicode code points)
  *   definition  { version, prompt, output: { format, template },
  *                 record_types: [{ id, name, description,
@@ -196,6 +197,20 @@ export function parseRun(value: unknown): Run {
       .map((c, i) => parseCell(c, `run.cells[${i}]`))
       .filter((c) => c !== null),
   };
+}
+
+const toSnakeCase = (key: string) => key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+
+/**
+ * An execution's `config` as the API takes it: its keys in snake_case, so
+ * `{ definitionVersion: 3 }` goes out as `{ definition_version: 3 }`.
+ * Only the top-level keys are renamed; values are sent as they are.
+ */
+export function toWireExecutionConfig(
+  config: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!config) return undefined;
+  return Object.fromEntries(Object.entries(config).map(([k, v]) => [toSnakeCase(k), v]));
 }
 
 /** `{ execution_id, stage, file_ids }` */
