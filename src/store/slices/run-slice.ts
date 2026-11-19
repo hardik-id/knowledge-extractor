@@ -1,6 +1,6 @@
 import { isAbortError, isApiError } from "@/lib/api/api-error";
 import { services } from "@/services";
-import { markQueued, mergeCells, mergeSnapshot } from "../run-state";
+import { markQueued, mergeCells, mergeSnapshot, noteKnownExtractions } from "../run-state";
 import type { RunSlice, SliceCreator } from "../types";
 
 const NO_RUN = {
@@ -115,14 +115,21 @@ export const createRunSlice: SliceCreator<RunSlice> = (set, get) => {
     applySnapshot: (run) =>
       set((s) =>
         s.runId === run.id
-          ? { runFiles: run.files, cells: mergeSnapshot(s.cells, run), runLoad: "ready" }
+          ? {
+              runFiles: run.files,
+              cells: mergeSnapshot(s.cells, run),
+              runLoad: "ready",
+              extractionRevisions: noteKnownExtractions(s.extractionRevisions, s.cells, run.cells),
+            }
           : s,
       ),
 
     applyCells: (cells) =>
       set((s) => {
         const next = mergeCells(s.cells, cells);
-        return next === s.cells ? s : { cells: next };
+        const revisions = noteKnownExtractions(s.extractionRevisions, s.cells, cells);
+        if (next === s.cells && revisions === s.extractionRevisions) return s;
+        return { cells: next, extractionRevisions: revisions };
       }),
 
     executeStage: async (stage, options) => {

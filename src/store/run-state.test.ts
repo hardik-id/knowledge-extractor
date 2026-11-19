@@ -6,6 +6,7 @@ import {
   markQueued,
   mergeCells,
   mergeSnapshot,
+  noteKnownExtractions,
   selectStageStatus,
   type CellMap,
   type StageStatusSource,
@@ -125,6 +126,47 @@ describe("markQueued", () => {
   test("does not step back when the server was faster", () => {
     const cells = mergeCells({}, [cell("a", "ingest", "running", 6, "exec-2")]);
     assert.equal(statusOf(markQueued(cells, execution), "a", "ingest"), "running");
+  });
+});
+
+describe("noteKnownExtractions", () => {
+  const withOutput = (c: StageCell): StageCell => ({
+    ...c,
+    output: { name: "a.json", contentType: "application/json", sizeBytes: 1, etag: "x" },
+  });
+
+  test("an extract cell with output means the file may have records", () => {
+    const revisions = noteKnownExtractions({}, {}, [
+      withOutput(cell("a", "extract", "succeeded", 1)),
+    ]);
+    assert.deepEqual(revisions, { a: 0 });
+  });
+
+  test("an extract cell first seen queued or running may be a re-run", () => {
+    const incoming = [cell("a", "extract", "queued", 1), cell("b", "extract", "running", 1)];
+    assert.deepEqual(noteKnownExtractions({}, {}, incoming), { a: 0, b: 0 });
+  });
+
+  test("a cell seen before it was queued, or never run, notes nothing", () => {
+    const current = mergeCells({}, [cell("a", "extract", "pending", 1)]);
+    const revisions = {};
+    assert.equal(
+      noteKnownExtractions(revisions, current, [
+        cell("a", "extract", "queued", 2),
+        cell("b", "extract", "pending", 1),
+        cell("c", "extract", "failed", 1),
+        withOutput(cell("d", "enrich", "succeeded", 1)),
+      ]),
+      revisions,
+    );
+  });
+
+  test("a known revision is kept", () => {
+    const revisions = { a: 4 };
+    assert.equal(
+      noteKnownExtractions(revisions, {}, [withOutput(cell("a", "extract", "succeeded", 1))]),
+      revisions,
+    );
   });
 });
 

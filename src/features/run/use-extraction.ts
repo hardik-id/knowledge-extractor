@@ -14,6 +14,7 @@ import type {
 } from "@/services/contracts";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore, useRunStoreApi } from "@/store/pipeline-store";
+import { awaitsExtraction } from "./extraction-pending";
 import { extractionInputEtag } from "./use-extraction-input";
 
 /**
@@ -31,7 +32,8 @@ const keyFor = (runId: string, fileId: string, sourceEtag: string, revision: num
  * when the server says they changed (the file's revision goes up) and when an
  * extraction run finishes. A file nothing was extracted from yet gives an
  * empty list at revision 0, so it can be labelled from scratch. Nothing is
- * loaded until the file has the text extraction works on (see `use-extraction-input.ts`).
+ * loaded until the file has the text extraction works on (see `use-extraction-input.ts`),
+ * nor while its first known extraction is on its way (`awaitsExtraction`).
  * Pass `null` when no file is chosen.
  */
 export function useFileExtraction(fileId: string | null): AsyncData<FileExtraction> {
@@ -42,8 +44,9 @@ export function useFileExtraction(fileId: string | null): AsyncData<FileExtracti
     fileId ? (s.cells[fileId]?.extract?.output?.etag ?? "") : "",
   );
   const revision = usePipelineStore((s) => (fileId ? (s.extractionRevisions[fileId] ?? 0) : 0));
+  const waiting = usePipelineStore((s) => (fileId ? awaitsExtraction(s, fileId) : false));
 
-  const target = runId && fileId && sourceEtag ? { runId, fileId, sourceEtag } : null;
+  const target = runId && fileId && sourceEtag && !waiting ? { runId, fileId, sourceEtag } : null;
 
   return useAsyncData(
     target
