@@ -15,6 +15,7 @@ import {
   type DefinitionVersionSummary,
   type ExtractionChange,
   type Project,
+  type ProjectPage,
   type ProjectPatch,
   type PublishResult,
   type ExtractionDefinition,
@@ -336,6 +337,16 @@ export function parseProjects(value: unknown): Project[] {
   return array(object(value, "projects").items, "projects.items").map((p, i) =>
     parseProject(p, `projects.items[${i}]`),
   );
+}
+
+/** `{ items: [project], next }` with the cursor kept. */
+export function parseProjectPage(value: unknown): ProjectPage {
+  const page = object(value, "projects");
+  const next = page.next;
+  if (next !== null && next !== undefined && typeof next !== "string") {
+    invalid("projects.next", "text or null");
+  }
+  return { items: parseProjects(value), next: next ?? null };
 }
 
 export function toWireProjectPatch(patch: ProjectPatch) {

@@ -90,6 +90,23 @@ describe("mock projects", () => {
     assert.equal(listed[0].documentCount, 1);
   });
 
+  test("the list comes in pages with a cursor to the next", async () => {
+    const backend = backendOn();
+    for (const name of ["A", "B", "C"]) await backend.createProject({ name });
+    const first = await backend.listProjectsPage({ pageSize: 2 });
+    assert.deepEqual(
+      first.items.map((p) => p.name),
+      ["C", "B"],
+    );
+    assert.ok(first.next);
+    const second = await backend.listProjectsPage({ cursor: first.next, pageSize: 2 });
+    assert.deepEqual(
+      second.items.map((p) => p.name),
+      ["A"],
+    );
+    assert.equal(second.next, null);
+  });
+
   test("a project's run can't be deleted; deleting the project removes the run", async () => {
     const backend = backendOn();
     const project = await backend.createProject({ name: "P" });

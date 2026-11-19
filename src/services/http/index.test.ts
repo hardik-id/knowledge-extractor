@@ -82,6 +82,19 @@ describe("projects, documents, versions and the conversation", () => {
     );
   });
 
+  test("a page of projects asks for the cursor it was given", async () => {
+    const { client, requests } = recordingClient({ items: [], next: null });
+    const projects = createHttpProjectsApi(client);
+
+    await projects.listPage();
+    await projects.listPage({ cursor: "c 1" });
+
+    assert.deepEqual(
+      requests.map((r) => r.url),
+      ["https://api.test/api/v1/projects", "https://api.test/api/v1/projects?cursor=c+1"],
+    );
+  });
+
   test("setting the documents is a PUT of the items to the run's documents", async () => {
     const { client, requests } = recordingClient({
       id: "r1",
