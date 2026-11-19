@@ -461,6 +461,13 @@ export class MockBackend {
   async setDocuments(runId: string, files: SourceFile[]): Promise<Run> {
     await this.wait(LATENCY_MS);
     const run = this.requireRun(runId);
+    if (Object.values(run.cells).some(isActive)) {
+      throw new ApiError({
+        status: 409,
+        code: "execution_in_progress",
+        message: "The run is working: wait for it to finish.",
+      });
+    }
     if (files.length > 0) {
       const plan = planFor(files);
       if (plan.extractionInput !== (run.extractionInput ?? "enrich")) {

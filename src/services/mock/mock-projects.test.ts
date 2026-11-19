@@ -178,6 +178,19 @@ describe("mock documents of a run", () => {
     await rejectsWithCode(backend.setDocuments("nope", DOCS), "run_not_found", 404);
   });
 
+  test("the documents can't change while an extraction is running", async () => {
+    const backend = backendOn();
+    const project = await backend.createProject({ name: "P" });
+    await backend.setDocuments(project.runId, DOCS.slice(0, 2));
+    await backend.executeStage(project.runId, "extract");
+    await rejectsWithCode(
+      backend.setDocuments(project.runId, DOCS.slice(0, 1)),
+      "execution_in_progress",
+      409,
+    );
+    assert.equal((await backend.getRun(project.runId)).files.length, 2);
+  });
+
   test("subscribers hear run.changed", async () => {
     const backend = backendOn();
     const project = await backend.createProject({ name: "P" });
