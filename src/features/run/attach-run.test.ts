@@ -106,6 +106,16 @@ describe("a run, from file selection to live updates", () => {
     assert.equal(status("ingest"), "idle");
   });
 
+  test("an assistant.cleared event empties the conversation", async () => {
+    await startRun();
+    const runId = state().runId!;
+    state().setAssistantMessages([
+      { id: "m1", role: "user", text: "hi", status: "done", createdAt: "2026-01-01T00:00:00Z" },
+    ] as never);
+    await backend.clearAssistantMessages(runId);
+    await until(() => state().assistantMessages.length === 0, "the conversation is empty");
+  });
+
   test("asking twice at the same moment creates one run", async () => {
     state().setSelection(FILES);
     await Promise.all([state().ensureRun(), state().ensureRun()]);

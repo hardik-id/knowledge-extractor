@@ -17,6 +17,8 @@ export interface AssistantState {
   busy: boolean;
   /** Resolves true when the message was accepted. */
   send: (text: string) => Promise<boolean>;
+  /** Removes the whole conversation. Resolves true when it was cleared. */
+  clear: () => Promise<boolean>;
 }
 
 /**
@@ -56,5 +58,20 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
     }
   };
 
-  return { messages, isLoading, error, retry, busy, send };
+  const clear = async () => {
+    if (!runId || busy) return false;
+    setSending(true);
+    try {
+      await services.extraction.clearAssistantMessages(runId);
+      setAssistantMessages([]);
+      return true;
+    } catch (e) {
+      toast.error("Couldn't clear the conversation", { description: describeApiError(e) });
+      return false;
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return { messages, isLoading, error, retry, busy, send, clear };
 }
