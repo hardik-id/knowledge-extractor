@@ -104,7 +104,7 @@ A project is a name on a run: the run keeps the documents, the configuration, th
 
 ### Changing the documents of a run
 
-`PUT /runs/{run_id}/documents` with `{ items: [...] }`, the same items as `POST /runs`, replaces the run's documents. A document in both lists keeps its run file (same id, its cell and its records); one left out is dropped with its cell and records; a new one starts `pending`. The configuration and the conversation are kept. The answer is the run, as in section 4, and the run's sockets get `{ "type": "run.changed" }`: fetch the snapshot again. The same rules as section 4 apply (`mixed_sources`, access to each document).
+`PUT /runs/{run_id}/documents` with `{ items: [...] }`, the same items as `POST /runs`, replaces the run's documents. A document in both lists keeps its run file (same id, its cell and its records); one left out is dropped with its cell and records; a new one starts `pending`. The configuration and the conversation are kept. The answer is the run, as in section 4, and the run's sockets get `{ "type": "run.changed" }`: fetch the snapshot again. The same rules as section 4 apply (`mixed_sources`, access to each document). While a file of the run is queued or running the answer is 409 `execution_in_progress` and nothing changes.
 
 ## 5. How extraction reads the document
 

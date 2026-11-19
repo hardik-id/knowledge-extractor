@@ -144,7 +144,8 @@ export interface RunsApi {
    * its run file (same id, its cell, its records); one left out is dropped
    * with everything on it; a new one starts pending. The configuration and
    * the conversation are kept. Resolves with the run as it is now.
-   * Rejects with `mixed_sources` (422).
+   * Rejects with `mixed_sources` (422), and with `execution_in_progress` (409)
+   * while a file of the run is queued or running.
    */
   setDocuments(runId: string, files: SourceFile[]): Promise<Run>;
   /** Rejects with `run_belongs_to_project` (409) for the run of a project: delete the project instead. */
