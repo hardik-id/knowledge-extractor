@@ -31,6 +31,7 @@ import {
   type NewProjectInput,
   type NewRecordInput,
   type Project,
+  type ProjectPage,
   type ProjectPatch,
   type PublishResult,
   type RecordPatch,
@@ -72,6 +73,7 @@ const DEFAULT_PROJECTS_KEY = "knowledge-extractor:mock-projects";
 const MAX_PROJECT_NAME_LENGTH = 120;
 
 const LATENCY_MS = 150;
+const PROJECT_PAGE_SIZE = 20;
 const QUEUE_STAGGER_MS = 250;
 const INGEST_STEPS = 10;
 const WORK_MS: Record<Exclude<WorkStageId, "ingest">, number> = {
@@ -343,6 +345,18 @@ export class MockBackend {
     return [...this.projects.values()]
       .map((project) => this.projectView(project))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
+  }
+
+  /** A page of the list. The cursor is the offset into the ordered list, as text. */
+  async listProjectsPage(
+    options: { cursor?: string | null; signal?: AbortSignal; pageSize?: number } = {},
+  ): Promise<ProjectPage> {
+    const all = await this.listProjects(options.signal);
+    const size = options.pageSize ?? PROJECT_PAGE_SIZE;
+    const start = options.cursor ? Number.parseInt(options.cursor, 10) : 0;
+    if (!Number.isInteger(start) || start < 0) throw badRequest("The cursor is not valid.");
+    const end = start + size;
+    return { items: all.slice(start, end), next: end < all.length ? String(end) : null };
   }
 
   async createProject(input: NewProjectInput): Promise<Project> {

@@ -1,158 +1,176 @@
 "use client";
 
-import Link from "next/link";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
 import { CloudOff, FolderOpen, LoaderCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
 import { useAsyncData } from "@/lib/use-async-data";
+import type { Project } from "@/services/contracts";
 import { services } from "@/services";
 import { describeApiError } from "@/services/errors";
+import { DeleteProjectDialog } from "./delete-project-dialog";
 import { projectHref } from "./nav-steps";
+import { ProjectFormDialog } from "./project-form-dialog";
+import { ProjectRow } from "./project-row";
 import { StudioPanel } from "./studio-panel";
 
 /**
- * Studio's entry: the person's projects by name, and "New project". A plain
- * list until the project list proper exists.
+ * Studio's entry: the person's projects, last worked on first, with
+ * "New project", rename and delete.
  */
 export function ProjectsEntry() {
-  const projects = useAsyncData("projects", (signal) => services.projects.list(signal));
+  const router = useRouter();
+  const firstPage = useAsyncData("projects", (signal) => services.projects.listPage({ signal }));
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Later pages, and what the person changed on this screen since the list loaded.
+  const [more, setMore] = useState<{ items: Project[]; next: string | null } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
+  const [edited, setEdited] = useState<Record<string, Project>>({});
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
+
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState<Project | null>(null);
+
+  const loaded = firstPage.data ? [...firstPage.data.items, ...(more?.items ?? [])] : null;
+  const projects = loaded
+    ?.filter((p) => !removed.has(p.id))
+    .map((p) => edited[p.id] ?? p)
+    // A renamed project is the latest changed one.
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const next = more ? more.next : (firstPage.data?.next ?? null);
+
+  const showMore = async () => {
+    if (next === null) return;
+    setLoadingMore(true);
+    setMoreError(null);
+    try {
+      const page = await services.projects.listPage({ cursor: next });
+      const known = new Set(
+        [...(firstPage.data?.items ?? []), ...(more?.items ?? [])].map((p) => p.id),
+      );
+      setMore({
+        items: [...(more?.items ?? []), ...page.items.filter((p) => !known.has(p.id))],
+        next: page.next,
+      });
+    } catch (failure) {
+      setMoreError(describeApiError(failure));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const isEmpty =
+    projects !== undefined && projects !== null && projects.length === 0 && next === null;
+  const newProjectButton = (
+    <Button onClick={() => setCreating(true)}>
+      <Plus data-icon="inline-start" />
+      New project
+    </Button>
+  );
 
   return (
     <StudioPanel
       id="studio-projects"
       title="Projects"
       description="Each project keeps its documents, configuration, conversation and records."
-      actions={<NewProjectButton />}
+      actions={isEmpty ? undefined : newProjectButton}
     >
-      {projects.error ? (
-        <EmptyState
-          icon={CloudOff}
-          title="Couldn't load your projects"
-          description={describeApiError(projects.error)}
-          action={
-            <Button variant="outline" onClick={projects.retry}>
-              Try again
-            </Button>
-          }
-        />
-      ) : !projects.data ? (
-        <div aria-busy="true" aria-label="Loading projects" className="space-y-2">
-          <Skeleton className="h-12 w-full max-w-xl" />
-          <Skeleton className="h-12 w-full max-w-xl" />
-        </div>
-      ) : projects.data.length === 0 ? (
-        <EmptyState
-          icon={FolderOpen}
-          title="No projects yet"
-          description="Start a new project to choose documents and extract from them."
-        />
-      ) : (
-        <ul aria-label="Your projects" className="flex max-w-xl flex-col gap-2">
-          {projects.data.map((project) => (
-            <li key={project.id}>
-              <Link
-                href={projectHref(project.id)}
-                className="flex min-h-12 items-center rounded-lg border border-border-subtle bg-surface-raised px-4 py-3 text-[17px] leading-6 font-semibold text-link transition-[border-color,box-shadow] hover:border-border-control hover:shadow-card"
-              >
-                <span className="truncate">{project.name}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div ref={listRef} tabIndex={-1} className="max-w-3xl outline-none">
+        {firstPage.error ? (
+          <EmptyState
+            icon={CloudOff}
+            title="Couldn't load your projects"
+            description={describeApiError(firstPage.error)}
+            action={
+              <Button variant="outline" onClick={firstPage.retry}>
+                Try again
+              </Button>
+            }
+          />
+        ) : !projects ? (
+          <div aria-busy="true" aria-label="Loading projects" className="space-y-3">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : isEmpty ? (
+          <EmptyState
+            icon={FolderOpen}
+            title="No projects yet"
+            description="A project holds the documents you choose, how to extract from them, your conversation with the assistant and the records that come out."
+            action={newProjectButton}
+          />
+        ) : (
+          <>
+            <ul aria-label="Your projects" className="flex flex-col gap-3">
+              {projects.map((project) => (
+                <ProjectRow
+                  key={project.id}
+                  project={project}
+                  onEdit={setEditing}
+                  onDelete={setDeleting}
+                />
+              ))}
+            </ul>
+            {next !== null && (
+              <div className="mt-4 flex flex-col items-start gap-2">
+                <Button variant="outline" disabled={loadingMore} onClick={() => void showMore()}>
+                  {loadingMore && (
+                    <LoaderCircle data-icon="inline-start" className="animate-spin" />
+                  )}
+                  {loadingMore ? "Loading…" : "Show more"}
+                </Button>
+                {moreError && (
+                  <p role="alert" className="text-[13px] leading-[18px] text-danger">
+                    {moreError}
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <ProjectFormDialog
+        open={creating}
+        onOpenChange={setCreating}
+        title="New project"
+        description="Name it after what you want to extract."
+        submitLabel="Create project"
+        busyLabel="Creating…"
+        initial={{ name: "", description: "" }}
+        onSubmit={async (values) => {
+          const project = await services.projects.create(values);
+          router.push(projectHref(project.id));
+        }}
+      />
+      <ProjectFormDialog
+        open={editing !== null}
+        onOpenChange={(open) => !open && setEditing(null)}
+        title="Edit project"
+        description="Change its name or description. Its documents and records stay as they are."
+        submitLabel="Save"
+        busyLabel="Saving…"
+        initial={{ name: editing?.name ?? "", description: editing?.description ?? "" }}
+        onSubmit={async (values) => {
+          if (!editing) return;
+          const saved = await services.projects.rename(editing.id, values);
+          setEdited((current) => ({ ...current, [saved.id]: saved }));
+        }}
+      />
+      <DeleteProjectDialog
+        project={deleting}
+        onCancel={() => setDeleting(null)}
+        onDeleted={async (project) => {
+          await services.projects.remove(project.id);
+          setRemoved((current) => new Set(current).add(project.id));
+        }}
+        onClosedAfterDelete={() => listRef.current?.focus()}
+      />
     </StudioPanel>
-  );
-}
-
-/** Asks for a name, makes the project and opens it. */
-function NewProjectButton() {
-  const router = useRouter();
-  const nameId = useId();
-  const errorId = useId();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const onOpenChange = (next: boolean) => {
-    if (busy) return;
-    setOpen(next);
-    setName("");
-    setError(null);
-  };
-
-  const create = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!name.trim()) {
-      setError("Give the project a name.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const project = await services.projects.create({ name: name.trim() });
-      router.push(projectHref(project.id));
-    } catch (failure) {
-      setError(describeApiError(failure));
-      setBusy(false);
-    }
-  };
-
-  return (
-    <>
-      <Button onClick={() => onOpenChange(true)}>
-        <Plus data-icon="inline-start" />
-        New project
-      </Button>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <form onSubmit={(event) => void create(event)} className="flex flex-col gap-4">
-            <DialogHeader>
-              <DialogTitle>New project</DialogTitle>
-              <DialogDescription>Name it after what you want to extract.</DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={nameId}>Name</Label>
-              <Input
-                id={nameId}
-                value={name}
-                maxLength={120}
-                autoFocus
-                onChange={(event) => setName(event.target.value)}
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? errorId : undefined}
-              />
-              {error && (
-                <p id={errorId} className="text-[13px] leading-[18px] text-danger">
-                  {error}
-                </p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={busy}>
-                {busy && <LoaderCircle data-icon="inline-start" className="animate-spin" />}
-                {busy ? "Creating…" : "Create project"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }

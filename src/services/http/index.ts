@@ -21,6 +21,7 @@ import {
   parseDefinitionVersions,
   parseExecution,
   parseProject,
+  parseProjectPage,
   parseProjects,
   parseEtagHeader,
   parseExtractionChangedMessage,
@@ -88,6 +89,9 @@ const toWireItem = (file: SourceFile) => ({
 export function createHttpProjectsApi(client: HttpClient): ProjectsApi {
   return {
     list: async (signal) => parseProjects(await client.get("projects", { signal })),
+
+    listPage: async ({ cursor, signal } = {}) =>
+      parseProjectPage(await client.get("projects", { signal, query: { cursor } })),
 
     create: async (input) =>
       parseProject(

@@ -21,6 +21,7 @@ export function createMockServices(backend: MockBackend = new MockBackend()): Se
     },
     projects: {
       list: (signal) => backend.listProjects(signal),
+      listPage: (options) => backend.listProjectsPage(options),
       create: (input) => backend.createProject(input),
       get: (projectId, signal) => backend.getProject(projectId, signal),
       rename: (projectId, patch) => backend.updateProject(projectId, patch),

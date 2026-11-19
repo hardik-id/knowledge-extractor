@@ -15,6 +15,7 @@ import {
   parseExtractionChangedMessage,
   parseFileExtraction,
   parseProject,
+  parseProjectPage,
   parseProjects,
   parsePublishResult,
   parseRun,
@@ -536,6 +537,12 @@ describe("project and version parsers", () => {
       isInvalidResponse,
     );
     assert.throws(() => parseProjects([wireProject]), isInvalidResponse);
+  });
+
+  test("a page of projects keeps its cursor", () => {
+    assert.equal(parseProjectPage({ items: [wireProject], next: "abc" }).next, "abc");
+    assert.equal(parseProjectPage({ items: [wireProject], next: null }).next, null);
+    assert.throws(() => parseProjectPage({ items: [], next: 4 }), isInvalidResponse);
   });
 
   test("the list of versions reads its items", () => {

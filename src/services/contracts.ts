@@ -168,6 +168,12 @@ export interface Project {
   updatedAt: string; // ISO-8601
 }
 
+export interface ProjectPage {
+  items: Project[];
+  /** An opaque cursor for the next page, or null on the last one. */
+  next: string | null;
+}
+
 export interface NewProjectInput {
   /** Required, not blank, at most 120 characters. */
   name: string;
@@ -186,6 +192,8 @@ export interface ProjectPatch {
 export interface ProjectsApi {
   /** The first page, last activity first. */
   list(signal?: AbortSignal): Promise<Project[]>;
+  /** One page, last activity first. Pass the `next` of the page before to get the one after it. */
+  listPage(options?: { cursor?: string | null; signal?: AbortSignal }): Promise<ProjectPage>;
   /** Makes the project and its empty run. */
   create(input: NewProjectInput): Promise<Project>;
   get(projectId: string, signal?: AbortSignal): Promise<Project>;
