@@ -58,7 +58,9 @@ Claims available without extra setup:
 | `preferred_username` | usually the sign-in name. Show it, don't key on it |
 | `scp`                | the scopes the token grants, space separated       |
 
-App roles can be added to the registration later if the backend wants roles in the token (see the questions below).
+The backend keeps its own user record, keyed by `oid` and `tid` and created the first time it sees a valid token from that person. It updates the display names when a token carries different ones.
+
+There are no roles yet: the backend does not read app roles or groups. They can be added to the registration later if it needs them.
 
 ## 3. Permissions are the backend's own
 
@@ -100,6 +102,13 @@ Only if the backend has a WebSocket. A browser can't set a header on a socket, s
 - The ticket is **single-use**, **short-lived** (seconds) and **tied to the person** who asked for it.
 - The UI puts it in the socket URL: `<ws-base>/ws/runs/{run_id}/?ticket=<ticket>`. It asks for a new ticket each time it opens or reopens a socket.
 - The socket handler checks the ticket, that it is unused and not expired, and that this person may follow this run. Then it burns the ticket.
+- When a check fails, the socket is accepted and then closed with a code, so the browser can see why:
+
+| Close code | When                                                        | What the UI does                      |
+| ---------- | ----------------------------------------------------------- | ------------------------------------- |
+| 4401       | no ticket, or an unknown, used or expired one               | asks for a new ticket and tries again |
+| 4404       | the run is not this person's, does not exist or was deleted | stops, and does not reconnect         |
+
 - A ticket is a secret in a URL. Keep it out of access logs, or log only the path.
 
 Without a socket the UI does not call this endpoint, and nothing here is needed.
@@ -112,6 +121,4 @@ Without a socket the UI does not call this endpoint, and nothing here is needed.
 
 ## Open questions
 
-- **Roles or groups.** Does the backend want app roles or group ids in the token, to decide what a person may do? Roles are set on the registration. Groups can make the token large for people in many groups.
 - **Conditional Access.** A policy such as multi-factor authentication can make Entra ask for more proof. The API would answer 401 with a claims challenge. The UI treats that as an ended session for now, and asks for a sign-in again.
-- **User record.** Does the backend keep its own user record, created the first time it sees an `oid`? Or does it only read the claims on each call?

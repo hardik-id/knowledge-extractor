@@ -23,6 +23,7 @@ import {
   parseRun,
   parseSourceFiles,
   toWireDefinition,
+  toWireExecutionConfig,
   toWireFieldValues,
   toWireNewRecord,
   toWireRecordPatch,
@@ -87,7 +88,7 @@ export function createHttpRunsApi(client: HttpClient): RunsApi {
     executeStage: async (runId, stage, options = {}) =>
       parseExecution(
         await client.post(`runs/${enc(runId)}/stages/${enc(stage)}/executions`, {
-          body: { file_ids: options.fileIds, config: options.config },
+          body: { file_ids: options.fileIds, config: toWireExecutionConfig(options.config) },
         }),
       ),
 

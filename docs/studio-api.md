@@ -4,11 +4,11 @@ Knowledge Studio is a second app in the same UI (the `/studio` route). It has tw
 
 The UI side is `src/services/contracts.ts` (`DocumentsApi`, `SourceFile.etag`), `src/services/http/` and `src/services/mock/`. If the real API has to differ, change this document and those places together.
 
-Status: the UI uses every section. The endpoint names are open (see the questions at the end).
+Status: the UI uses every section, and the Django API (`hardik-id/knowledge-extractor-api`) serves all of it. For Studio it serves `documents`, `documents/{id}`, `runs`, `runs/{id}`, the extraction definition, executions of `extract`, a file's extraction and its corrections, the assistant's messages, `ws-ticket` and the run's socket. It does not serve `sources/...`, stage outputs or `publish`, which only the pipeline app uses. `npm run test:api` walks the Studio flow against a running backend (`API_BASE_URL`, `DEV_ACCESS_TOKEN`; see `.env.example`).
 
 ## Model
 
-- A **document** is one file in the container. Its **id** is whatever the API uses to find it again (a blob path, or an opaque id). The UI never builds an id.
+- A **document** is one file in the container. Its **id** is whatever the API uses to find it again: today the blob path (`enriched/engineering/architecture/platform-adrs.md`), so it may contain slashes. The UI never builds an id.
 - A document has an **ETag**. It changes whenever the document changes.
 - A person only ever sees documents they may open. The API decides that, not the UI.
 - A run is still created from the chosen documents. It has one stage, `extract`.
@@ -31,7 +31,9 @@ Where a person may not even know a document exists, 404 is fine instead of 403.
 
 `GET /documents?q=<text>`
 
-Returns the documents the person can open, filtered by `q` on name and location. An empty or missing `q` lists all.
+Returns the documents the person can open, filtered by `q` on name and location (a substring, case does not matter). An empty or missing `q` lists all.
+
+The name `documents` stays.
 
 ```json
 {
@@ -58,6 +60,7 @@ Returns the documents the person can open, filtered by `q` on name and location.
 
 `GET /documents/{document_id}`
 
+- The id goes in the path percent-encoded, as the UI sends it (`encodeURIComponent`): `documents/enriched%2Fengineering%2F…`. The API accepts `%2F` in it.
 - The body is the document as it is stored: UTF-8 Markdown with YAML front matter. No JSON wrapper.
 - `Content-Type` says what it is (`text/markdown; charset=utf-8`).
 - `ETag` is the document's version, in the usual HTTP form (`"0x8DC1…"`). The UI strips the quotes and a `W/` prefix. A response without an `ETag` header is an error in the UI.
@@ -87,6 +90,7 @@ Errors: 401, 403, 404 as in section 1.
 - `source_ref` is the document id from the listing.
 - A run whose files are all storage documents (`source: "storage"`) has only the `extract` stage: one cell per file, starting `pending`. It has no ingest, transform, classify or enrich cells. A run can't mix storage documents with other files: the API answers 422 `mixed_sources`. Any other run is the full pipeline.
 - The API should check that the person may open each document, and answer 403 `forbidden` or 404 `document_not_found` for the first that fails, rather than failing later in the stage.
+- A run lives until it is deleted (`DELETE /runs/{run_id}`). It does not expire with a session.
 - The response is the run, as in extraction-api.md. Executing, snapshots, live updates, definitions, records, corrections and the assistant are all run-scoped and work as described there.
 
 ## 5. How extraction reads the document
@@ -107,13 +111,9 @@ A document can change in storage at any time, outside the run.
 
 ## 7. Paging
 
-The first version lists one page only, as the other sources do. A container can hold many documents, so the API should limit the page itself and return the newest first. A cursor (`next` in the response, `cursor` in the query) can be added later without breaking the call.
+The list is one page, capped by the API, newest first (the Django API returns at most 100 documents) and without a cursor. The UI does not page. A cursor (`next` in the response, `cursor` in the query) can be added later without breaking the call.
 
 ## Open questions
 
-- **Names.** `documents` is the name the UI uses now. The backend owner is thinking of something like `/list-files`. Any name works if it is changed in `src/services/http/index.ts` and here.
-- **Document ids.** A blob path contains slashes. Should the id be an opaque string, or must the path be encoded in the URL (`documents/{id}`)? The UI encodes it with `encodeURIComponent`, so the router has to accept `%2F`.
-- **Paging and search.** How many documents are expected? Is `q` a prefix, a substring, or full text?
 - **Stale on the server.** Should the API mark the extraction itself (for example a `stale` flag) when it notices a new ETag, or is the UI's comparison enough?
 - **Folders.** Does the list stay flat with `location`, or does the studio need to browse the container tree?
-- **Run lifetime.** A run is deleted with `DELETE /runs/{run_id}` as today. Do runs of documents live longer than a session?

@@ -77,6 +77,8 @@ Extraction runs like every other stage:
 
 `POST /runs/{run_id}/stages/extract/executions` with `{ "file_ids": [...], "config": { "definition_version": 3 } }`
 
+`config` is sent with snake_case keys: the UI's `definitionVersion` goes out as `definition_version` (`toWireExecutionConfig` in `src/services/http/parsers.ts`). It is the version the person last saved.
+
 Progress arrives as cells, as for the other stages. When a file finishes, the API also sends the WebSocket message in section 4.
 
 ### Service workflow
