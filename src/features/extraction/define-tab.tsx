@@ -21,7 +21,7 @@ import {
   updateRecordType,
 } from "./definition-draft";
 import { AssistantPanel } from "./assistant-panel";
-import { FieldEditor, Problem } from "./field-editor";
+import { FieldTable, Problem } from "./field-table";
 import type { ExtractionDefinitionState } from "./use-extraction-definition";
 
 const FORMAT_LABEL: Record<OutputFormat, string> = {
@@ -95,7 +95,8 @@ export function DefineTab({ definition, definitionNote, showSave = true }: Defin
             </h2>
             <p className="max-w-[68ch] text-ink-muted">
               A record type is one kind of thing to find, such as an ADR. Each has fields to fill
-              in.
+              in. Tick Exact quote to copy a value word for word; leave it unticked and the model
+              works it out, with the passage it relied on.
             </p>
           </div>
 
@@ -113,7 +114,7 @@ export function DefineTab({ definition, definitionNote, showSave = true }: Defin
             return (
               <div
                 key={type.id}
-                className="space-y-4 rounded-lg border border-border-subtle bg-surface-raised p-4 shadow-card"
+                className="space-y-3 rounded-lg border border-border-subtle bg-surface-raised p-4 shadow-card"
               >
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] md:items-start">
                   <div>
@@ -144,12 +145,12 @@ export function DefineTab({ definition, definitionNote, showSave = true }: Defin
                   </div>
                   <div className="md:mt-6">
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Remove record type"
                       onClick={() => setDraft((d) => removeRecordType(d, type.id))}
                     >
-                      <Trash2 data-icon="inline-start" />
-                      Remove record type
+                      <Trash2 aria-hidden />
                     </Button>
                   </div>
                 </div>
@@ -159,26 +160,19 @@ export function DefineTab({ definition, definitionNote, showSave = true }: Defin
                     No fields. A record is then just the block of text it covers.
                   </p>
                 ) : (
-                  <ul
-                    className="flex flex-col gap-3"
-                    aria-label={`Fields of ${type.name || "this record type"}`}
-                  >
-                    {type.fields.map((field, index) => (
-                      <FieldEditor
-                        key={field.id}
-                        field={field}
-                        index={index}
-                        count={type.fields.length}
-                        errors={errors.fields[field.id]}
-                        showErrors={showErrors}
-                        onChange={(patch) =>
-                          setDraft((d) => updateField(d, type.id, field.id, patch))
-                        }
-                        onRemove={() => setDraft((d) => removeField(d, type.id, field.id))}
-                        onMove={(delta) => setDraft((d) => moveField(d, type.id, field.id, delta))}
-                      />
-                    ))}
-                  </ul>
+                  <FieldTable
+                    caption={type.name || "this record type"}
+                    fields={type.fields}
+                    errors={errors.fields}
+                    showErrors={showErrors}
+                    onChange={(fieldId, patch) =>
+                      setDraft((d) => updateField(d, type.id, fieldId, patch))
+                    }
+                    onRemove={(fieldId) => setDraft((d) => removeField(d, type.id, fieldId))}
+                    onMove={(fieldId, delta) =>
+                      setDraft((d) => moveField(d, type.id, fieldId, delta))
+                    }
+                  />
                 )}
                 <Button
                   variant="outline"

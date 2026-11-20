@@ -22,9 +22,9 @@ test.describe("the assistant", () => {
     await expect(proposal.getByText("Approver", { exact: false }).first()).toBeVisible();
 
     // Nothing changes until the person applies it.
-    await expect(page.getByRole("button", { name: "Remove Approver" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "More actions for Approver" })).toHaveCount(0);
     await proposal.getByRole("button", { name: "Apply" }).click();
-    await expect(page.getByRole("button", { name: "Remove Approver" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "More actions for Approver" })).toBeVisible();
     await expect(page.getByText("Unsaved changes").first()).toBeVisible();
 
     // The conversation goes, the configuration (with its unsaved field) stays.
@@ -35,7 +35,7 @@ test.describe("the assistant", () => {
       .click();
     await expect(extraction.conversation.getByRole("region")).toHaveCount(0);
     await expect(extraction.conversation.getByText("add a field for the approver")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Remove Approver" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "More actions for Approver" })).toBeVisible();
     await expect(page.getByText("Unsaved changes").first()).toBeVisible();
   });
 
