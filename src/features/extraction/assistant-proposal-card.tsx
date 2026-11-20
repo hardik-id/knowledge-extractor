@@ -2,15 +2,16 @@ import { CircleCheck, CircleSlash, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AssistantProposal } from "@/services/contracts";
 import type { Draft } from "./definition-draft";
-import { diffProposal } from "./proposal-diff";
+import { diffProposal, shownOutcome, type ProposalOutcome } from "./proposal-diff";
 
-export type ProposalOutcome = "open" | "applied" | "dismissed" | "replaced";
+export type { ProposalOutcome };
 
 const OUTCOME: Record<
-  Exclude<ProposalOutcome, "open">,
+  Exclude<ReturnType<typeof shownOutcome>, "open">,
   { label: string; icon: typeof CircleCheck }
 > = {
   applied: { label: "Applied", icon: CircleCheck },
+  included: { label: "Already in what you have", icon: CircleCheck },
   dismissed: { label: "Dismissed", icon: CircleSlash },
   replaced: { label: "Replaced by a newer proposal", icon: History },
 };
@@ -29,7 +30,8 @@ export function AssistantProposalCard({
   onDismiss: () => void;
 }) {
   const changes = diffProposal(draft, proposal.definition);
-  const done = outcome === "open" ? null : OUTCOME[outcome];
+  const shown = shownOutcome(outcome, changes.length);
+  const done = shown === "open" ? null : OUTCOME[shown];
   return (
     <section
       aria-label="Proposed changes"
