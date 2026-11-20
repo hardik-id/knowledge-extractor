@@ -142,7 +142,7 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
             aria-busy={assistant.isLoading}
             aria-label="Conversation"
             role="log"
-            className="flex min-h-24 flex-1 flex-col gap-4 overflow-y-auto pr-1"
+            className="relative flex min-h-24 flex-1 flex-col gap-4 overflow-y-auto pr-1"
           >
             {messages.map((m) => (
               <div key={m.id} className="flex flex-col gap-2">

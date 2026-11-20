@@ -201,7 +201,7 @@ export function DefineTab({ definition, definitionNote, showSave = true }: Defin
           </h2>
           <fieldset>
             <legend className="text-[13px] leading-[18px] font-semibold text-ink">Format</legend>
-            <div className="mt-1 inline-flex overflow-hidden rounded-lg border border-border-control">
+            <div className="mt-1 inline-flex overflow-hidden rounded-sm border border-border-control">
               {OUTPUT_FORMATS.map((f) => (
                 <label
                   key={f}

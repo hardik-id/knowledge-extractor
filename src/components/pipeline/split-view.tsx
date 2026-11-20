@@ -41,17 +41,17 @@ export function SplitView({
       <nav
         aria-label={listLabel}
         className={cn(
-          "max-h-72 overflow-y-auto border-b border-border-subtle bg-surface-tint md:max-h-none md:border-r md:border-b-0",
+          "relative max-h-72 overflow-y-auto border-b border-border-subtle bg-surface-tint md:max-h-none md:border-r md:border-b-0",
           aside && "md:row-span-2 lg:row-span-1",
         )}
       >
         {list}
       </nav>
-      <div className="min-w-0 overflow-y-auto bg-surface-raised">{detail}</div>
+      <div className="relative min-w-0 overflow-y-auto bg-surface-raised">{detail}</div>
       {aside && (
         <section
           aria-label={asideLabel}
-          className="min-w-0 overflow-y-auto border-t border-border-subtle bg-surface-tint md:col-start-2 lg:col-start-3 lg:border-t-0 lg:border-l"
+          className="relative min-w-0 overflow-y-auto border-t border-border-subtle bg-surface-tint md:col-start-2 lg:col-start-3 lg:border-t-0 lg:border-l"
         >
           {aside}
         </section>

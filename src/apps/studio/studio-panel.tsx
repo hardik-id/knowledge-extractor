@@ -40,7 +40,7 @@ export function StudioPanel({
       </header>
       <div
         className={cn(
-          "min-w-0 flex-1 md:min-h-0 md:overflow-y-auto",
+          "min-w-0 flex-1 relative md:min-h-0 md:overflow-y-auto",
           !flush && "px-5 py-5 sm:px-8 sm:py-6",
         )}
       >

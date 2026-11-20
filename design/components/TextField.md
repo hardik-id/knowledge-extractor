@@ -3,7 +3,7 @@
 A text field collects one value with a visible label above it and optional helper text below.
 
 ## Anatomy
-A `label` style label, then the input (`tap-target` height, `border-control` 1px outline, `radius-md`), then helper text in `caption` / `ink-muted`.
+A `label` style label, then the input (`tap-target` height, `border-control` 1px outline, `radius-sm`, 4px), then helper text in `caption` / `ink-muted`.
 
 ## Rules
 - Labels always sit above the field and stay visible. Never use placeholder-only labels.

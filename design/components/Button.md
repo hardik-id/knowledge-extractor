@@ -9,7 +9,7 @@ Buttons start one action; the primary variant marks the single most important st
 - **On hero** (`pd-btn--on-hero`): a white outline. Use only for a secondary action on `bg-hero`.
 
 ## Rules
-- Height is at least `tap-target` (48px), padding is `space-3` × `space-6`, and corners use `radius-md`.
+- Height is at least `tap-target` (48px), padding is `space-3` × `space-6`, and corners use `radius-sm` (4px).
 - Labels use the `button` style in sentence case and name the outcome: **Build index**, not **OK**.
 - Below 600px, buttons in a hero or form stack full-width with a `space-2` gap, primary on top.
 - Disabled buttons drop to 45% opacity. Always explain nearby why the action is unavailable.

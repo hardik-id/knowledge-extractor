@@ -67,7 +67,7 @@ export function AppShell({
           </Suspense>
           <ThemeToggle />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">{nav}</div>
+        <div className="relative min-h-0 flex-1 overflow-y-auto">{nav}</div>
         <div className="shrink-0 border-t border-border-subtle p-3 empty:hidden">
           <UserMenu />
         </div>
