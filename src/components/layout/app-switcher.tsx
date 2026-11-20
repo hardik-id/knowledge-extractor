@@ -15,8 +15,8 @@ import {
 
 function Mark() {
   return (
-    <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-md bg-hero">
-      <span className="size-3 rounded-full bg-brand-orange" />
+    <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-control bg-hero">
+      <span className="size-2 rounded-full bg-brand-orange" />
     </span>
   );
 }
@@ -30,11 +30,9 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
   // One app on offer: nothing to switch to, so only the product mark and name.
   if (APPS.length < 2) {
     return (
-      <div className="flex min-w-0 items-center gap-2 text-lg leading-6 font-bold text-ink-heading">
+      <div className="flex min-w-0 items-center gap-2 px-2 text-body font-semibold text-ink-heading">
         <Mark />
-        <span className={compact ? "hidden truncate sm:inline" : "line-clamp-2 leading-5"}>
-          {current.name}
-        </span>
+        <span className={compact ? "hidden truncate sm:inline" : "truncate"}>{current.name}</span>
       </div>
     );
   }
@@ -43,12 +41,10 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Switch app, current: ${current.name}`}
-        className="-ml-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-lg leading-6 font-bold text-ink-heading hover:bg-surface-tint"
+        className="flex h-control min-w-0 items-center gap-2 rounded-control px-2 text-left text-body font-semibold text-ink-heading hover:bg-surface-tint coarse:min-h-touch"
       >
         <Mark />
-        <span className={compact ? "hidden truncate sm:inline" : "line-clamp-2 leading-5"}>
-          {current.name}
-        </span>
+        <span className={compact ? "hidden truncate sm:inline" : "truncate"}>{current.name}</span>
         <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[min(22rem,calc(100vw-2rem))]">
@@ -60,7 +56,7 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
               <Link href={app.href} aria-current={isCurrent ? "page" : undefined}>
                 <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-muted" />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex flex-wrap items-center gap-2 text-base leading-6 font-semibold text-ink-heading">
+                  <span className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink-heading">
                     {app.name}
                     {app.experimental && (
                       <Badge variant="outline">
@@ -69,9 +65,7 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
                       </Badge>
                     )}
                   </span>
-                  <span className="text-[15px] leading-[22px] font-normal text-ink-muted">
-                    {app.description}
-                  </span>
+                  <span className="text-small font-normal text-ink-muted">{app.description}</span>
                 </span>
                 {isCurrent && <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-link" />}
               </Link>

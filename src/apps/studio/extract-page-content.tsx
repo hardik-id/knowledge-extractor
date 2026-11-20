@@ -80,7 +80,7 @@ function ExtractPanel({ projectId }: { projectId: string }) {
       title="Knowledge extraction"
       description="Say what to extract, run it, then review and label what it found."
       status={
-        <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <StageSummary stage="extract" />
           <Button variant="link" size="sm" asChild className="h-auto px-0">
             <Link href={projectHref(projectId)}>
