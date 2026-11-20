@@ -274,7 +274,10 @@ export function DefineTab({ definition, definitionNote, showSave = true }: Defin
               </div>
               <div className="space-y-2">
                 <p className="text-[13px] leading-[18px] font-semibold text-ink">Preview</p>
-                <pre className="max-h-80 overflow-auto rounded-lg border border-border-subtle bg-surface-tint p-3 font-mono text-[13px] leading-5 whitespace-pre-wrap text-ink">
+                <pre
+                  tabIndex={0}
+                  className="max-h-80 overflow-auto rounded-lg border border-border-subtle bg-surface-tint p-3 font-mono text-[13px] leading-5 whitespace-pre-wrap text-ink"
+                >
                   {firstType
                     ? renderTemplate(
                         template.trim() === "" ? defaultTemplate(firstType) : template,

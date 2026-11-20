@@ -105,7 +105,7 @@ function ProjectList() {
             }
           />
         ) : !projects ? (
-          <div aria-busy="true" aria-label="Loading projects" className="space-y-3">
+          <div role="status" aria-busy="true" aria-label="Loading projects" className="space-y-3">
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-24 w-full" />
           </div>
