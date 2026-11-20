@@ -1,6 +1,7 @@
 import { type Page } from "@playwright/test";
 import { addDocument, extractPath, tab } from "./pages/studio";
 import { expect, test } from "./fixtures";
+import { clickUntilOpen } from "./support/first-click";
 
 const PROMPT = "Extract each decision record and who approved it.";
 const NOTE = "Narrowed to approvals";
@@ -63,8 +64,11 @@ test("a project built in one browser is whole in a brand-new one, and each tab s
   ).toBeVisible();
   await expect(again.getByTestId("version-line")).toContainText("Version 2");
 
-  await again.getByRole("button", { name: "Version history" }).click();
-  const history = again.getByRole("dialog", { name: "Version history" });
+  const history = await clickUntilOpen(
+    again,
+    again.getByRole("button", { name: "Version history" }),
+    again.getByRole("dialog", { name: "Version history" }),
+  );
   await expect(history.getByText(NOTE)).toBeVisible();
   await history.getByRole("button", { name: "Close" }).click();
 

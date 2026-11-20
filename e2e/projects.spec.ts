@@ -6,6 +6,7 @@ import {
   pickDocuments,
   saveDocuments,
 } from "./pages/studio";
+import { clickUntilOpen } from "./support/first-click";
 
 function row(page: import("@playwright/test").Page, name: string) {
   return page.getByRole("listitem").filter({ has: page.getByRole("heading", { name }) });
@@ -34,10 +35,11 @@ test("a project made with a description shows in the list with its facts", async
 test("a project is renamed and its description changed", async ({ api, page }) => {
   await api.createProject({ name: "Old name", description: "Old description" });
   await page.goto("/studio");
-  await row(page, "Old name")
-    .getByRole("button", { name: /^Edit / })
-    .click();
-  const dialog = page.getByRole("dialog", { name: "Edit project" });
+  const dialog = await clickUntilOpen(
+    page,
+    row(page, "Old name").getByRole("button", { name: /^Edit / }),
+    page.getByRole("dialog", { name: "Edit project" }),
+  );
   await dialog.getByLabel("Name").fill("New name");
   await dialog.getByLabel("Description (optional)").fill("New description");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
@@ -52,13 +54,12 @@ test("a project is deleted after the person confirms", async ({ api, page }) => 
   await api.createProject({ name: "Keep me" });
   await api.createProject({ name: "Delete me" });
   await page.goto("/studio");
-  await row(page, "Delete me")
-    .getByRole("button", { name: /^Delete / })
-    .click();
-  await page
-    .getByRole("dialog", { name: "Delete “Delete me”?" })
-    .getByRole("button", { name: "Delete project" })
-    .click();
+  const confirm = await clickUntilOpen(
+    page,
+    row(page, "Delete me").getByRole("button", { name: /^Delete / }),
+    page.getByRole("dialog", { name: "Delete “Delete me”?" }),
+  );
+  await confirm.getByRole("button", { name: "Delete project" }).click();
 
   await expect(page.getByRole("heading", { name: "Delete me" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Keep me" })).toBeVisible();
@@ -72,10 +73,11 @@ test("the project worked on last comes first", async ({ api, page }) => {
   await page.goto("/studio");
   await expect(headings).toHaveText(["Second made", "First made"]);
 
-  await row(page, "First made")
-    .getByRole("button", { name: /^Edit / })
-    .click();
-  const dialog = page.getByRole("dialog", { name: "Edit project" });
+  const dialog = await clickUntilOpen(
+    page,
+    row(page, "First made").getByRole("button", { name: /^Edit / }),
+    page.getByRole("dialog", { name: "Edit project" }),
+  );
   await dialog.getByLabel("Description (optional)").fill("Touched last");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(dialog).toBeHidden();

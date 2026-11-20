@@ -27,15 +27,10 @@ test("review: accept a record, reject a value, accept all, add a value, read the
   context,
   page,
   person,
-  playwright,
+  request,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  const extraction = await reviewing(page, [
-    api,
-    person,
-    await playwright.request.newContext(),
-    [DOCUMENT],
-  ]);
+  const extraction = await reviewing(page, [api, person, request, [DOCUMENT]]);
   await expect(extraction.summary()).toHaveText("3 records · 3 suggested");
 
   // Accept one record.
@@ -104,14 +99,9 @@ test("a reviewed record survives a run again with another configuration version"
   api,
   page,
   person,
-  playwright,
+  request,
 }) => {
-  const extraction = await reviewing(page, [
-    api,
-    person,
-    await playwright.request.newContext(),
-    [DOCUMENT],
-  ]);
+  const extraction = await reviewing(page, [api, person, request, [DOCUMENT]]);
   await extraction
     .record(FIRST)
     .getByRole("button", { name: "Accept", exact: true })
