@@ -1,4 +1,6 @@
+import { isDeepStrictEqual } from "node:util";
 import { isApiError } from "@/lib/api/api-error";
+import { MOCK_TEMPLATES } from "@/mocks/templates";
 import { spanFromRange } from "@/lib/text-spans";
 import type {
   AssistantEvent,
@@ -206,8 +208,8 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       check(created.runId, "The project has no run.");
       check(created.documentCount === 0, `The new project has ${created.documentCount} documents.`);
       check(
-        created.configurationVersion === null,
-        `The new project has configuration version ${created.configurationVersion}, not none.`,
+        created.configurationVersion === 1,
+        `The new project has configuration version ${created.configurationVersion}, not 1.`,
       );
       const emptyRun = await services.runs.getRun(created.runId);
       check(
@@ -231,6 +233,64 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
         );
       }
       return [listed, `${listed.length} project(s), the new one among them`];
+    });
+
+    await step("List the templates", async () => {
+      const templates = await services.templates.list();
+      const ids = templates.map((t) => t.id);
+      check(
+        [...ids].sort().join() === [...MOCK_TEMPLATES.map((t) => t.id)].sort().join(),
+        `The templates are ${ids.join(", ")}; expected ${MOCK_TEMPLATES.map((t) => t.id).join(", ")}.`,
+      );
+      check(
+        templates[0].id === "adr",
+        `The first template is ${templates[0].id}, not the default adr.`,
+      );
+      for (const mock of MOCK_TEMPLATES) {
+        const served = templates.find((t) => t.id === mock.id);
+        check(
+          served &&
+            served.name === mock.name &&
+            served.description === mock.description &&
+            isDeepStrictEqual(served.definition, mock.definition),
+          `The template ${mock.id} differs from the one the mock has (src/mocks/templates.ts).`,
+        );
+      }
+      return [templates, `${ids.join(", ")}; same as the mock's`];
+    });
+
+    await step("Create a project from a template", async () => {
+      const made = await services.projects.create({
+        name: `${projectName} (skill)`,
+        templateId: "skill",
+      });
+      try {
+        check(made.configurationVersion === 1, "A project from a template starts at version 1.");
+        const read = await services.extraction.getDefinitionVersion(made.runId, 1);
+        const skill = MOCK_TEMPLATES.find((t) => t.id === "skill")!;
+        check(read.version === 1, `The configuration is version ${read.version}, not 1.`);
+        check(
+          read.note === `From template: ${skill.name}`,
+          `The note of version 1 is "${read.note}".`,
+        );
+        check(
+          read.prompt === skill.definition.prompt &&
+            isDeepStrictEqual(read.recordTypes, skill.definition.recordTypes) &&
+            isDeepStrictEqual(read.output, skill.definition.output),
+          "Version 1 is not the skill template's definition.",
+        );
+        try {
+          await services.projects.create({ name: "x", templateId: "no-such-template" });
+        } catch (error) {
+          if (isApiError(error) && error.status === 422 && error.code === "unknown_template") {
+            return [null, `version 1, "${read.note}"; unknown id is 422 unknown_template`];
+          }
+          throw error;
+        }
+        throw new Error("An unknown template id was accepted; expected 422 unknown_template.");
+      } finally {
+        await services.projects.remove(made.id).catch(() => undefined);
+      }
     });
 
     await step("Subscribe to the run's events", async () => {

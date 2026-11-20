@@ -21,13 +21,13 @@ describe("runStudioFlow", () => {
 
     await runStudioFlow(mockServices(), { log: (line) => lines.push(line), eventTimeoutMs: 5000 });
 
-    assert.equal(lines.length, 27);
+    assert.equal(lines.length, 29);
     assert.ok(
       lines.every((line) => / ok /.test(line)),
       lines.join("\n"),
     );
     assert.match(lines[0], /^ 1\. List documents/);
-    assert.match(lines.at(-1)!, /^27\. Every live update was readable/);
+    assert.match(lines.at(-1)!, /^29. Every live update was readable/);
   });
 
   test("stops at the first call the server refuses, naming the step and the answer", async () => {
@@ -77,7 +77,7 @@ describe("runStudioFlow", () => {
     await assert.rejects(
       runStudioFlow(services, { log: () => {}, eventTimeoutMs: 5000 }),
       (error: unknown) =>
-        error instanceof StudioFlowError && error.step === "7. Read the definition",
+        error instanceof StudioFlowError && error.step === "9. Read the definition",
     );
     assert.ok(deleted, "the project was deleted");
   });
@@ -94,7 +94,7 @@ describe("runStudioFlow", () => {
       runStudioFlow(services, { log: () => {}, eventTimeoutMs: 5000 }),
       (error: unknown) =>
         error instanceof StudioFlowError &&
-        error.step === "15. Read the snapshot" &&
+        error.step === "17. Read the snapshot" &&
         /Not every extract cell/.test(error.message),
     );
   });

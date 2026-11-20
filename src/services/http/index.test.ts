@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { createHttpClient } from "@/lib/api/http-client";
-import { createHttpExtractionApi, createHttpProjectsApi, createHttpRunsApi } from "./index";
+import {
+  createHttpExtractionApi,
+  createHttpProjectsApi,
+  createHttpRunsApi,
+  createHttpTemplatesApi,
+} from "./index";
 
 /** A client whose server records each request and answers with `body`. */
 function recordingClient(body: unknown) {
@@ -152,5 +157,54 @@ describe("projects, documents, versions and the conversation", () => {
     );
     assert.equal((requests[2].body as { note: string }).note, "why");
     assert.equal((requests[2].body as { base_version: number }).base_version, 3);
+  });
+});
+
+describe("templates", () => {
+  test("the templates are read from /definition-templates", async () => {
+    const { client, requests } = recordingClient({
+      items: [
+        {
+          id: "blank",
+          name: "Blank",
+          description: "Nothing set up.",
+          definition: {
+            prompt: "",
+            record_types: [],
+            output: { format: "markdown", template: "" },
+          },
+        },
+      ],
+      next: null,
+    });
+
+    const templates = await createHttpTemplatesApi(client).list();
+
+    assert.deepEqual(
+      requests.map((r) => [r.method, r.url]),
+      [["GET", "https://api.test/api/v1/definition-templates"]],
+    );
+    assert.equal(templates[0].id, "blank");
+    assert.deepEqual(templates[0].definition.recordTypes, []);
+  });
+
+  test("a project made from a template sends template_id; without one it sends none", async () => {
+    const { client, requests } = recordingClient({
+      id: "p1",
+      name: "N",
+      description: "",
+      run_id: "r1",
+      document_count: 0,
+      configuration_version: 1,
+      created_at: "t",
+      updated_at: "t",
+    });
+    const projects = createHttpProjectsApi(client);
+
+    await projects.create({ name: "N", templateId: "skill" });
+    await projects.create({ name: "N" });
+
+    assert.deepEqual(requests[0].body, { name: "N", template_id: "skill" });
+    assert.deepEqual(requests[1].body, { name: "N" });
   });
 });

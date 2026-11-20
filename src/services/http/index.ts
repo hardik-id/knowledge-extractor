@@ -6,6 +6,7 @@ import type {
   DocumentsApi,
   ExtractionApi,
   ProjectsApi,
+  TemplatesApi,
   RunEvents,
   RunsApi,
   Services,
@@ -24,6 +25,7 @@ import {
   parseProject,
   parseProjectPage,
   parseProjects,
+  parseTemplates,
   parseEtagHeader,
   parseExtractionChangedMessage,
   parseFileExtraction,
@@ -97,7 +99,11 @@ export function createHttpProjectsApi(client: HttpClient): ProjectsApi {
     create: async (input) =>
       parseProject(
         await client.post("projects", {
-          body: { name: input.name, description: input.description },
+          body: {
+            name: input.name,
+            description: input.description,
+            template_id: input.templateId,
+          },
         }),
       ),
 
@@ -114,6 +120,12 @@ export function createHttpProjectsApi(client: HttpClient): ProjectsApi {
     remove: async (projectId) => {
       await client.delete(`projects/${enc(projectId)}`);
     },
+  };
+}
+
+export function createHttpTemplatesApi(client: HttpClient): TemplatesApi {
+  return {
+    list: async (signal) => parseTemplates(await client.get("definition-templates", { signal })),
   };
 }
 
@@ -326,6 +338,7 @@ export function createHttpServices(options: HttpRunEventsOptions): Services {
     catalog: createHttpSourceCatalog(options.client),
     documents: createHttpDocumentsApi(options.client),
     projects: createHttpProjectsApi(options.client),
+    templates: createHttpTemplatesApi(options.client),
     runs: createHttpRunsApi(options.client),
     extraction: createHttpExtractionApi(options.client),
     events: createHttpRunEvents(options),

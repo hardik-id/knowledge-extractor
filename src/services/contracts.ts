@@ -179,6 +179,8 @@ export interface NewProjectInput {
   /** Required, not blank, at most 120 characters. */
   name: string;
   description?: string;
+  /** A template's id: the project's configuration starts as version 1 from it. Default: the ADR template. */
+  templateId?: string;
 }
 
 export interface ProjectPatch {
@@ -188,20 +190,37 @@ export interface ProjectPatch {
 
 /**
  * A project is private to its owner. Codes the UI handles: `project_not_found`
- * (404), `validation_error` (422, a name that is blank or too long).
+ * (404), `validation_error` (422, a name that is blank or too long),
+ * `unknown_template` (422, `create` with a `templateId` that does not exist).
  */
 export interface ProjectsApi {
   /** The first page, last activity first. */
   list(signal?: AbortSignal): Promise<Project[]>;
   /** One page, last activity first. Pass the `next` of the page before to get the one after it. */
   listPage(options?: { cursor?: string | null; signal?: AbortSignal }): Promise<ProjectPage>;
-  /** Makes the project and its empty run. */
+  /** Makes the project and its empty run, with the configuration (version 1, noted "From template: <name>") from the template. */
   create(input: NewProjectInput): Promise<Project>;
   get(projectId: string, signal?: AbortSignal): Promise<Project>;
   /** Changes the name and/or the description. */
   rename(projectId: string, patch: ProjectPatch): Promise<Project>;
   /** Deletes the project, its run and everything on it. */
   remove(projectId: string): Promise<void>;
+}
+
+// ── Templates ───────────────────────────────────────────────────────────
+
+/** A complete configuration to start a project from: prompt, record types with fields, output. */
+export interface DefinitionTemplate {
+  id: string;
+  name: string;
+  description: string;
+  definition: ExtractionDefinitionDraft;
+}
+
+/** Codes the UI handles: `template_not_found` (404). */
+export interface TemplatesApi {
+  /** Every template, the default first. */
+  list(signal?: AbortSignal): Promise<DefinitionTemplate[]>;
 }
 
 // ── Extraction ──────────────────────────────────────────────────────────
@@ -547,6 +566,7 @@ export interface Services {
   catalog: SourceCatalog;
   documents: DocumentsApi;
   projects: ProjectsApi;
+  templates: TemplatesApi;
   runs: RunsApi;
   extraction: ExtractionApi;
   events: RunEvents;

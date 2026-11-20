@@ -3,6 +3,7 @@ import { toMarkdownName } from "@/lib/format";
 import { newId } from "@/lib/id";
 import { codePointToIndex } from "@/lib/text-spans";
 import { DEFAULT_EXTRACTION_DEFINITION } from "@/mocks/extraction";
+import { DEFAULT_TEMPLATE_ID, MOCK_TEMPLATES } from "@/mocks/templates";
 import { MOCK_DOCUMENTS, mockDocumentText } from "@/mocks/documents";
 import { MOCK_FILES } from "@/mocks/files";
 import {
@@ -21,6 +22,7 @@ import {
   type ExecuteStageOptions,
   type ExtractionChange,
   type Execution,
+  type DefinitionTemplate,
   type ExtractionDefinition,
   type ExtractionDefinitionDraft,
   type ExtractionRecord,
@@ -359,9 +361,24 @@ export class MockBackend {
     return { items: all.slice(start, end), next: end < all.length ? String(end) : null };
   }
 
+  /** The templates a project can start from, the default first. */
+  async listTemplates(signal?: AbortSignal): Promise<DefinitionTemplate[]> {
+    await this.wait(LATENCY_MS);
+    signal?.throwIfAborted();
+    return structuredClone([...MOCK_TEMPLATES]);
+  }
+
   async createProject(input: NewProjectInput): Promise<Project> {
     await this.wait(LATENCY_MS);
     const name = checkName(input.name);
+    const template = MOCK_TEMPLATES.find((t) => t.id === (input.templateId ?? DEFAULT_TEMPLATE_ID));
+    if (!template) {
+      throw new ApiError({
+        status: 422,
+        code: "unknown_template",
+        message: "This template does not exist.",
+      });
+    }
     if (input.description !== undefined && typeof input.description !== "string") {
       throw badRequest("The description must be text.");
     }
@@ -383,6 +400,12 @@ export class MockBackend {
       workStages: ["extract"],
       extractionInput: "document",
       projectId: project.id,
+      definition: {
+        ...structuredClone(template.definition),
+        version: 1,
+        note: `From template: ${template.name}`,
+        createdAt: now,
+      },
     });
     this.projects.set(project.id, project);
     this.save();

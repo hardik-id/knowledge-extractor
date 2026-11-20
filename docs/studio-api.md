@@ -97,10 +97,17 @@ Errors: 401, 403, 404 as in section 1.
 
 A project is a name on a run: the run keeps the documents, the configuration, the conversation and the records, and goes on through its own endpoints. The UI starts from a project.
 
-- `POST /projects` with `{ name, description? }` makes the project and its empty run (no files, no cells) in one transaction. `GET /projects` answers `{ items, next }`, last activity first. `GET /projects/{id}`, `PATCH /projects/{id}` (`name` and/or `description`) and `DELETE /projects/{id}` (the run and everything on it go too).
-- A project on the wire: `id`, `name`, `description`, `run_id`, `document_count`, `configuration_version` (the latest saved version, or null), `created_at`, `updated_at` (the last activity, not only a rename).
+- `POST /projects` with `{ name, description?, template_id? }` makes the project and its empty run (no files, no cells) in one transaction, with the configuration already saved as version 1 from the template (default `adr`) and the note "From template: <name>". An unknown `template_id` is 422 `unknown_template` and makes nothing. `GET /projects` answers `{ items, next }`, last activity first. `GET /projects/{id}`, `PATCH /projects/{id}` (`name` and/or `description`) and `DELETE /projects/{id}` (the run and everything on it go too).
+- A project on the wire: `id`, `name`, `description`, `run_id`, `document_count`, `configuration_version` (the latest saved version; null only for a project made before templates), `created_at`, `updated_at` (the last activity, not only a rename).
 - `name` is required, at most 120 characters, not blank: otherwise 422 `validation_error`. A project that isn't the caller's, or doesn't exist, is 404 `project_not_found`.
 - `DELETE /runs/{run_id}` on the run of a project is 409 `run_belongs_to_project`: delete the project.
+
+### Templates
+
+A template is a complete configuration to start from.
+
+- `GET /definition-templates` answers `{ items: [{ id, name, description, definition }], next }`: the default (`adr`) first, then the others by name. `definition` is the configuration as in extraction-api.md (`prompt`, `record_types`, `output`) without `version`. Today: `adr`, `skill`, `blank`, `policy-rule`.
+- The UI's mock carries the same four (`src/mocks/templates.ts`); `npm run test:api` compares them with what the backend serves. A template that doesn't exist is 404 `template_not_found`.
 
 ### Changing the documents of a run
 

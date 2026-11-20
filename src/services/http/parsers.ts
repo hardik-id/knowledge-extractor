@@ -12,6 +12,7 @@ import {
   type AssistantEvent,
   type AssistantMessage,
   type AssistantProposal,
+  type DefinitionTemplate,
   type DefinitionVersionSummary,
   type ExtractionChange,
   type Project,
@@ -310,6 +311,22 @@ export function parseDefinitionVersions(value: unknown): DefinitionVersionSummar
       createdAt: string(o.created_at, `${path}.created_at`),
       recordTypeCount: number(o.record_type_count, `${path}.record_type_count`),
       fieldCount: number(o.field_count, `${path}.field_count`),
+    };
+  });
+}
+
+// ── Templates ───────────────────────────────────────────────────────────
+
+/** `{ items: [{ id, name, description, definition }], next }` */
+export function parseTemplates(value: unknown): DefinitionTemplate[] {
+  return array(object(value, "templates").items, "templates.items").map((item, i) => {
+    const path = `templates.items[${i}]`;
+    const o = object(item, path);
+    return {
+      id: string(o.id, `${path}.id`),
+      name: string(o.name, `${path}.name`),
+      description: string(o.description, `${path}.description`),
+      definition: parseDefinitionBody(o.definition, `${path}.definition`),
     };
   });
 }

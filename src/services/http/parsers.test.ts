@@ -20,6 +20,7 @@ import {
   parsePublishResult,
   parseRun,
   parseSourceFiles,
+  parseTemplates,
   toWireDefinition,
   toWireExecutionConfig,
   toWireFieldValues,
@@ -573,5 +574,68 @@ describe("project and version parsers", () => {
     assert.equal(isRunChangedMessage({ type: "cell" }), false);
     assert.equal(isAssistantClearedMessage({ type: "assistant.cleared" }), true);
     assert.equal(isAssistantClearedMessage({ type: "run.changed" }), false);
+  });
+});
+
+describe("template parser", () => {
+  const wireTemplate = {
+    id: "policy-rule",
+    name: "Policy rules",
+    description: "One rule per record.",
+    definition: {
+      prompt: "Extract every rule.",
+      record_types: [
+        {
+          id: "rt-rule",
+          name: "Rule",
+          description: "A rule.",
+          fields: [
+            {
+              id: "f-kind",
+              key: "kind",
+              name: "Kind",
+              description: "",
+              mode: "inferred",
+              value_type: "choice",
+              choices: ["obligation", "permission"],
+              multiple: false,
+            },
+          ],
+        },
+      ],
+      output: { format: "json", template: "" },
+    },
+  };
+
+  test("a template comes out in the UI's shape, with its definition", () => {
+    const [template] = parseTemplates({ items: [wireTemplate], next: null });
+    assert.equal(template.id, "policy-rule");
+    assert.equal(template.name, "Policy rules");
+    assert.equal(template.definition.output.format, "json");
+    assert.equal(template.definition.recordTypes[0].fields[0].valueType, "choice");
+    assert.deepEqual(template.definition.recordTypes[0].fields[0].choices, [
+      "obligation",
+      "permission",
+    ]);
+  });
+
+  test("a template without a definition or with a wrong output format is refused", () => {
+    assert.throws(
+      () => parseTemplates({ items: [{ ...wireTemplate, definition: undefined }] }),
+      isInvalidResponse,
+    );
+    assert.throws(
+      () =>
+        parseTemplates({
+          items: [
+            {
+              ...wireTemplate,
+              definition: { ...wireTemplate.definition, output: { format: "xml", template: "" } },
+            },
+          ],
+        }),
+      isInvalidResponse,
+    );
+    assert.throws(() => parseTemplates({}), isInvalidResponse);
   });
 });
