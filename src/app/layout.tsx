@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Source_Code_Pro, Source_Sans_3 } from "next/font/google";
+import { Inter, Source_Code_Pro } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const sourceSans = Source_Sans_3({
-  variable: "--font-source-sans",
+// Inter, self-hosted by next/font (no request to Google when the page loads), as a variable font
+// so every weight the app uses comes from one file. Tabular figures are switched on in globals.css.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  display: "swap",
 });
 
 const sourceCode = Source_Code_Pro({
@@ -33,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${sourceSans.variable} ${sourceCode.variable} h-full antialiased`}
+      className={`${inter.variable} ${sourceCode.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <Providers>{children}</Providers>

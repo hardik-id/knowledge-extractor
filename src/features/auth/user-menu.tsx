@@ -27,8 +27,8 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
         aria-label={compact ? `Account: ${account.name}` : undefined}
         className={
           compact
-            ? "rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            : "flex w-full min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left text-base leading-6 font-semibold text-ink-heading outline-none hover:bg-surface-tint focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            ? "rounded-full"
+            : "flex w-full min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left text-base leading-6 font-semibold text-ink-heading hover:bg-surface-tint"
         }
       >
         <span

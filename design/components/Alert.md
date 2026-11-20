@@ -1,5 +1,7 @@
 # Alert
 
+> In the app: `radius-panel`, a 1px hairline, `text-body`. See "Polder for apps" in `../DESIGN.md`.
+
 An alert reports the result of an action or a condition the person needs to know about.
 
 ## Rules

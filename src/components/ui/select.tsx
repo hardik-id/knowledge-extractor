@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /** A native select, styled like Input. */
 function Select({ className, ...props }: React.ComponentProps<"select">) {
@@ -7,7 +7,7 @@ function Select({ className, ...props }: React.ComponentProps<"select">) {
     <select
       data-slot="select"
       className={cn(
-        "h-8 w-full min-w-0 rounded-sm border border-input bg-transparent px-2 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive md:text-sm dark:bg-input/30 [&>option]:bg-surface-raised [&>option]:text-ink",
+        "h-control w-full min-w-0 rounded-control border border-border-control bg-transparent px-2 text-body text-ink transition-colors disabled:cursor-not-allowed disabled:bg-surface-tint disabled:opacity-60 aria-invalid:border-danger coarse:min-h-touch coarse:text-base [&>option]:bg-surface-raised [&>option]:text-ink",
         className,
       )}
       {...props}

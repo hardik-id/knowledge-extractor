@@ -1,5 +1,7 @@
 # TextField
 
+> In the app: a 32px field with a 1px `border-control` and `radius-control`, text in `text-body` (16px on a touch screen). See "Polder for apps" in `../DESIGN.md`; the sizes below are the website's.
+
 A text field collects one value with a visible label above it and optional helper text below.
 
 ## Anatomy
