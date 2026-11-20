@@ -33,22 +33,19 @@ export function AssistantProposalCard({
   const shown = shownOutcome(outcome, changes.length);
   const done = shown === "open" ? null : OUTCOME[shown];
   return (
-    <section
-      aria-label="Proposed changes"
-      className="space-y-2 rounded-lg border border-border-subtle bg-surface-tint p-3"
-    >
-      <h3 className="text-[15px] leading-6 font-semibold text-ink-heading">Proposed changes</h3>
+    <section aria-label="Proposed changes" className="space-y-2 rounded-panel bg-surface-tint p-3">
+      <h3 className="text-body font-semibold text-ink-heading">Proposed changes</h3>
       {changes.length === 0 ? (
-        <p className="text-[13px] leading-[18px] text-ink-muted">No changes to what you have</p>
+        <p className="text-small text-ink-muted">No changes to what you have</p>
       ) : (
-        <ul className="list-disc space-y-0.5 pl-5 text-[13px] leading-[18px] text-ink">
+        <ul className="list-disc space-y-0.5 pl-5 text-small text-ink">
           {changes.map((c) => (
             <li key={c}>{c}</li>
           ))}
         </ul>
       )}
       {proposal.reasons.length > 0 && (
-        <ul className="space-y-0.5 text-[13px] leading-[18px] text-ink-muted">
+        <ul className="space-y-0.5 text-small text-ink-muted">
           {proposal.reasons.map((r, i) => (
             <li key={`${r.path}-${i}`}>
               <span className="font-semibold text-ink">{r.path}</span> — {r.reason}
@@ -57,13 +54,13 @@ export function AssistantProposalCard({
         </ul>
       )}
       {done ? (
-        <p className="flex items-center gap-1 text-[13px] leading-[18px] font-semibold text-ink-muted">
+        <p className="flex items-center gap-1 text-small font-semibold text-ink-muted">
           <done.icon aria-hidden className="size-4 shrink-0" />
           {done.label}
         </p>
       ) : (
         <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onApply}>
+          <Button type="button" variant="secondary" size="sm" onClick={onApply}>
             Apply
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>

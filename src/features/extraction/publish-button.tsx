@@ -46,7 +46,8 @@ export function PublishButton({
     <div className="relative">
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
+        size="lg"
         disabled={!ready || busy || !runId}
         title={disabledReason}
         aria-expanded={confirming}
@@ -61,9 +62,9 @@ export function PublishButton({
           id={id}
           role="group"
           aria-label="Publish to pipeline"
-          className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2.5rem)] space-y-3 rounded-lg border border-border-subtle bg-surface-raised p-4 shadow-card"
+          className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2.5rem)] space-y-3 rounded-panel border border-border-subtle bg-surface-raised p-4 shadow-float"
         >
-          <p className="text-[15px] leading-6 text-ink">
+          <p className="text-body text-ink">
             This saves the definition to the pipeline&apos;s extraction settings. Every document the
             pipeline loads will be extracted this way.
           </p>

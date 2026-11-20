@@ -5,7 +5,7 @@ import { ArrowLeft, CloudOff, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
-import { ExtractionActions } from "@/features/extraction/extraction-actions";
+import { ExtractionActions, ExtractionFacts } from "@/features/extraction/extraction-actions";
 import { ExtractionWorkspace } from "@/features/extraction/extraction-workspace";
 import { useExtractionRun } from "@/features/extraction/use-extraction-run";
 import { useOnSessionResumed, useSessionEnded } from "@/features/auth/use-session";
@@ -78,11 +78,16 @@ function ExtractPanel({ projectId }: { projectId: string }) {
     <StudioPanel
       id="studio-extract"
       title="Knowledge extraction"
-      description="Say what to extract, run it, then review and label what it found."
       status={
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <StageSummary stage="extract" />
-          <Button variant="link" size="sm" asChild className="h-auto px-0">
+          <ExtractionFacts extraction={extraction} />
+          <Button
+            variant="link"
+            size="sm"
+            asChild
+            className="h-auto px-0 no-underline hover:underline"
+          >
             <Link href={projectHref(projectId)}>
               <ArrowLeft data-icon="inline-start" />
               Change documents

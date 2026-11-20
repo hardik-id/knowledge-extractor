@@ -47,21 +47,19 @@ function Message({ message }: { message: AssistantMessage }) {
   const streaming = message.status === "streaming";
   return (
     <div className={cn("flex flex-col gap-1", mine ? "items-end" : "items-start")}>
-      <span className="text-[12px] leading-4 font-semibold text-ink-muted">
+      <span className="text-caption font-semibold text-ink-muted">
         {mine ? "You" : "Assistant"}
       </span>
       {(message.text || streaming) && (
         <div
           className={cn(
-            "max-w-[92%] rounded-lg border px-3 py-2 text-[15px] leading-6 break-words whitespace-pre-wrap",
-            mine
-              ? "border-border-control bg-surface-tint text-ink"
-              : "border-border-subtle bg-surface-raised text-ink",
+            "max-w-[92%] rounded-panel text-body break-words whitespace-pre-wrap text-ink",
+            mine ? "bg-surface-tint px-3 py-2" : "py-0.5",
           )}
         >
           {message.text}
           {streaming && (
-            <span className="mt-1 flex items-center gap-1 text-[13px] leading-[18px] text-ink-muted">
+            <span className="mt-1 flex items-center gap-1 text-small text-ink-muted">
               <Loader2 aria-hidden className="size-3.5 animate-spin motion-reduce:animate-none" />
               Writing…
             </span>
@@ -93,18 +91,15 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
   return (
     <aside
       aria-labelledby={`${id}-title`}
-      className="flex min-h-0 flex-col gap-3 rounded-lg border border-border-subtle bg-surface-raised p-4 shadow-card lg:max-h-[max(22rem,calc(100dvh-25rem))]"
+      className="flex min-h-0 flex-col gap-3 lg:max-h-[max(22rem,calc(100dvh-14rem))]"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-1">
-          <h2
-            id={`${id}-title`}
-            className="flex items-center gap-2 text-xl leading-7 font-semibold"
-          >
-            <Sparkles aria-hidden className="size-5 text-ink-muted" />
+          <h2 id={`${id}-title`} className="flex items-center gap-2 text-ink-heading">
+            <Sparkles aria-hidden className="size-4 text-ink-muted" />
             Assistant
           </h2>
-          <p className="text-[13px] leading-[18px] text-ink-muted">
+          <p className="text-small text-ink-muted">
             Describe what you want to extract, or ask for a change. It proposes; you decide.
           </p>
         </div>
@@ -127,7 +122,7 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
         className={cn("min-h-0 flex-1 flex-col gap-3", open ? "flex" : "hidden lg:flex")}
       >
         {assistant.error ? (
-          <div className="flex flex-col items-start gap-2 text-sm">
+          <div className="flex flex-col items-start gap-2 text-body">
             <p>
               <span className="font-semibold text-ink">Couldn&apos;t load the conversation.</span>{" "}
               {describeApiError(assistant.error)}
@@ -214,7 +209,7 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
             }}
           />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] leading-4 text-ink-muted">
+            <span className="text-caption text-ink-muted">
               Enter to send, Shift+Enter for a new line
             </span>
             <div className="flex items-center gap-2">
@@ -229,7 +224,7 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
               </Button>
               <Button
                 type="submit"
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 disabled={busy || text.trim() === ""}
               >

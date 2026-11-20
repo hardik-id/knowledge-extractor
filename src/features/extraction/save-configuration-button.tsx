@@ -51,7 +51,8 @@ export function SaveConfigurationButton({ extraction }: { extraction: Extraction
     <div className="relative">
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
+        size="lg"
         disabled={!definition.dirty || running || definition.saving}
         aria-expanded={open}
         aria-controls={id}
@@ -64,7 +65,7 @@ export function SaveConfigurationButton({ extraction }: { extraction: Extraction
         <form
           id={id}
           aria-label="Save configuration"
-          className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2.5rem)] space-y-3 rounded-lg border border-border-subtle bg-surface-raised p-4 shadow-card"
+          className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2.5rem)] space-y-3 rounded-panel border border-border-subtle bg-surface-raised p-4 shadow-float"
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
@@ -82,7 +83,7 @@ export function SaveConfigurationButton({ extraction }: { extraction: Extraction
             />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" variant="outline" size="sm" disabled={definition.saving}>
+            <Button type="submit" variant="secondary" size="sm" disabled={definition.saving}>
               Save
             </Button>
             <Button

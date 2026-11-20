@@ -22,14 +22,13 @@ type FieldErrors = { name?: string; key?: string; choices?: string };
 
 export function Problem({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <p id={id} className="mt-1 flex gap-1 text-[13px] leading-[18px] font-medium text-danger">
+    <p id={id} className="mt-1 flex gap-1 text-small font-medium text-danger">
       <AlertCircle aria-hidden className="mt-px size-4 shrink-0" />
       <span>{children}</span>
     </p>
   );
 }
 
-/** Looks like plain text in a table cell until it is hovered or focused. */
 /**
  * The columns, header and rows alike. Below 25rem: three equal columns and the menu. From 25rem:
  * field, type, two tick columns, menu. From 40rem: "What to look for" gets the rest.
@@ -37,15 +36,16 @@ export function Problem({ id, children }: { id: string; children: React.ReactNod
 const GRID =
   "grid grid-cols-[repeat(3,minmax(0,1fr))_2.5rem] @min-[25rem]:grid-cols-[minmax(0,1fr)_7rem_4rem_4rem_2.5rem] @min-[40rem]:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_7rem_4rem_4rem_2.5rem]";
 
-const CELL_INPUT =
-  "border-transparent bg-transparent hover:border-border-control focus-visible:bg-surface-raised aria-invalid:border-destructive";
+/** Looks like plain text in a table cell until it is hovered or focused. */
+export const CELL_INPUT =
+  "border-transparent bg-transparent hover:border-border-control focus-visible:bg-surface-raised aria-invalid:border-danger";
 
 /** The small label shown only where the rows are stacked (a narrow table). */
 function CellLabel({ children }: { children: React.ReactNode }) {
   return (
     <span
       aria-hidden
-      className="mb-0.5 block text-[13px] leading-[18px] font-semibold text-ink @min-[25rem]:hidden"
+      className="mb-0.5 block text-small font-semibold text-ink @min-[25rem]:hidden"
     >
       {children}
     </span>
@@ -81,12 +81,10 @@ export function FieldTable({
 }: FieldTableProps) {
   return (
     <div className="@container">
-      <table className="block w-full text-sm">
+      <table className="block w-full text-body">
         <caption className="sr-only">Fields of {caption}</caption>
         <thead className="block @max-[25rem]:sr-only">
-          <tr
-            className={`${GRID} border-b border-border-subtle text-left text-[13px] leading-[18px] text-ink`}
-          >
+          <tr className={`${GRID} border-b border-border-subtle text-left text-small text-ink`}>
             <th scope="col" className="px-1 py-2 font-semibold">
               Field
             </th>
@@ -175,6 +173,9 @@ function FieldRow({
     "@max-[24rem]:col-span-2 @min-[25rem]:col-start-3 @min-[25rem]:row-start-1 @min-[40rem]:col-start-4";
   const multipleCell =
     "@max-[24rem]:col-span-2 @min-[25rem]:col-start-4 @min-[25rem]:row-start-1 @min-[40rem]:col-start-5";
+  // The allowed values of a Choice field get their own line across the whole row.
+  const choicesCell =
+    "col-span-full @min-[25rem]:col-start-1 @min-[25rem]:row-start-3 @min-[40rem]:row-start-2 @min-[25rem]:pt-0";
   const menuCell =
     "col-start-4 row-start-1 @min-[25rem]:col-start-5 @min-[25rem]:row-span-2 @min-[40rem]:row-span-1 @min-[40rem]:col-start-6";
 
@@ -198,7 +199,7 @@ function FieldRow({
               ref={keyRef}
               value={field.key}
               aria-label={`Key for ${label}`}
-              className="h-7 font-mono text-[13px]"
+              className="h-control-sm font-mono"
               aria-invalid={!!errors?.key}
               aria-describedby={errors?.key ? id("key-err") : undefined}
               onChange={(e) => onChange({ key: e.target.value })}
@@ -213,13 +214,14 @@ function FieldRow({
           value={field.description}
           aria-label={`What to look for in ${label}`}
           placeholder="The person who approved it"
-          className={`${CELL_INPUT} @min-[25rem]:h-7 @min-[25rem]:text-[13px] @min-[25rem]:text-ink-muted @min-[40rem]:h-8 @min-[40rem]:text-sm @min-[40rem]:text-foreground`}
+          className={`${CELL_INPUT} @min-[25rem]:text-ink-muted @min-[40rem]:text-ink`}
           onChange={(e) => onChange({ description: e.target.value })}
         />
       </td>
       <td className={`${cell} ${typeCell}`}>
         <CellLabel>Type</CellLabel>
         <Select
+          className={CELL_INPUT}
           value={field.valueType}
           aria-label={`Type of ${label}`}
           onChange={(e) => onChange({ valueType: e.target.value as FieldDef["valueType"] })}
@@ -230,13 +232,19 @@ function FieldRow({
             </option>
           ))}
         </Select>
-        {field.valueType === "choice" && (
-          <div className="mt-1">
+      </td>
+      {field.valueType === "choice" && (
+        <td className={`${cell} ${choicesCell}`}>
+          <div className="flex items-center gap-2">
+            <span aria-hidden className="shrink-0 text-small text-ink-muted">
+              Allowed values
+            </span>
             <Input
               value={choicesText}
               aria-label={`Allowed values for ${label}`}
               placeholder="Proposed, Accepted"
               title="Separate with commas"
+              className={CELL_INPUT}
               aria-invalid={!!errors?.choices}
               aria-describedby={errors?.choices ? id("choices-err") : undefined}
               onChange={(e) => {
@@ -244,10 +252,10 @@ function FieldRow({
                 onChange({ choices: parseChoices(e.target.value) });
               }}
             />
-            {errors?.choices && <Problem id={id("choices-err")}>{errors.choices}</Problem>}
           </div>
-        )}
-      </td>
+          {errors?.choices && <Problem id={id("choices-err")}>{errors.choices}</Problem>}
+        </td>
+      )}
       <td className={`${cell} ${quoteCell}`}>
         <label className="flex items-center gap-2 py-1.5">
           <Checkbox
@@ -255,7 +263,7 @@ function FieldRow({
             checked={field.mode === "quote"}
             onCheckedChange={(on) => onChange({ mode: on === true ? "quote" : "inferred" })}
           />
-          <span aria-hidden className="text-[13px] leading-4 @min-[25rem]:hidden">
+          <span aria-hidden className="text-small @min-[25rem]:hidden">
             Exact quote
           </span>
         </label>
@@ -267,7 +275,7 @@ function FieldRow({
             checked={field.multiple}
             onCheckedChange={(on) => onChange({ multiple: on === true })}
           />
-          <span aria-hidden className="text-[13px] leading-4 @min-[25rem]:hidden">
+          <span aria-hidden className="text-small @min-[25rem]:hidden">
             Several values
           </span>
         </label>

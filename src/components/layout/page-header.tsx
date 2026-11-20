@@ -32,7 +32,7 @@ export function PageHeader({ id, title, facts, actions, className }: PageHeaderP
         </h1>
         {facts && <div className="text-small text-ink-muted">{facts}</div>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 md:shrink-0">{actions}</div>}
     </header>
   );
 }

@@ -7,14 +7,13 @@ import { describeApiError } from "@/services/errors";
 import { DefineTab } from "./define-tab";
 import { OutputTab } from "./output-tab";
 import { ReviewTab } from "./review-tab";
-import { VersionBar } from "./version-history";
 import type { ExtractionRun, ExtractionTab } from "./use-extraction-run";
 
 interface ExtractionWorkspaceProps {
   extraction: ExtractionRun;
   /** Opening line of the Define tab. */
   definitionNote: string;
-  /** Show the version beside the configuration, with its history. */
+  /** The Studio page: the version, its history and Templates are in the page header, not here. */
   versioned?: boolean;
 }
 
@@ -53,7 +52,6 @@ export function ExtractionWorkspace({
 
   return (
     <div className="flex flex-col gap-4">
-      {versioned && <VersionBar definition={definition} />}
       <Tabs value={tab} onValueChange={(v) => setTab(v as ExtractionTab)} className="gap-5">
         <TabsList variant="line" aria-label="Extraction">
           <TabsTrigger value="define">Define</TabsTrigger>
@@ -65,6 +63,7 @@ export function ExtractionWorkspace({
             definition={definition}
             definitionNote={definitionNote}
             showSave={!versioned}
+            showTemplates={!versioned}
           />
         </TabsContent>
         <TabsContent value="review">

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 interface StudioPanelProps {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   /** Status line after the description. */
   status?: React.ReactNode;
   /** Controls on the right of the heading. */
@@ -31,7 +31,7 @@ export function StudioPanel({
         title={title}
         facts={
           <div className="space-y-1">
-            <p className="max-w-[72ch]">{description}</p>
+            {description && <p className="max-w-[72ch]">{description}</p>}
             {status}
           </div>
         }
