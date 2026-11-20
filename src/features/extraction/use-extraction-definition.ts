@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useAsyncData } from "@/lib/use-async-data";
 import { isApiError } from "@/lib/api/api-error";
 import { services } from "@/services";
-import type { ExtractionDefinition } from "@/services/contracts";
+import type { DefinitionTemplate, ExtractionDefinition } from "@/services/contracts";
 import { toastFailure } from "@/features/auth/report-failure";
 import type { ExtractionNoun } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
@@ -17,6 +17,9 @@ import {
   type Draft,
   type DraftErrors,
 } from "./definition-draft";
+import { keptSuggestedNote, noteForSave, templateNote } from "./template-note";
+
+export { templateNote };
 
 export interface ExtractionDefinitionState {
   isLoading: boolean;
@@ -38,6 +41,10 @@ export interface ExtractionDefinitionState {
   /** Makes an older version the newest one and loads it as the draft. Resolves to it, or null. */
   restore: (version: number) => Promise<ExtractionDefinition | null>;
   discard: () => void;
+  /** Replaces the draft with the template's configuration. It stays unsaved until saved or discarded. */
+  applyTemplate: (template: DefinitionTemplate) => void;
+  /** The note a save starts with after a template was loaded ("From template: <name>"), until it is saved or discarded. */
+  suggestedNote: string;
 }
 
 const NO_ERRORS: DraftErrors = { types: {}, fields: {}, general: [] };
@@ -57,6 +64,7 @@ export function useExtractionDefinition(
     loaded: ExtractionDefinition | undefined;
     saved: ExtractionDefinition;
     draft: Draft;
+    suggestedNote: string;
   } | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -64,7 +72,7 @@ export function useExtractionDefinition(
   // Take a freshly loaded definition (new run, or a reload after a conflict).
   let state = local;
   if (data && (!local || local.runId !== runId || local.loaded !== data)) {
-    state = { runId, loaded: data, saved: data, draft: toDraft(data) };
+    state = { runId, loaded: data, saved: data, draft: toDraft(data), suggestedNote: "" };
     setLocal(state);
     setShowErrors(false);
   }
@@ -76,9 +84,15 @@ export function useExtractionDefinition(
   const valid = isValid(errors);
 
   const setDraft: ExtractionDefinitionState["setDraft"] = (next) =>
-    setLocal((prev) =>
-      prev ? { ...prev, draft: typeof next === "function" ? next(prev.draft) : next } : prev,
-    );
+    setLocal((prev) => {
+      if (!prev) return prev;
+      const draft = typeof next === "function" ? next(prev.draft) : next;
+      return {
+        ...prev,
+        draft,
+        suggestedNote: keptSuggestedNote(prev.suggestedNote, isDirty(draft, prev.saved)),
+      };
+    });
 
   const reportFailure = (e: unknown, title: string) => {
     if (isApiError(e) && e.code === "definition_conflict") {
@@ -104,9 +118,11 @@ export function useExtractionDefinition(
         runId,
         current.draft,
         current.saved.version,
-        note?.trim() || undefined,
+        noteForSave(note, current.suggestedNote),
       );
-      setLocal((prev) => (prev ? { ...prev, saved: result, draft: toDraft(result) } : prev));
+      setLocal((prev) =>
+        prev ? { ...prev, saved: result, draft: toDraft(result), suggestedNote: "" } : prev,
+      );
       return result;
     } catch (e) {
       reportFailure(e, `Couldn't save the ${noun}`);
@@ -121,7 +137,9 @@ export function useExtractionDefinition(
     setSaving(true);
     try {
       const result = await services.extraction.restoreDefinitionVersion(runId, version);
-      setLocal((prev) => (prev ? { ...prev, saved: result, draft: toDraft(result) } : prev));
+      setLocal((prev) =>
+        prev ? { ...prev, saved: result, draft: toDraft(result), suggestedNote: "" } : prev,
+      );
       setShowErrors(false);
       return result;
     } catch (e) {
@@ -147,8 +165,23 @@ export function useExtractionDefinition(
     saving,
     save,
     restore,
+    suggestedNote: current?.suggestedNote ?? "",
+    applyTemplate: (template) => {
+      setLocal((prev) =>
+        prev
+          ? {
+              ...prev,
+              draft: structuredClone(template.definition),
+              suggestedNote: templateNote(template.name),
+            }
+          : prev,
+      );
+      setShowErrors(false);
+    },
     discard: () => {
-      setLocal((prev) => (prev ? { ...prev, draft: toDraft(prev.saved) } : prev));
+      setLocal((prev) =>
+        prev ? { ...prev, draft: toDraft(prev.saved), suggestedNote: "" } : prev,
+      );
       setShowErrors(false);
     },
   };

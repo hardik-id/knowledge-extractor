@@ -1,7 +1,8 @@
 import { type AxeException, expectAccessible } from "./support/accessibility";
 import { expect, test } from "./fixtures";
 import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
-import { DOCS, openDocuments, openNewProjectDialog } from "./pages/studio";
+import { DOCS, openDocuments, openExtraction, openNewProjectDialog } from "./pages/studio";
+import { clickUntilOpen } from "./support/first-click";
 
 /**
  * Violations that cannot be fixed in the app, each with the issue that tracks it.
@@ -77,6 +78,21 @@ for (const scheme of ["light", "dark"] as const) {
       const history = page.getByRole("dialog", { name: "Version history" });
       await expect(history.getByRole("list", { name: "Versions" })).toBeVisible();
       await scan(page, "version history");
+    });
+
+    test("the templates dialog", async ({ api, page }) => {
+      const project = await api.createProject({ name: "Templates project" });
+      await openExtraction(page, project, [DOCS.roadmap]);
+      const dialog = await clickUntilOpen(
+        page,
+        page.getByRole("button", { name: "Templates" }),
+        page.getByRole("dialog", { name: "Templates" }),
+      );
+      await dialog.getByRole("radio").nth(1).check();
+      await expect(dialog.getByRole("region", { name: "What it would bring" })).toContainText(
+        "Compared with the editor",
+      );
+      await scan(page, "templates dialog");
     });
 
     test("the assistant with a proposal showing", async ({ api, page, person, request }) => {
