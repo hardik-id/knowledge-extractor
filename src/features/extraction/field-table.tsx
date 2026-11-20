@@ -30,6 +30,13 @@ export function Problem({ id, children }: { id: string; children: React.ReactNod
 }
 
 /** Looks like plain text in a table cell until it is hovered or focused. */
+/**
+ * The columns, header and rows alike. Below 25rem: three equal columns and the menu. From 25rem:
+ * field, type, two tick columns, menu. From 40rem: "What to look for" gets the rest.
+ */
+const GRID =
+  "grid grid-cols-[repeat(3,minmax(0,1fr))_2.5rem] @min-[25rem]:grid-cols-[minmax(0,1fr)_7rem_4rem_4rem_2.5rem] @min-[40rem]:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_7rem_4rem_4rem_2.5rem]";
+
 const CELL_INPUT =
   "border-transparent bg-transparent hover:border-border-control focus-visible:bg-surface-raised aria-invalid:border-destructive";
 
@@ -38,7 +45,7 @@ function CellLabel({ children }: { children: React.ReactNode }) {
   return (
     <span
       aria-hidden
-      className="mb-0.5 block text-[13px] leading-[18px] font-semibold text-ink @min-[36rem]:hidden"
+      className="mb-0.5 block text-[13px] leading-[18px] font-semibold text-ink @min-[25rem]:hidden"
     >
       {children}
     </span>
@@ -58,7 +65,10 @@ interface FieldTableProps {
 
 /**
  * The fields of one record type: a row per field, a column per property, tick boxes for the
- * yes/no ones. Below about 36rem of its own width the rows stack, each cell under its label.
+ * yes/no ones. Three layouts from the width of the table itself, in one markup: from 40rem a
+ * column for "What to look for"; from 25rem that text sits under the name; below 25rem the rows
+ * stack, each cell under its label. Every part is a grid, so the header and the rows share
+ * their columns.
  */
 export function FieldTable({
   caption,
@@ -71,31 +81,33 @@ export function FieldTable({
 }: FieldTableProps) {
   return (
     <div className="@container">
-      <table className="w-full table-fixed border-collapse text-sm @max-[36rem]:block">
+      <table className="block w-full text-sm">
         <caption className="sr-only">Fields of {caption}</caption>
-        <thead className="@max-[36rem]:sr-only">
-          <tr className="border-b border-border-subtle text-left text-[13px] leading-[18px] text-ink">
-            <th scope="col" className="w-[24%] px-1 py-2 font-semibold">
+        <thead className="block @max-[25rem]:sr-only">
+          <tr
+            className={`${GRID} border-b border-border-subtle text-left text-[13px] leading-[18px] text-ink`}
+          >
+            <th scope="col" className="px-1 py-2 font-semibold">
               Field
             </th>
-            <th scope="col" className="px-1 py-2 font-semibold">
+            <th scope="col" className="hidden px-1 py-2 font-semibold @min-[40rem]:block">
               What to look for
             </th>
-            <th scope="col" className="w-[24%] px-1 py-2 font-semibold">
+            <th scope="col" className="px-1 py-2 font-semibold">
               Type
             </th>
-            <th scope="col" className="w-[4.5rem] px-1 py-2 font-semibold">
+            <th scope="col" className="px-1 py-2 font-semibold">
               Exact quote
             </th>
-            <th scope="col" className="w-[4.5rem] px-1 py-2 font-semibold">
+            <th scope="col" className="px-1 py-2 font-semibold">
               Several values
             </th>
-            <th scope="col" className="w-10 px-1 py-2">
+            <th scope="col" className="px-1 py-2">
               <span className="sr-only">Actions</span>
             </th>
           </tr>
         </thead>
-        <tbody className="@max-[36rem]:block">
+        <tbody className="block">
           {fields.map((field, index) => (
             <FieldRow
               key={field.id}
@@ -150,13 +162,25 @@ function FieldRow({
   const edited = field.key !== deriveKey(field.name, others);
   const showKey = keyOpen || edited || !!errors?.key;
 
-  const cell = "px-1 py-1.5 align-top @max-[36rem]:min-w-0 @max-[36rem]:py-1";
-  const stackedFirst = "@max-[24rem]:col-span-3";
-  const stackedWide = "@max-[36rem]:col-span-2 @max-[24rem]:col-span-4";
+  const cell = "min-w-0 px-1 py-1 @min-[25rem]:py-0.5 @min-[40rem]:py-1";
+  // Where each cell sits: below 25rem stacked, from 25rem the text under the name, from 40rem
+  // in its own column. Written out in full so Tailwind can see every class.
+  const nameCell =
+    "@max-[24rem]:col-span-3 @min-[25rem]:col-start-1 @min-[25rem]:row-start-1 @min-[25rem]:pb-0 @min-[40rem]:pb-1";
+  const descCell =
+    "col-span-2 @max-[24rem]:col-span-4 @min-[25rem]:col-span-4 @min-[25rem]:col-start-1 @min-[25rem]:row-start-2 @min-[25rem]:pt-0 @min-[40rem]:col-span-1 @min-[40rem]:col-start-2 @min-[40rem]:row-start-1 @min-[40rem]:pt-1";
+  const typeCell =
+    "@max-[24rem]:col-span-4 @min-[25rem]:col-start-2 @min-[25rem]:row-start-1 @min-[40rem]:col-start-3";
+  const quoteCell =
+    "@max-[24rem]:col-span-2 @min-[25rem]:col-start-3 @min-[25rem]:row-start-1 @min-[40rem]:col-start-4";
+  const multipleCell =
+    "@max-[24rem]:col-span-2 @min-[25rem]:col-start-4 @min-[25rem]:row-start-1 @min-[40rem]:col-start-5";
+  const menuCell =
+    "col-start-4 row-start-1 @min-[25rem]:col-start-5 @min-[25rem]:row-span-2 @min-[40rem]:row-span-1 @min-[40rem]:col-start-6";
 
   return (
-    <tr className="border-b border-border-subtle last:border-b-0 @max-[36rem]:grid @max-[36rem]:grid-cols-[repeat(3,minmax(0,1fr))_2.5rem] @max-[36rem]:py-2">
-      <td className={`${cell} ${stackedFirst}`}>
+    <tr className={`${GRID} border-b border-border-subtle py-2 last:border-b-0 @min-[25rem]:py-0`}>
+      <td className={`${cell} ${nameCell}`}>
         <CellLabel>Field</CellLabel>
         <Input
           value={field.name}
@@ -183,17 +207,17 @@ function FieldRow({
           </div>
         )}
       </td>
-      <td className={`${cell} ${stackedWide}`}>
+      <td className={`${cell} ${descCell}`}>
         <CellLabel>What to look for</CellLabel>
         <Input
           value={field.description}
           aria-label={`What to look for in ${label}`}
           placeholder="The person who approved it"
-          className={CELL_INPUT}
+          className={`${CELL_INPUT} @min-[25rem]:h-7 @min-[25rem]:text-[13px] @min-[25rem]:text-ink-muted @min-[40rem]:h-8 @min-[40rem]:text-sm @min-[40rem]:text-foreground`}
           onChange={(e) => onChange({ description: e.target.value })}
         />
       </td>
-      <td className={`${cell} @max-[24rem]:col-span-4`}>
+      <td className={`${cell} ${typeCell}`}>
         <CellLabel>Type</CellLabel>
         <Select
           value={field.valueType}
@@ -224,31 +248,31 @@ function FieldRow({
           </div>
         )}
       </td>
-      <td className={`${cell} @max-[24rem]:col-span-2`}>
+      <td className={`${cell} ${quoteCell}`}>
         <label className="flex items-center gap-2 py-1.5">
           <Checkbox
             aria-label={`Exact quote for ${label}`}
             checked={field.mode === "quote"}
             onCheckedChange={(on) => onChange({ mode: on === true ? "quote" : "inferred" })}
           />
-          <span aria-hidden className="text-[13px] leading-4 @min-[36rem]:hidden">
+          <span aria-hidden className="text-[13px] leading-4 @min-[25rem]:hidden">
             Exact quote
           </span>
         </label>
       </td>
-      <td className={`${cell} @max-[24rem]:col-span-2`}>
+      <td className={`${cell} ${multipleCell}`}>
         <label className="flex items-center gap-2 py-1.5">
           <Checkbox
             aria-label={`Several values for ${label}`}
             checked={field.multiple}
             onCheckedChange={(on) => onChange({ multiple: on === true })}
           />
-          <span aria-hidden className="text-[13px] leading-4 @min-[36rem]:hidden">
+          <span aria-hidden className="text-[13px] leading-4 @min-[25rem]:hidden">
             Several values
           </span>
         </label>
       </td>
-      <td className={`${cell} text-right @max-[36rem]:col-start-4 @max-[36rem]:row-start-1`}>
+      <td className={`${cell} ${menuCell} text-right`}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label={`More actions for ${label}`}>
