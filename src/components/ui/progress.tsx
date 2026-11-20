@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { Progress as ProgressPrimitive } from "radix-ui";
 
 /** Pass `value={null}` when the amount of progress isn't known: the bar pulses instead of filling. */

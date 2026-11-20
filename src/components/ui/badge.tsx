@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { Slot } from "radix-ui";
 
 /** A pill for a short fact: a count, a state. Neutral by default; colour only for status. */

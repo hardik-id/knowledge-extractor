@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { Slot } from "radix-ui";
 
 /** Secondary: a neutral 1px border, ink text, no colour. `outline` is the same look under its old name. */

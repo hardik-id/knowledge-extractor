@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /** A text field: 32px tall, a 1px control border, the focus ring from globals.css. */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {

@@ -43,7 +43,7 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Switch app, current: ${current.name}`}
-        className="-ml-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-lg leading-6 font-bold text-ink-heading outline-none hover:bg-surface-tint focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="-ml-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-lg leading-6 font-bold text-ink-heading hover:bg-surface-tint"
       >
         <Mark />
         <span className={compact ? "hidden truncate sm:inline" : "line-clamp-2 leading-5"}>
