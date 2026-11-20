@@ -71,6 +71,15 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 - The app runs on the mock by default. The Django API (`hardik-id/knowledge-extractor-api`) serves what Studio uses (`docs/studio-api.md`), not yet everything the pipeline uses. If the mock and the real API disagree, fix `services/http` and `services/mock`, not the store or the panels.
 - In mock mode, `window.__mockBackend` in the console can `dropConnection(ms)`, `failNext(stage)`, `unanchorNext()`, `lastExamplesUsed(runId)` and `setSpeed(n)`. The mock assistant understands a fixed set of requests (see `services/mock/mock-assistant.ts`).
 
+## End-to-end tests
+
+- `npm run test:e2e` runs the suite (Playwright, Chromium only) in `e2e/`; `npm run test:e2e:ui` opens Playwright's UI mode. The backend stack must be up (`make up` in `knowledge-extractor-api`); without it the run stops at once with a line saying so. `npm run typecheck:e2e` checks the tests' types (the root `tsc`, ESLint's ignores and `npm run build` leave `e2e/` out of the app).
+- The runner starts the app itself (`next dev` in http mode, Studio only) on `E2E_PORT` (default 3100) with its own build directory `.next-e2e`, so it never touches your `npm run dev` or its `.next`. Parallel runs, in different worktrees, each need their own `E2E_PORT`. `E2E_BASE_URL` tests an app that is already running and starts nothing. `API_DIR` is the backend repository (default: the sibling `knowledge-extractor-api`, also found from a worktree).
+- Every spec imports `test` and `expect` from `e2e/fixtures.ts`. Each test gets a new person (`person`, a UUID `oid` and a dev token minted from the running backend; the token goes on every API request of the browser, so tests share no data and need no cleanup). `api` sets up data as that person without clicking (`api.createProject(...)`). `contextFor(person)` opens a browser signed in as another person. A console error, an uncaught exception or an API answer of 4xx or 5xx fails the test, unless it is declared with `expectApiError({ status, method?, path? })`.
+- Find things the way a person does: `getByRole`, `getByLabel`, visible text. `data-testid` only where no role or label can name the element. Hidden pages stay in the DOM (see "Apps and branches"), so name the visible one by role.
+- A failing test leaves a screenshot and a trace in `test-results/` (CI: the trace on the first retry); the HTML report is in `playwright-report/` (`npx playwright show-report`). Neither is committed.
+- A UI change updates its tests in the same pull request.
+
 ## Adding a stage
 
 1. Add its id to `STAGE_IDS` (in run order).
@@ -83,6 +92,7 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 
 - `npm run dev`: start the dev server
 - `npm test`: unit tests with Node's own test runner (`src/**/*.test.ts`, no test library installed)
+- `npm run test:e2e`: end-to-end tests (see "End-to-end tests")
 - `npm run lint`, `npx tsc --noEmit`: run both before committing
 - `npm run build`: also validates Cache Components rules
 - `npx prettier --write .`: format the code

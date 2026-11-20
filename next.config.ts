@@ -4,6 +4,8 @@ import { FIRST_APP, APPS } from "./src/apps/registry";
 const offersPipeline = APPS.some((app) => app.id === "pipeline");
 
 const nextConfig: NextConfig = {
+  // The end-to-end runner sets this to build apart from a developer's own `.next` (see playwright.config.ts).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,

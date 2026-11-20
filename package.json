@@ -10,6 +10,9 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/register.mjs --test \"src/**/*.test.ts\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "typecheck:e2e": "tsc --noEmit -p e2e/tsconfig.json",
     "test:api": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/register.mjs src/services/http/test-api.ts"
   },
   "dependencies": {
@@ -31,6 +34,7 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
