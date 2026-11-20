@@ -14,10 +14,13 @@
 /coverage
 /test-results/
 /playwright-report/
+# the saved sign-in of the live suite: holds tokens
+/e2e-live/.auth/
 
 # next.js
 /.next/
 /.next-e2e/
+/.next-e2e-entra/
 /out/
 
 # production

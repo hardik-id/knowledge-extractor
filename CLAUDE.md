@@ -81,6 +81,19 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 - A failing test leaves a screenshot and a trace in `test-results/` (CI: the trace on the first retry); the HTML report is in `playwright-report/` (`npx playwright show-report`). Neither is committed.
 - A UI change updates its tests in the same pull request.
 
+### The live suite (optional, never in the merge path)
+
+- `npm run test:e2e:live` runs `e2e-live/` (the Playwright project `live`, only when `E2E_LIVE=1`, which the script sets). `npm run test:e2e` never runs it. It covers what the fast suite cannot: the real model answering in the assistant, and the real Microsoft sign-in. A spec that lacks what it needs is skipped, and the run prints the reason for each (`e2e-live/skip-reasons-reporter.mjs`). It starts an app only for a spec that will run. No trace, screenshot or video is kept.
+- **Honest limit:** these specs were written on a machine with no model key and no tenant ids (backend #24, UI #37). They have never been run against a real model or a real tenant. Their selectors and waits come from the fast suite and the code, not from a live run: expect to adjust them the first time they run.
+- **Real model** (`e2e-live/model.spec.ts`): set `E2E_LIVE_MODEL=1`, and start the backend with `ASSISTANT_AGENT=openai`, `LLM_MODEL`, and `OPENAI_API_KEY` (or `LLM_PROVIDER=azure`, `LLM_MODEL`, `AZURE_OPENAI_ENDPOINT` and `az login`), as in the backend's `docs/assistant.md`. It asks for the ADRs of `architecture-decisions-2026.md` and `platform-adrs.md` and checks the reply is a proposal that adds a record type named like an ADR or a decision, with fields (not the words). If the backend answers "No language model is configured", the spec skips. The key stays in the backend's own `.env`; it never reaches this repository.
+- **Real sign-in** (`e2e-live/sign-in.spec.ts`): Microsoft's page is never scripted. A person saves a signed-in browser once:
+  1. Register `http://localhost:<E2E_ENTRA_PORT>/auth/redirect` (a single-page application redirect address; the port is `E2E_ENTRA_PORT`, default `E2E_PORT + 1`) on the app registration.
+  2. Start the backend with `AUTH_MODE=entra`, `ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID` (backend `docs/auth.md`), so it accepts real tokens.
+  3. Set `E2E_ENTRA_TENANT_ID` and `E2E_ENTRA_CLIENT_ID` (and `E2E_ENTRA_API_SCOPE` if the scope is not the default) in the shell.
+  4. `npm run e2e:save-login`: it starts the app in `entra` mode, opens a headed browser and waits (5 minutes) while you sign in, then saves the state to `e2e-live/.auth/state.json`.
+  5. `npm run test:e2e:live` (with the same variables) checks the name shows, the project list loads with the real token, and sign-out ends at the sign-in screen. Sign-out goes through Microsoft's sign-out page; if it asks which account, the spec does not click it for you.
+- The state file holds tokens: `e2e-live/.auth/` is git-ignored, the file is written readable by its owner only, and nothing prints it, names a test after it or attaches it. Keep it that way: no tokens or keys in test names, logs, traces, or reports. A saved login expires; save it again.
+
 ## Adding a stage
 
 1. Add its id to `STAGE_IDS` (in run order).
@@ -94,6 +107,7 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 - `npm run dev`: start the dev server
 - `npm test`: unit tests with Node's own test runner (`src/**/*.test.ts`, no test library installed)
 - `npm run test:e2e`: end-to-end tests (see "End-to-end tests")
+- `npm run test:e2e:live`, `npm run e2e:save-login`: the optional live suite (see "The live suite")
 - `npm run lint`, `npx tsc --noEmit`: run both before committing
 - `npm run build`: also validates Cache Components rules
 - `npx prettier --write .`: format the code
