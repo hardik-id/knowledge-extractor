@@ -1,5 +1,8 @@
 import { isApiError } from "@/lib/api/api-error";
 
+/** What the app calls the thing a person edits: the pipeline says "definition", Studio "configuration". */
+export type ExtractionNoun = "definition" | "configuration";
+
 /** Backend and client error codes the UI has its own words for. */
 const MESSAGES: Record<string, string> = {
   network_error: "Can't reach the server. Check your connection and try again.",
@@ -11,15 +14,15 @@ const MESSAGES: Record<string, string> = {
   run_not_found: "This run no longer exists. Select your files again to start a new one.",
   output_not_found: "This file has no output for this stage yet.",
   definition_conflict:
-    "The extraction definition was changed somewhere else. Reload it and make your changes again.",
+    "The extraction {noun} was changed somewhere else. Reload it and make your changes again.",
   invalid_definition:
-    "The extraction definition isn't complete. Check the names, keys and allowed values.",
+    "The extraction {noun} isn't complete. Check the names, keys and allowed values.",
   revision_conflict:
     "These records were changed somewhere else. They have been reloaded; make your change again.",
   record_not_found: "This record no longer exists.",
   value_not_found: "This value no longer exists.",
   extraction_not_found: "This file has not been extracted yet.",
-  unknown_field: "This field is not part of the record type any more. Reload the definition.",
+  unknown_field: "This field is not part of the record type any more. Reload the {noun}.",
   invalid_span: "The selected text doesn't match the document. Select it again.",
   not_deletable: "Only records you added can be deleted. Reject this one instead.",
   too_many_values: "This field takes one value only.",
@@ -37,11 +40,11 @@ const MESSAGES: Record<string, string> = {
  * One sentence a person can act on, for any failed backend call. Unknown
  * failures carry the request id so the call can be found in the backend logs.
  */
-export function describeApiError(error: unknown): string {
+export function describeApiError(error: unknown, noun: ExtractionNoun = "definition"): string {
   if (!isApiError(error)) return "Something went wrong. Try again.";
 
   const known = MESSAGES[error.code];
-  if (known) return known;
+  if (known) return known.replaceAll("{noun}", noun);
   if (error.status === 401) return "Your session has ended. Sign in again.";
   if (error.status === 403) return "You don't have access to this.";
 

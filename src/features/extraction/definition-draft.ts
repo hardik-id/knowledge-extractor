@@ -11,9 +11,8 @@ import type {
 export type Draft = ExtractionDefinitionDraft;
 
 export function toDraft(definition: ExtractionDefinition): Draft {
-  const { version: _version, ...draft } = definition;
-  void _version;
-  return structuredClone(draft);
+  const { prompt, recordTypes, output } = definition;
+  return structuredClone({ prompt, recordTypes, output });
 }
 
 export function isDirty(draft: Draft, saved: ExtractionDefinition): boolean {
