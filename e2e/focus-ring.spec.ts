@@ -24,7 +24,10 @@ async function withoutRing(page: Page, steps: number): Promise<string[]> {
       document.body.append(probe);
       const expected = getComputedStyle(probe).color;
       probe.remove();
-      const style = getComputedStyle(el);
+      // A visually hidden radio or checkbox shows its focus on the label around it.
+      const box = el.getBoundingClientRect();
+      const hidden = el instanceof HTMLInputElement && (box.width <= 1 || box.height <= 1);
+      const style = getComputedStyle((hidden && el.closest("label")) || el);
       const ok =
         style.outlineStyle === "solid" &&
         style.outlineWidth === "2px" &&
@@ -55,6 +58,23 @@ for (const scheme of ["light", "dark"] as const) {
       await new ExtractionPage(page).open(project);
       await expect(page.getByTestId("version-line")).toBeVisible();
       expect(await withoutRing(page, 30)).toEqual([]);
+    });
+
+    test("the Format control shows focus on the chosen option", async ({
+      api,
+      page,
+      person,
+      request,
+    }) => {
+      const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
+      await new ExtractionPage(page).open(project);
+      const radio = page.getByRole("radio", { name: "Markdown" });
+      await radio.focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
+      const label = page.locator("label", { has: radio });
+      await expect(label).toHaveCSS("outline-style", "solid");
+      await expect(label).toHaveCSS("outline-width", "2px");
     });
   });
 }

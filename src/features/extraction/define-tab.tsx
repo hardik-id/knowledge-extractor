@@ -222,7 +222,7 @@ export function DefineTab({
                   <label
                     key={f}
                     className={cn(
-                      "inline-flex h-control-sm cursor-pointer items-center px-3 text-small font-medium coarse:min-h-touch",
+                      "inline-flex h-control-sm cursor-pointer items-center px-3 text-small font-medium coarse:min-h-touch has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-ring",
                       format === f
                         ? "bg-link text-bg"
                         : "bg-transparent text-ink hover:bg-surface-hover",
