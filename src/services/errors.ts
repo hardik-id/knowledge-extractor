@@ -30,6 +30,8 @@ const MESSAGES: Record<string, string> = {
   empty_message: "Write a message first.",
   nothing_to_publish: "Save a definition with at least one record type before publishing.",
   project_not_found: "This project no longer exists, or it isn't yours.",
+  unknown_template: "This template doesn't exist. Choose another one.",
+  template_not_found: "This template no longer exists. Choose another one.",
   run_belongs_to_project: "This run belongs to a project. Delete the project instead.",
   definition_version_not_found: "This version of the configuration no longer exists.",
   no_files: "Select at least one file.",

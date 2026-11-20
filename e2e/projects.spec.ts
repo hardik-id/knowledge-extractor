@@ -29,7 +29,7 @@ test("a project made with a description shows in the list with its facts", async
   const contracts = row(page, "Contracts");
   await expect(contracts.getByText("Renewal dates and notice periods")).toBeVisible();
   await expect(contracts.getByText("0 documents")).toBeVisible();
-  await expect(contracts.getByText("No configuration yet")).toBeVisible();
+  await expect(contracts.getByText("Configuration version 1")).toBeVisible();
 });
 
 test("a project is renamed and its description changed", async ({ api, page }) => {

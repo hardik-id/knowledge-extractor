@@ -4,6 +4,7 @@ import { isApiError } from "@/lib/api/api-error";
 import { MOCK_DOCUMENTS } from "@/mocks/documents";
 import { DEFAULT_EXTRACTION_DEFINITION } from "@/mocks/extraction";
 import { MOCK_FILES } from "@/mocks/files";
+import { MOCK_TEMPLATES } from "@/mocks/templates";
 import type { RunEventHandlers } from "../contracts";
 import { MockBackend } from "./mock-backend";
 
@@ -41,7 +42,7 @@ describe("mock projects", () => {
     assert.equal(project.name, "ADRs");
     assert.equal(project.description, "Decisions");
     assert.equal(project.documentCount, 0);
-    assert.equal(project.configurationVersion, null);
+    assert.equal(project.configurationVersion, 1);
     const run = await backend.getRun(project.runId);
     assert.deepEqual([run.files, run.cells], [[], []]);
     assert.deepEqual(await backend.getProject(project.id), project);
@@ -223,7 +224,7 @@ describe("mock configuration versions", () => {
 
   test("a save carries a note and a time; the project counts the version", async () => {
     const { backend, project, v1, v2 } = await projectWithVersions();
-    assert.equal(v1.note, "");
+    assert.equal(v1.note, "From template: Architecture decision records");
     assert.equal(v2.version, 2);
     assert.equal(v2.note, "Tightened the prompt");
     assert.ok(v2.createdAt >= v1.createdAt);
@@ -237,7 +238,7 @@ describe("mock configuration versions", () => {
       list.map((v) => [v.version, v.note]),
       [
         [2, "Tightened the prompt"],
-        [1, ""],
+        [1, "From template: Architecture decision records"],
       ],
     );
     assert.equal(list[0].recordTypeCount, DEFAULT_EXTRACTION_DEFINITION.recordTypes.length);
@@ -347,5 +348,68 @@ describe("mock storage of projects", () => {
     const project = await backend.createProject({ name: "Gone" });
     await backend.deleteProject(project.id);
     assert.deepEqual(await backendOn(null, local).listProjects(), []);
+  });
+});
+
+describe("mock templates", () => {
+  test("the four templates are listed, the default first", async () => {
+    const templates = await backendOn().listTemplates();
+    assert.deepEqual(
+      templates.map((t) => t.id),
+      ["adr", "skill", "blank", "policy-rule"],
+    );
+    assert.deepEqual(templates, MOCK_TEMPLATES);
+  });
+
+  test("a project from a template gets it as version 1 with a note", async () => {
+    const backend = backendOn();
+    const project = await backend.createProject({ name: "Rules", templateId: "policy-rule" });
+
+    assert.equal(project.configurationVersion, 1);
+    const definition = await backend.getDefinition(project.runId);
+    assert.equal(definition.version, 1);
+    assert.equal(definition.note, "From template: Policy rules");
+    assert.deepEqual(
+      definition.recordTypes.map((t) => t.name),
+      ["Rule"],
+    );
+    assert.equal(definition.output.format, "json");
+    assert.equal((await backend.listDefinitionVersions(project.runId)).length, 1);
+  });
+
+  test("a project without a template starts from the ADR one", async () => {
+    const backend = backendOn();
+    const project = await backend.createProject({ name: "ADRs" });
+
+    const definition = await backend.getDefinition(project.runId);
+    assert.equal(definition.note, "From template: Architecture decision records");
+    assert.equal(definition.recordTypes[0].name, "ADR");
+  });
+
+  test("a blank template starts with nothing set up", async () => {
+    const backend = backendOn();
+    const project = await backend.createProject({ name: "B", templateId: "blank" });
+    const definition = await backend.getDefinition(project.runId);
+    assert.deepEqual(definition.recordTypes, []);
+    assert.equal(definition.prompt, "");
+  });
+
+  test("an unknown template is a 422 unknown_template and makes no project", async () => {
+    const backend = backendOn();
+    await rejectsWithCode(
+      backend.createProject({ name: "X", templateId: "nope" }),
+      "unknown_template",
+      422,
+    );
+    assert.deepEqual(await backend.listProjects(), []);
+  });
+
+  test("changing a template's copy in a project leaves the templates alone", async () => {
+    const backend = backendOn();
+    const project = await backend.createProject({ name: "A", templateId: "skill" });
+    const v1 = await backend.getDefinition(project.runId);
+    await backend.saveDefinition(project.runId, { ...v1, prompt: "Changed" }, 1, "");
+    const skill = (await backend.listTemplates()).find((t) => t.id === "skill")!;
+    assert.notEqual(skill.definition.prompt, "Changed");
   });
 });

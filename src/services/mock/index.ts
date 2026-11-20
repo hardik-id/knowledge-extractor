@@ -27,6 +27,9 @@ export function createMockServices(backend: MockBackend = new MockBackend()): Se
       rename: (projectId, patch) => backend.updateProject(projectId, patch),
       remove: (projectId) => backend.deleteProject(projectId),
     },
+    templates: {
+      list: (signal) => backend.listTemplates(signal),
+    },
     runs: {
       setDocuments: (runId, files) => backend.setDocuments(runId, files),
       createRun: (files) => backend.createRun(files),
