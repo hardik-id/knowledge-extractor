@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ExtractionDefinitionDraft, FieldDef } from "@/services/contracts";
-import { diffProposal } from "./proposal-diff";
+import { diffProposal, shownOutcome } from "./proposal-diff";
 
 const field = (id: string, key: string, name: string, over: Partial<FieldDef> = {}): FieldDef => ({
   id,
@@ -88,5 +88,22 @@ describe("diffProposal", () => {
       "ADR: field “Approver” renamed to “Approved by”",
       "ADR / Approved by: type changed to choice",
     ]);
+  });
+});
+
+describe("shownOutcome", () => {
+  it("keeps an open proposal open while it would change something", () => {
+    assert.equal(shownOutcome("open", 2), "open");
+  });
+
+  it("shows an open proposal that changes nothing as already included", () => {
+    // Applied before a reload: the draft already is the proposal.
+    assert.equal(shownOutcome("open", 0), "included");
+  });
+
+  it("keeps what the person did, and replaced proposals, as they are", () => {
+    assert.equal(shownOutcome("applied", 0), "applied");
+    assert.equal(shownOutcome("dismissed", 3), "dismissed");
+    assert.equal(shownOutcome("replaced", 0), "replaced");
   });
 });

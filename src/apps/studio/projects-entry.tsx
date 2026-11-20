@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloudOff, FolderOpen, LoaderCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,20 @@ import { StudioPanel } from "./studio-panel";
 /**
  * Studio's entry: the person's projects, last worked on first, with
  * "New project", rename and delete.
+ *
+ * Next.js keeps a page it leaves (hidden, with its state) and shows it again
+ * on the way back, which would bring back the list as it was then: projects
+ * worked on since in the wrong place, with old facts, or missing. So the list
+ * starts over each time it is left, and is fetched again when it shows.
  */
 export function ProjectsEntry() {
+  const [visit, setVisit] = useState(0);
+  // The cleanup runs when the page is hidden, before the next one shows.
+  useLayoutEffect(() => () => setVisit((n) => n + 1), []);
+  return <ProjectList key={visit} />;
+}
+
+function ProjectList() {
   const router = useRouter();
   const firstPage = useAsyncData("projects", (signal) => services.projects.listPage({ signal }));
   const listRef = useRef<HTMLDivElement>(null);

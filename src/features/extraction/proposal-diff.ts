@@ -96,3 +96,20 @@ export function diffProposal(
   if (current.output.template !== proposal.output.template) out.push("Template changed");
   return out;
 }
+
+/** What became of a proposal: still to decide, applied, dismissed, or replaced by a newer one. */
+export type ProposalOutcome = "open" | "applied" | "dismissed" | "replaced";
+
+/**
+ * What a proposal card shows, given its `outcome` and how many changes applying
+ * it would make. Applying or dismissing is only remembered on the page, so after
+ * a reload, or in another tab, a proposal applied earlier is open again; when it
+ * changes nothing in what the person has, it is already in it ("included"), and
+ * Apply would do nothing.
+ */
+export function shownOutcome(
+  outcome: ProposalOutcome,
+  changeCount: number,
+): ProposalOutcome | "included" {
+  return outcome === "open" && changeCount === 0 ? "included" : outcome;
+}
