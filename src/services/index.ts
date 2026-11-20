@@ -12,7 +12,7 @@ import { MockBackend } from "./mock/mock-backend";
  * set NEXT_PUBLIC_BACKEND_MODE to switch.
  */
 
-export { authClient, authSession, authTokens } from "./auth";
+export { authClient, authSession, authTokens, devTokens } from "./auth";
 
 const mockBackend = env.backendMode === "http" ? null : new MockBackend();
 

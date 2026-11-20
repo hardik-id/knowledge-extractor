@@ -34,6 +34,13 @@ export interface SocketClientOptions {
   heartbeat?: HeartbeatOptions;
   /** Close codes that mean "do not try again" (e.g. no access to this run). */
   fatalCloseCodes?: readonly number[];
+  /**
+   * While this says true the client neither asks for a URL (a ticket) nor tries again:
+   * it waits for `onUnblocked`. For a session that has ended, until the person signs in again.
+   */
+  blocked?: () => boolean;
+  /** Calls the listener when `blocked` may have turned false. Returns a function that stops listening. */
+  onUnblocked?: (listener: () => void) => () => void;
   /** Replaceable for tests. */
   WebSocketImpl?: typeof WebSocket;
   random?: () => number;
@@ -76,6 +83,7 @@ export function createSocketClient(options: SocketClientOptions): SocketClient {
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   let lastActivity = 0;
+  let stopWaiting: (() => void) | null = null;
 
   const setState = (next: SocketState) => {
     if (state === next) return;
@@ -101,7 +109,26 @@ export function createSocketClient(options: SocketClientOptions): SocketClient {
     }, heartbeat.intervalMs);
   };
 
+  const isBlocked = () => options.blocked?.() === true && options.onUnblocked !== undefined;
+
+  /** Sits still until the block is lifted, then starts over with a fresh backoff. */
+  const waitForUnblock = () => {
+    setState("reconnecting");
+    stopWaiting?.();
+    stopWaiting = options.onUnblocked!(() => {
+      if (isBlocked()) return;
+      stopWaiting?.();
+      stopWaiting = null;
+      attempt = 0;
+      void open();
+    });
+  };
+
   const scheduleReconnect = () => {
+    if (isBlocked()) {
+      waitForUnblock();
+      return;
+    }
     setState("reconnecting");
     const delay = backoffDelay(attempt, backoff, random);
     attempt++;
@@ -113,6 +140,10 @@ export function createSocketClient(options: SocketClientOptions): SocketClient {
 
   const open = async () => {
     const mine = ++generation;
+    if (isBlocked()) {
+      waitForUnblock();
+      return;
+    }
     const Impl = options.WebSocketImpl ?? WebSocket;
 
     let ws: WebSocket;
@@ -179,6 +210,8 @@ export function createSocketClient(options: SocketClientOptions): SocketClient {
       generation++;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectTimer = null;
+      stopWaiting?.();
+      stopWaiting = null;
       stopHeartbeat();
       if (typeof window !== "undefined") window.removeEventListener("online", onOnline);
       socket?.close(1000);

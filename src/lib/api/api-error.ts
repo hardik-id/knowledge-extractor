@@ -38,3 +38,11 @@ export function isApiError(error: unknown): error is ApiError {
 export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
 }
+
+/**
+ * True when the API refused the token (a 401 that survived the token refresh).
+ * That is the session ending, never "the server didn't answer".
+ */
+export function isUnauthorized(error: unknown): boolean {
+  return isApiError(error) && error.status === 401;
+}

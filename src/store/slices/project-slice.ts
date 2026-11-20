@@ -8,6 +8,7 @@ const NO_PROJECT = {
   projectId: null,
   project: null,
   projectLoad: "idle",
+  projectError: null,
 } satisfies Partial<ProjectSlice>;
 
 /** The pipeline's store: it never opens a project. */
@@ -134,7 +135,13 @@ export function createProjectSlice(
             selectedFiles: selectionFromRun(run.files),
           });
         } catch (error) {
-          if (!stale()) set({ projectLoad: isGone(error) ? "gone" : "error" });
+          if (!stale()) {
+            set(
+              isGone(error)
+                ? { projectLoad: "gone" }
+                : { projectLoad: "error", projectError: error },
+            );
+          }
         }
       },
 

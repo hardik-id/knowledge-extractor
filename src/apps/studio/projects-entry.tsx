@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/pipeline/empty-state";
 import { useAsyncData } from "@/lib/use-async-data";
 import type { Project } from "@/services/contracts";
 import { services } from "@/services";
+import { isSessionEnd } from "@/features/auth/report-failure";
 import { describeApiError } from "@/services/errors";
 import { DeleteProjectDialog } from "./delete-project-dialog";
 import { projectHref } from "./nav-steps";
@@ -70,7 +71,7 @@ function ProjectList() {
         next: page.next,
       });
     } catch (failure) {
-      setMoreError(describeApiError(failure));
+      if (!isSessionEnd(failure)) setMoreError(describeApiError(failure));
     } finally {
       setLoadingMore(false);
     }

@@ -1,4 +1,5 @@
 import type { HttpClient } from "@/lib/api";
+import { appSession, type SessionSignal } from "@/lib/auth/session-signal";
 import { createSocketClient } from "@/lib/realtime/socket-client";
 import type { SourceFile } from "@/types/pipeline";
 import type {
@@ -256,12 +257,15 @@ export interface HttpRunEventsOptions {
   client: HttpClient;
   wsBaseUrl: string;
   WebSocketImpl?: typeof WebSocket;
+  /** Whether the person's session has ended. Default: the app's own. While it has, the socket asks for no tickets. */
+  session?: Pick<SessionSignal, "isEnded" | "onResume">;
 }
 
 export function createHttpRunEvents({
   client,
   wsBaseUrl,
   WebSocketImpl,
+  session = appSession,
 }: HttpRunEventsOptions): RunEvents {
   /**
    * A browser can't send an Authorization header on a WebSocket, so the API
@@ -278,6 +282,8 @@ export function createHttpRunEvents({
     subscribe(runId, handlers) {
       const socket = createSocketClient({
         WebSocketImpl,
+        blocked: session.isEnded,
+        onUnblocked: session.onResume,
         url: async () => `${wsBaseUrl}/ws/runs/${enc(runId)}/?ticket=${enc(await ticket())}`,
         onStateChange: handlers.onStateChange,
         onOpen: () => handlers.onOpen?.(),

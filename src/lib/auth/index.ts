@@ -8,3 +8,7 @@ export { createAuthTokenProvider } from "./auth-token-provider";
 export type { AuthTokenProvider } from "./auth-token-provider";
 export { createFakeAuthClient } from "./fake-auth-client";
 export { lazyAuthClient } from "./lazy-auth-client";
+export { createDevTokenProvider, devTokenAllowed } from "./dev-token-provider";
+export type { DevTokenProvider } from "./dev-token-provider";
+export { appSession, createSessionSignal } from "./session-signal";
+export type { SessionSignal } from "./session-signal";

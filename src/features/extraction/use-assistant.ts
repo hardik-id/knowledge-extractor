@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { useAsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
 import type { AssistantMessage, ExtractionDefinitionDraft } from "@/services/contracts";
-import { describeApiError } from "@/services/errors";
+import { toastFailure } from "@/features/auth/report-failure";
 import { usePipelineStore } from "@/store/pipeline-store";
 
 export interface AssistantState {
@@ -51,7 +50,7 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
       putAssistantMessage(sent);
       return true;
     } catch (e) {
-      toast.error("Couldn't send your message", { description: describeApiError(e) });
+      toastFailure("Couldn't send your message", e);
       return false;
     } finally {
       setSending(false);
@@ -66,7 +65,7 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
       setAssistantMessages([]);
       return true;
     } catch (e) {
-      toast.error("Couldn't clear the conversation", { description: describeApiError(e) });
+      toastFailure("Couldn't clear the conversation", e);
       return false;
     } finally {
       setSending(false);

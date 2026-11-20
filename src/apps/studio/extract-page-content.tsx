@@ -8,7 +8,10 @@ import { EmptyState } from "@/components/pipeline/empty-state";
 import { ExtractionActions } from "@/features/extraction/extraction-actions";
 import { ExtractionWorkspace } from "@/features/extraction/extraction-workspace";
 import { useExtractionRun } from "@/features/extraction/use-extraction-run";
+import { useOnSessionResumed, useSessionEnded } from "@/features/auth/use-session";
 import { StageSummary } from "@/features/run/stage-summary";
+import { isUnauthorized } from "@/lib/api/api-error";
+import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { projectHref } from "./nav-steps";
 import { StudioPanel } from "./studio-panel";
@@ -19,8 +22,18 @@ export function ExtractPageContent() {
   const hasDocuments = usePipelineStore((s) => s.runFiles.length > 0);
   const runLoad = usePipelineStore((s) => (s.runId ? s.runLoad : "ready"));
   const loadRun = usePipelineStore((s) => s.loadRun);
+  const error = usePipelineStore((s) => s.runError);
+  const sessionEnded = useSessionEnded();
 
-  if (!projectId || runLoad === "idle" || runLoad === "loading") return <ExtractSkeleton />;
+  // The token was refused: the sign-in surface is up, and this loads again once the person is back.
+  useOnSessionResumed(() => {
+    if (runLoad === "error" && isUnauthorized(error)) void loadRun();
+  });
+
+  const waitingForSignIn = runLoad === "error" && isUnauthorized(error) && sessionEnded;
+  if (!projectId || runLoad === "idle" || runLoad === "loading" || waitingForSignIn) {
+    return <ExtractSkeleton />;
+  }
 
   if (!hasDocuments) {
     return (
@@ -45,7 +58,7 @@ export function ExtractPageContent() {
         <EmptyState
           icon={CloudOff}
           title="Couldn't load this workspace"
-          description="The server didn't answer. Check your connection and try again."
+          description={describeApiError(error)}
           action={
             <Button variant="outline" onClick={() => void loadRun()}>
               Try again

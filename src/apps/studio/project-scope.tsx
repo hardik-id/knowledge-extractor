@@ -7,6 +7,9 @@ import { CloudOff, FolderX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
+import { useOnSessionResumed, useSessionEnded } from "@/features/auth/use-session";
+import { isUnauthorized } from "@/lib/api/api-error";
+import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { STUDIO_HOME } from "./nav-steps";
 
@@ -21,13 +24,23 @@ export function ProjectScope({ children }: { children: React.ReactNode }) {
   const openId = usePipelineStore((s) => s.projectId);
   const load = usePipelineStore((s) => s.projectLoad);
   const openProject = usePipelineStore((s) => s.openProject);
+  const error = usePipelineStore((s) => s.projectError);
+  const sessionEnded = useSessionEnded();
 
   // Again whenever the store lets go of it (another project, a sign-out).
   useEffect(() => {
     if (hasHydrated && openId !== id) void openProject(id);
   }, [hasHydrated, openId, id, openProject]);
 
-  if (openId !== id || load === "idle" || load === "loading") return <ProjectSkeleton />;
+  // The token was refused: the sign-in surface is up, and this loads again once the person is back.
+  useOnSessionResumed(() => {
+    if (openId === id && load === "error" && isUnauthorized(error)) void openProject(id);
+  });
+
+  const waitingForSignIn = load === "error" && isUnauthorized(error) && sessionEnded;
+  if (openId !== id || load === "idle" || load === "loading" || waitingForSignIn) {
+    return <ProjectSkeleton />;
+  }
 
   if (load === "gone") {
     return (
@@ -52,7 +65,7 @@ export function ProjectScope({ children }: { children: React.ReactNode }) {
         <EmptyState
           icon={CloudOff}
           title="Couldn't load this project"
-          description="The server didn't answer. Check your connection and try again."
+          description={describeApiError(error)}
           action={
             <Button variant="outline" onClick={() => void openProject(id)}>
               Try again

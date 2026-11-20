@@ -6,7 +6,7 @@ import { retryMiddleware } from "./middleware/retry";
 import { timeoutMiddleware } from "./middleware/timeout";
 import type { TokenProvider } from "./token-provider";
 
-export { ApiError, isAbortError, isApiError } from "./api-error";
+export { ApiError, isAbortError, isApiError, isUnauthorized } from "./api-error";
 export type { HttpClient, Middleware, RequestOptions } from "./http-client";
 export { createMemoryTokenProvider } from "./token-provider";
 export type { TokenProvider } from "./token-provider";
