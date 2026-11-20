@@ -6,6 +6,7 @@ import {
 } from "@playwright/test";
 import type { ApiProject } from "../fixtures";
 import { API_BASE_URL } from "../support/env";
+import { clickUntilOpen } from "../support/first-click";
 import type { Person } from "../support/people";
 
 /** Documents the dev backend always has in its storage container. */
@@ -55,14 +56,13 @@ export async function saveConfiguration(page: Page, note?: string) {
   await form.getByRole("button", { name: "Save", exact: true }).click();
 }
 
-/** Opens the "New project" dialog. A click before the page has hydrated does nothing, so it is repeated until the dialog shows. */
+/** Opens the "New project" dialog (the first click after a navigation, see `clickUntilOpen`). */
 export async function openNewProjectDialog(page: Page) {
-  const dialog = page.getByRole("dialog", { name: "New project" });
-  await expect(async () => {
-    await page.getByRole("button", { name: "New project" }).click();
-    await expect(dialog).toBeVisible({ timeout: 1_000 });
-  }).toPass();
-  return dialog;
+  return clickUntilOpen(
+    page,
+    page.getByRole("button", { name: "New project" }),
+    page.getByRole("dialog", { name: "New project" }),
+  );
 }
 
 /** A document the backend's storage container lists for every person. */

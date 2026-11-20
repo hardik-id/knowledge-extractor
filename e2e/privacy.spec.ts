@@ -1,6 +1,5 @@
 import { addDocument, apiAs, extractPath } from "./pages/studio";
-import { expect, test } from "./fixtures";
-import { newPerson } from "./support/people";
+import { expect, newPerson, test } from "./fixtures";
 
 test("person B does not see person A's project in the list", async ({ api, contextFor, page }) => {
   await api.createProject({ name: "A's private project" });

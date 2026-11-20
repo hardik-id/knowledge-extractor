@@ -86,11 +86,19 @@ export class ExtractionPage {
     await this.assistant.getByRole("button", { name: "Send" }).click();
   }
 
-  /** Starts a run. The progress arrives live: the tests wait for `finished()`, never reload. */
+  /**
+   * Starts a run. The progress arrives live: the tests wait for `finished()`, never reload.
+   * It waits for the backend to accept the run (the answer stays true; the "Running" badge
+   * is gone as soon as a fast run ends), not for a badge.
+   */
   async run(label: "Run extraction" | "Run again") {
+    const accepted = this.page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        /\/stages\/extract\/executions$/.test(new URL(response.url()).pathname),
+    );
     await this.page.getByRole("button", { name: label }).click();
-    // Seen before the end, so "Ready to proceed" below is the new run's, not the old one's.
-    await expect(this.page.getByText("Running", { exact: true })).toBeVisible();
+    expect((await accepted).ok(), "the backend accepted the run").toBe(true);
   }
 
   async finished() {

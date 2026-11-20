@@ -8,7 +8,7 @@ import {
 import { API_BASE_URL, API_ORIGIN } from "./support/env";
 import { newPerson, type Person } from "./support/people";
 
-export { expect };
+export { expect, newPerson };
 export type { Person };
 
 /** An API answer a test expects to be an error (for example a 404 on a deleted project). */

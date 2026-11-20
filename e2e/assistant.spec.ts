@@ -8,14 +8,9 @@ test.describe("the assistant", () => {
     api,
     page,
     person,
-    playwright,
+    request,
   }) => {
-    const project = await projectWithDocuments(
-      api,
-      person,
-      await playwright.request.newContext(),
-      DOCUMENTS,
-    );
+    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
     const extraction = new ExtractionPage(page);
     await extraction.open(project);
     await expect(page.getByText("Unsaved changes")).toHaveCount(0);
@@ -44,18 +39,8 @@ test.describe("the assistant", () => {
     await expect(page.getByText("Unsaved changes").first()).toBeVisible();
   });
 
-  test("the conversation is still there after a reload", async ({
-    api,
-    page,
-    person,
-    playwright,
-  }) => {
-    const project = await projectWithDocuments(
-      api,
-      person,
-      await playwright.request.newContext(),
-      DOCUMENTS,
-    );
+  test("the conversation is still there after a reload", async ({ api, page, person, request }) => {
+    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
     const extraction = new ExtractionPage(page);
     await extraction.open(project);
     await extraction.ask("add a field for the approver");
@@ -77,14 +62,9 @@ test.describe("running the extraction", () => {
     api,
     page,
     person,
-    playwright,
+    request,
   }) => {
-    const project = await projectWithDocuments(
-      api,
-      person,
-      await playwright.request.newContext(),
-      DOCUMENTS,
-    );
+    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
     const extraction = new ExtractionPage(page);
     await extraction.open(project);
 

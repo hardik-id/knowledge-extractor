@@ -1,13 +1,13 @@
-import { expect, test } from "./fixtures";
-import { newPerson } from "./support/people";
+import { expect, newPerson, test } from "./fixtures";
+import { openNewProjectDialog } from "./pages/studio";
+import { clickUntilOpen } from "./support/first-click";
 
 test("the project list opens, and a project is made, opened and deleted", async ({ page }) => {
   await page.goto("/studio");
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "No projects yet" })).toBeVisible();
 
-  await page.getByRole("button", { name: "New project" }).click();
-  const dialog = page.getByRole("dialog", { name: "New project" });
+  const dialog = await openNewProjectDialog(page);
   await dialog.getByLabel("Name").fill("Smoke project");
   await dialog.getByLabel("Description (optional)").fill("Made by the smoke test");
   await dialog.getByRole("button", { name: "Create project" }).click();
@@ -19,11 +19,12 @@ test("the project list opens, and a project is made, opened and deleted", async 
   await page.goto("/studio");
   const row = page.getByRole("listitem").filter({ hasText: "Smoke project" });
   await expect(row).toBeVisible();
-  await row.getByRole("button", { name: "Delete" }).click();
-  await page
-    .getByRole("dialog", { name: "Delete “Smoke project”?" })
-    .getByRole("button", { name: "Delete project" })
-    .click();
+  const confirm = await clickUntilOpen(
+    page,
+    row.getByRole("button", { name: "Delete" }),
+    page.getByRole("dialog", { name: "Delete “Smoke project”?" }),
+  );
+  await confirm.getByRole("button", { name: "Delete project" }).click();
 
   await expect(page.getByRole("heading", { name: "No projects yet" })).toBeVisible();
 });
