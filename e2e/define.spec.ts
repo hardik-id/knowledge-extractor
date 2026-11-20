@@ -138,3 +138,35 @@ test("at 390px wide there is no sideways scroll and the controls can be reached"
     ),
   ).toBe(false);
 });
+
+for (const size of [
+  { width: 1280, height: 800 },
+  { width: 1360, height: 900 },
+]) {
+  test(`at ${size.width} x ${size.height} the fields are a table with column headers`, async ({
+    api,
+    page,
+    person,
+    request,
+  }) => {
+    await page.setViewportSize(size);
+    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    await new ExtractionPage(page).open(project);
+    const table = page.getByRole("table", { name: "Fields of ADR" });
+    for (const header of ["Field", "Type", "Exact quote", "Several values"]) {
+      await expect(table.getByRole("columnheader", { name: header })).toBeVisible();
+    }
+    const row = await table.getByRole("row").nth(1).boundingBox();
+    expect(row?.height).toBeLessThanOrEqual(80);
+  });
+}
+
+test("at 390px wide the column headers are not shown", async ({ api, page, person, request }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+  await new ExtractionPage(page).open(project);
+  const table = page.getByRole("table", { name: "Fields of ADR" });
+  // Below a table's width the header is only for screen readers: the head is clipped to a point.
+  const head = await table.locator("thead").boundingBox();
+  expect(head?.width).toBeLessThanOrEqual(1);
+});
