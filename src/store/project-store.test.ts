@@ -204,6 +204,30 @@ describe("a Studio store opened by project id", () => {
     assert.equal(store.getState().runId, null);
   });
 
+  test("a refused token is an error that says so, and loads again once the person is back", async () => {
+    const { ApiError } = await import("@/lib/api/api-error");
+    const project = await services.projects.create({ name: "Refused" });
+    const store = await newTab();
+    const real = services.projects.get;
+    services.projects.get = async () => {
+      throw new ApiError({ status: 401, code: "http_401", message: "Unauthorized" });
+    };
+    try {
+      await store.getState().openProject(project.id);
+    } finally {
+      services.projects.get = real;
+    }
+
+    const failed = store.getState();
+    assert.equal(failed.projectLoad, "error");
+    assert.ok(failed.projectError instanceof ApiError);
+    assert.equal(failed.projectError.status, 401, "the cause is kept, so the page can tell");
+
+    await store.getState().openProject(project.id);
+    assert.equal(store.getState().projectLoad, "ready");
+    assert.equal(store.getState().projectError, null);
+  });
+
   test("a project deleted while open is gone", async () => {
     const project = await services.projects.create({ name: "Short-lived" });
     const store = await openedOn(project);

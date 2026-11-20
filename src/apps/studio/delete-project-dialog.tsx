@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Project } from "@/services/contracts";
+import { isSessionEnd } from "@/features/auth/report-failure";
 import { describeApiError } from "@/services/errors";
 import { deletionConsequences } from "./project-facts";
 
@@ -53,7 +54,8 @@ function DeleteContent({
       deleted.current = true;
       onCancel();
     } catch (failure) {
-      setError(describeApiError(failure));
+      // A refused token is reported by the sign-in surface, not here.
+      if (!isSessionEnd(failure)) setError(describeApiError(failure));
       setBusy(false);
     }
   };

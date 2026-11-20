@@ -18,7 +18,7 @@ import { FileBrowser, SelectionSummary } from "@/features/file-picker/file-brows
 import { isApiError } from "@/lib/api/api-error";
 import { services } from "@/services";
 import type { RunFile } from "@/services/contracts";
-import { describeApiError } from "@/services/errors";
+import { toastFailure } from "@/features/auth/report-failure";
 import { sameDocuments } from "@/store/run-state";
 import { usePipelineStore } from "@/store/pipeline-store";
 import {
@@ -62,7 +62,7 @@ export function DocumentsPanel() {
     } catch (error) {
       if (isRunBusy(error)) setBusy(true);
       else {
-        toast.error("Couldn't save the documents", { description: describeApiError(error) });
+        toastFailure("Couldn't save the documents", error);
       }
       return false;
     }
@@ -98,7 +98,7 @@ export function DocumentsPanel() {
           }
         });
       } catch (error) {
-        toast.error("Couldn't check the documents", { description: describeApiError(error) });
+        toastFailure("Couldn't check the documents", error);
         return;
       } finally {
         setChecking(false);

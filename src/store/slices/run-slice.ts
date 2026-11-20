@@ -8,6 +8,7 @@ const NO_RUN = {
   runFiles: [],
   cells: {},
   runLoad: "idle",
+  runError: null,
   startingStages: [],
   connection: "idle",
   activeDocId: null,
@@ -107,7 +108,7 @@ export const createRunSlice: SliceCreator<RunSlice> = (set, get) => {
           get().invalidateFrom("select");
           return "gone";
         }
-        if (get().runLoad !== "ready") set({ runLoad: "error" });
+        if (get().runLoad !== "ready") set({ runLoad: "error", runError: error });
         return "failed";
       }
     },
@@ -119,6 +120,7 @@ export const createRunSlice: SliceCreator<RunSlice> = (set, get) => {
               runFiles: run.files,
               cells: mergeSnapshot(s.cells, run),
               runLoad: "ready",
+              runError: null,
               extractionRevisions: noteKnownExtractions(s.extractionRevisions, s.cells, run.cells),
             }
           : s,

@@ -12,7 +12,7 @@ import type {
   RecordPatch,
   ReviewState,
 } from "@/services/contracts";
-import { describeApiError } from "@/services/errors";
+import { toastFailure } from "@/features/auth/report-failure";
 import { usePipelineStore, useRunStoreApi } from "@/store/pipeline-store";
 import { awaitsExtraction } from "./extraction-pending";
 import { extractionInputEtag } from "./use-extraction-input";
@@ -126,7 +126,7 @@ export function useExtractionActions(extraction: FileExtraction | undefined): Ex
         }
         runStore.getState().setExtractionRevision(fileId, extraction.revision + 1);
       } else {
-        toast.error("Couldn't save the change", { description: describeApiError(error) });
+        toastFailure("Couldn't save the change", error);
       }
       return null;
     } finally {

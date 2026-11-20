@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { isSessionEnd } from "@/features/auth/report-failure";
 import { describeApiError } from "@/services/errors";
 
 export interface ProjectFormValues {
@@ -76,7 +77,8 @@ function ProjectForm({
       await onSubmit({ name: name.trim(), description: text.trim() });
       onOpenChange(false);
     } catch (failure) {
-      setError(describeApiError(failure));
+      // A refused token is reported by the sign-in surface, not here.
+      if (!isSessionEnd(failure)) setError(describeApiError(failure));
       setBusy(false);
     }
   };

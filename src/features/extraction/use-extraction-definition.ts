@@ -6,7 +6,8 @@ import { useAsyncData } from "@/lib/use-async-data";
 import { isApiError } from "@/lib/api/api-error";
 import { services } from "@/services";
 import type { ExtractionDefinition } from "@/services/contracts";
-import { describeApiError, type ExtractionNoun } from "@/services/errors";
+import { toastFailure } from "@/features/auth/report-failure";
+import type { ExtractionNoun } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import {
   isDirty,
@@ -86,7 +87,7 @@ export function useExtractionDefinition(
       });
       retry();
     } else {
-      toast.error(title, { description: describeApiError(e, noun) });
+      toastFailure(title, e, noun);
     }
   };
 

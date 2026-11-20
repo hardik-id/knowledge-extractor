@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { describeApiError, type ExtractionNoun } from "@/services/errors";
+import { toastFailure } from "@/features/auth/report-failure";
+import type { ExtractionNoun } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { useCanProceed, useStageStatus } from "@/store/selectors";
 import { useExtractionDefinition } from "./use-extraction-definition";
@@ -39,7 +40,7 @@ export function useExtractionRun(noun: ExtractionNoun = "definition") {
       await executeStage("extract", { config: { definitionVersion: current.version } });
       setChosen("review");
     } catch (error) {
-      toast.error("Couldn't start extraction", { description: describeApiError(error, noun) });
+      toastFailure("Couldn't start extraction", error, noun);
     }
   };
 

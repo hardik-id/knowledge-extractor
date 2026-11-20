@@ -1,12 +1,19 @@
 import { env } from "@/config/env";
 import { createMemoryTokenProvider, type TokenProvider } from "@/lib/api";
-import { createAuthTokenProvider, lazyAuthClient } from "@/lib/auth";
+import {
+  createAuthTokenProvider,
+  createDevTokenProvider,
+  devTokenAllowed,
+  lazyAuthClient,
+  type DevTokenProvider,
+} from "@/lib/auth";
 import type { AuthClient } from "@/lib/auth/auth-client";
 import type { AuthTokenProvider } from "@/lib/auth/auth-token-provider";
 
 /**
  * Sign-in for the backend API, chosen by NEXT_PUBLIC_AUTH_MODE:
- * none   no sign-in; the dev token (if any) is sent
+ * none   no sign-in; the dev token (if any) is sent. When the API refuses it, a development
+ *        build asks for a new one (`features/auth/dev-token-dialog.tsx`)
  * entra  Microsoft Entra ID through MSAL (loaded only when first used)
  * fake   a pretend person, for development; `window.__auth.expire()` ends the session
  */
@@ -55,6 +62,27 @@ export const authSession: AuthTokenProvider | null = authClient
   ? createAuthTokenProvider(authClient)
   : null;
 
+function sessionStorageOrNull(): Storage | null {
+  try {
+    return typeof sessionStorage === "undefined" ? null : sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Mode `none`, development only: the dev token, which a person can replace by pasting
+ * a new one when the API stops accepting it. Null in every other mode and in a production
+ * build, where `authTokens` is a plain in-memory token that nothing can replace.
+ */
+export const devTokens: DevTokenProvider | null =
+  !authSession && devTokenAllowed(process.env.NODE_ENV, env.authMode)
+    ? createDevTokenProvider({
+        initialToken: env.devAccessToken,
+        storage: sessionStorageOrNull(),
+      })
+    : null;
+
 /** What the API client sends as the bearer token. */
 export const authTokens: TokenProvider =
-  authSession ?? createMemoryTokenProvider({ initialToken: env.devAccessToken });
+  authSession ?? devTokens ?? createMemoryTokenProvider({ initialToken: env.devAccessToken });

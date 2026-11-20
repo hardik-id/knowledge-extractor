@@ -1,5 +1,6 @@
 import type { TokenProvider } from "@/lib/api/token-provider";
 import type { AuthClient } from "./auth-client";
+import { appSession, type SessionSignal } from "./session-signal";
 
 export interface AuthTokenProvider extends TokenProvider {
   /** Called when the session has ended (once, until `resume()`). */
@@ -11,9 +12,13 @@ export interface AuthTokenProvider extends TokenProvider {
 /**
  * The token source for the API client, backed by the sign-in client. Once the
  * session has ended it hands out nothing and asks nothing, so a backend that
- * keeps answering 401 does not cause a token request per call.
+ * keeps answering 401 does not cause a token request per call. It also tells
+ * the app's session signal, which quiets the pages and the socket.
  */
-export function createAuthTokenProvider(client: AuthClient): AuthTokenProvider {
+export function createAuthTokenProvider(
+  client: AuthClient,
+  session: SessionSignal = appSession,
+): AuthTokenProvider {
   let ended = false;
   const listeners = new Set<() => void>();
 
@@ -23,6 +28,7 @@ export function createAuthTokenProvider(client: AuthClient): AuthTokenProvider {
     onUnauthenticated: () => {
       if (ended) return;
       ended = true;
+      session.end();
       for (const listener of [...listeners]) listener();
     },
     subscribe: (listener) => {
@@ -33,6 +39,7 @@ export function createAuthTokenProvider(client: AuthClient): AuthTokenProvider {
     },
     resume: () => {
       ended = false;
+      session.resume();
     },
   };
 }

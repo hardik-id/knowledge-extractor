@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { AuthClient } from "./auth-client";
 import { createAuthTokenProvider } from "./auth-token-provider";
+import { createSessionSignal } from "./session-signal";
 
 function client(token: string | null = "tok") {
   const calls: ({ forceRefresh?: boolean } | undefined)[] = [];
@@ -68,5 +69,23 @@ describe("createAuthTokenProvider", () => {
     provider.resume();
     provider.onUnauthenticated();
     assert.equal(notified, 2);
+  });
+});
+
+describe("createAuthTokenProvider and the session signal", () => {
+  test("the first refused call ends the session for the app, once; signing in resumes it", () => {
+    const session = createSessionSignal();
+    const provider = createAuthTokenProvider(client().stub, session);
+    let ends = 0;
+    session.subscribe(() => session.isEnded() && ends++);
+
+    provider.onUnauthenticated();
+    provider.onUnauthenticated();
+    provider.onUnauthenticated();
+    assert.equal(session.isEnded(), true);
+    assert.equal(ends, 1);
+
+    provider.resume();
+    assert.equal(session.isEnded(), false);
   });
 });

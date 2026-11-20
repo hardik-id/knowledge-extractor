@@ -56,6 +56,63 @@ describe("createSocketClient", () => {
     for (const socket of sockets) socket.onclose = null;
   });
 
+  test("while blocked it asks for no URL and tries nothing; once unblocked it connects", async () => {
+    let blocked = true;
+    const waiting = new Set<() => void>();
+    let urls = 0;
+    const { client, states } = connect({
+      url: () => `wss://api.test/ws/runs/1/?ticket=${++urls}`,
+      blocked: () => blocked,
+      onUnblocked: (listener) => {
+        waiting.add(listener);
+        return () => waiting.delete(listener);
+      },
+    });
+    await settle();
+    await settle();
+
+    assert.equal(urls, 0, "no ticket was asked for");
+    assert.equal(sockets.length, 0);
+    assert.deepEqual(states, ["connecting", "reconnecting"]);
+
+    blocked = false;
+    for (const listener of [...waiting]) listener();
+    await settle();
+
+    assert.equal(urls, 1);
+    assert.equal(sockets.length, 1);
+    sockets[0].onopen?.();
+    assert.deepEqual(states, ["connecting", "reconnecting", "open"]);
+    client.close();
+  });
+
+  test("a failed ticket after the session ended does not loop: it waits to be unblocked", async () => {
+    let blocked = false;
+    const waiting = new Set<() => void>();
+    let urls = 0;
+    const { client } = connect({
+      url: () => {
+        urls++;
+        blocked = true; // the ticket call was refused, which ended the session
+        throw new Error("401");
+      },
+      blocked: () => blocked,
+      onUnblocked: (listener) => {
+        waiting.add(listener);
+        return () => waiting.delete(listener);
+      },
+    });
+    await settle();
+    await settle();
+    await settle();
+
+    assert.equal(urls, 1, "one attempt, not one per backoff");
+    assert.equal(waiting.size, 1);
+
+    client.close();
+    assert.equal(waiting.size, 0, "closing stops the wait");
+  });
+
   test("opens, passes on JSON messages and ignores anything else", async () => {
     const { client, states, opens, messages } = connect();
     await settle();

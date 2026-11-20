@@ -51,6 +51,8 @@ export interface RunSlice {
   runFiles: RunFile[];
   cells: CellMap;
   runLoad: RunLoadState;
+  /** Why the last load failed, while `runLoad` is "error". */
+  runError: unknown;
   creatingRun: boolean;
   /** Stages whose "run" request is on its way to the server. */
   startingStages: WorkStageId[];
@@ -105,6 +107,8 @@ export interface ProjectSlice {
   projectId: string | null;
   project: Project | null;
   projectLoad: ProjectLoadState;
+  /** Why the project failed to load, while `projectLoad` is "error". */
+  projectError: unknown;
   /**
    * Starts over on this project: fetches it, then its run. Does nothing when
    * it is already open (or opening). Never rejects: the outcome is `projectLoad`.

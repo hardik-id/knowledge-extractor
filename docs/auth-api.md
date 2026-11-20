@@ -77,7 +77,12 @@ Same body as the other documents: `{ "code": "…", "message": "…" }`. A Djang
 | 401    | `unauthenticated` | the token is missing, expired or invalid                       |
 | 403    | `forbidden`       | the token is valid, but this person has no access to the thing |
 
-What the UI does on a 401: it asks Microsoft for a fresh token once and sends the call again. If that call is refused too, the session has ended. The UI keeps the page and shows a dialog asking the person to sign in again, in a separate window so unsaved work is kept. A 403 is shown as an error on the call. It does not sign anyone out.
+What the UI does on a 401: it asks for a fresh token once and sends the call again. If that call is refused too, the session has ended. This is decided once for the whole app: the first call still refused ends the session, and from then on there is one place to sign in again, in every mode and on every page (a first load of a deep link, a save, the assistant, a run, the socket ticket `POST /ws-ticket`). A 403 is shown as an error on the call. It does not sign anyone out.
+
+- `entra` and `fake`: the page stays and a dialog asks the person to sign in again, in a separate window so unsaved work is kept (a fresh load shows the sign-in screen).
+- `none` (a dev token, development builds only): a dialog says the token is no longer accepted, names `make token` in the backend repository, and has a field to paste the new one and "Continue". The token is checked with one call, used at once with no restart of `npm run dev`, and kept in the tab's `sessionStorage` so a reload does not ask again. A token the API refuses too is reported in the same dialog. A production build does not contain the dialog (it refuses mode `none` against this API anyway).
+- Once the session has ended, loads that were refused wait quietly instead of each showing an error or a toast, and nothing retries: the socket asks for no tickets. After signing in again (or pasting a good token) the person is on the same address, the waiting loads run again by themselves, and unsaved text in the extraction configuration and in the assistant's box is still there.
+- A 401 is never reported as "the server didn't answer". A load that fails for another reason says what it was (no connection, a server problem).
 
 ## 5. CORS
 
@@ -109,6 +114,7 @@ Only if the backend has a WebSocket. A browser can't set a header on a socket, s
 | 4401       | no ticket, or an unknown, used or expired one               | asks for a new ticket and tries again |
 | 4404       | the run is not this person's, does not exist or was deleted | stops, and does not reconnect         |
 
+- While the session has ended (see section 4) the UI asks for no ticket and does not reconnect; it connects again after signing in.
 - A ticket is a secret in a URL. Keep it out of access logs, or log only the path.
 
 Without a socket the UI does not call this endpoint, and nothing here is needed.
