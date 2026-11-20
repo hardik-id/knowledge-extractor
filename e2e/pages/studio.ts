@@ -65,6 +65,21 @@ export async function openNewProjectDialog(page: Page) {
   );
 }
 
+/**
+ * Makes a project through the "New project" dialog and waits for it to open.
+ * `template` is the name of the choice under "Start from"; without it the picker is not touched.
+ */
+export async function createProjectFromDialog(page: Page, name: string, template?: string) {
+  await page.goto("/studio");
+  const dialog = await openNewProjectDialog(page);
+  await dialog.getByLabel("Name").fill(name);
+  if (template) {
+    await dialog.getByRole("radio", { name: new RegExp(`^${template}`) }).check();
+  }
+  await dialog.getByRole("button", { name: "Create project" }).click();
+  await expect(page).toHaveURL(/\/studio\/projects\/[^/]+$/);
+}
+
 /** A document the backend's storage container lists for every person. */
 export const DOCUMENT = {
   source: "storage",

@@ -15,11 +15,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { isSessionEnd } from "@/features/auth/report-failure";
+import { useAsyncData } from "@/lib/use-async-data";
+import { TemplatePicker } from "@/features/extraction/template-picker";
+import { services } from "@/services";
 import { describeApiError } from "@/services/errors";
 
 export interface ProjectFormValues {
   name: string;
   description: string;
+}
+
+export interface NewProjectValues extends ProjectFormValues {
+  /** Absent when the templates could not be loaded: the backend then uses its default. */
+  templateId?: string;
 }
 
 interface ProjectFormDialogProps {
@@ -31,15 +39,17 @@ interface ProjectFormDialogProps {
   busyLabel: string;
   /** Starting values each time it opens. */
   initial: ProjectFormValues;
+  /** Shows "Start from" with the templates (making a project, not changing one). */
+  chooseTemplate?: boolean;
   /** Rejects with the failure to show; resolves to close the dialog. */
-  onSubmit: (values: ProjectFormValues) => Promise<void>;
+  onSubmit: (values: NewProjectValues) => Promise<void>;
 }
 
 /** The name and description of a project, for making one and for changing one. */
 export function ProjectFormDialog({ open, onOpenChange, ...rest }: ProjectFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Mounted only while open, so it starts from `initial` every time. */}
         <ProjectForm onOpenChange={onOpenChange} {...rest} />
       </DialogContent>
@@ -54,6 +64,7 @@ function ProjectForm({
   submitLabel,
   busyLabel,
   initial,
+  chooseTemplate = false,
   onSubmit,
 }: Omit<ProjectFormDialogProps, "open">) {
   const nameId = useId();
@@ -63,6 +74,13 @@ function ProjectForm({
   const [text, setText] = useState(initial.description);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The dialog is usable while the templates load; the first one (the default) is chosen until the person picks.
+  const templates = useAsyncData(chooseTemplate ? "templates" : null, (signal) =>
+    services.templates.list(signal),
+  );
+  const [picked, setPicked] = useState<string | null>(null);
+  const available = templates.data ?? [];
+  const templateId = picked ?? available[0]?.id;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -74,7 +92,7 @@ function ProjectForm({
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({ name: name.trim(), description: text.trim() });
+      await onSubmit({ name: name.trim(), description: text.trim(), templateId });
       onOpenChange(false);
     } catch (failure) {
       // A refused token is reported by the sign-in surface, not here.
@@ -111,12 +129,25 @@ function ProjectForm({
           onChange={(event) => setText(event.target.value)}
         />
       </div>
+      {chooseTemplate && available.length > 0 && (
+        <TemplatePicker
+          templates={available}
+          value={templateId ?? null}
+          onChange={setPicked}
+          disabled={busy}
+        />
+      )}
+      {chooseTemplate && templates.error !== undefined && (
+        <p role="status" className="text-[13px] leading-[18px] text-ink-muted">
+          The templates could not be loaded. The project starts from the default one.
+        </p>
+      )}
       {error && (
         <p id={errorId} role="alert" className="text-[13px] leading-[18px] text-danger">
           {error}
         </p>
       )}
-      <DialogFooter>
+      <DialogFooter className="sticky bottom-0 -mb-6 bg-surface-raised pt-2 pb-6">
         <Button type="button" variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
           Cancel
         </Button>
