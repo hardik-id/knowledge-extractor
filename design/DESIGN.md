@@ -127,7 +127,7 @@ Between 600 and 959px, interpolate with `clamp()`. For example, `h1` is `font-si
 
 ## Shape, elevation and motion
 
-- Radii: `radius-md` for controls, `radius-lg` for cards, `radius-xl` for hero media, `radius-pill` for chips and step dots.
+- Radii: `radius-sm` (4px) for controls: text fields, selects and buttons, `radius-lg` for cards, `radius-xl` for hero media, `radius-pill` for chips and step dots.
 - Cards on `bg` use `shadow-card`. Cards on `surface-tint` use a `border-subtle` outline and no shadow. Clickable cards lift to `shadow-lift` and move up 2px on hover.
 - Motion is 150–200ms ease-out for hovers and 250ms for accordions. Turn it all off under `prefers-reduced-motion`.
 
