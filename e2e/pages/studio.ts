@@ -1,5 +1,12 @@
-import { expect, type Page } from "@playwright/test";
+import {
+  type APIRequestContext,
+  type Page,
+  expect,
+  request as playwrightRequest,
+} from "@playwright/test";
 import type { ApiProject } from "../fixtures";
+import { API_BASE_URL } from "../support/env";
+import type { Person } from "../support/people";
 
 /** Documents the dev backend always has in its storage container. */
 export const DOCS = {
@@ -56,4 +63,58 @@ export async function openNewProjectDialog(page: Page) {
     await expect(dialog).toBeVisible({ timeout: 1_000 });
   }).toPass();
   return dialog;
+}
+
+/** A document the backend's storage container lists for every person. */
+export const DOCUMENT = {
+  source: "storage",
+  source_ref: "enriched/engineering/architecture/architecture-decisions-2026.md",
+  name: "architecture-decisions-2026.md",
+  type: "md",
+  size_bytes: 4120,
+  location: "enriched / engineering / architecture",
+  modified_at: "2026-08-30T16:22:00Z",
+};
+
+/**
+ * A request context for the API as `person`, for the things a test checks or sets up
+ * outside the browser. Call `dispose()` when done. Unlike the `api` fixture it can
+ * act as another person, and it does not throw on 4xx.
+ */
+export async function apiAs(person: Person | null): Promise<APIRequestContext> {
+  return playwrightRequest.newContext({
+    // The trailing slash makes "projects" resolve under /api/v1.
+    baseURL: `${API_BASE_URL}/`,
+    extraHTTPHeaders: person ? { authorization: `Bearer ${person.token}` } : {},
+  });
+}
+
+/** Puts the test document into the project's run, as the person who owns it. */
+export async function addDocument(person: Person, runId: string) {
+  const request = await apiAs(person);
+  try {
+    const response = await request.put(`runs/${runId}/documents`, { data: { items: [DOCUMENT] } });
+    expect(response.ok(), `adding the document answered ${response.status()}`).toBe(true);
+  } finally {
+    await request.dispose();
+  }
+}
+
+/** The extraction page of a project (the address the project list links to once it has documents). */
+export function extractPath(projectId: string) {
+  return `/studio/projects/${projectId}/extract`;
+}
+
+/** The three tabs of the workspace, and the tab panel the page shows for each. */
+export const TABS = ["Define", "Review", "Output"] as const;
+
+export function tab(page: Page, name: (typeof TABS)[number]) {
+  return page.getByRole("tab", { name });
+}
+
+/** True when the page scrolls sideways (the document is wider than the window). */
+export async function scrollsSideways(page: Page): Promise<boolean> {
+  return page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
 }
