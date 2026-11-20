@@ -28,7 +28,7 @@ export interface SelectionMenuProps {
 }
 
 const BUTTON =
-  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] leading-5 text-ink outline-none enabled:hover:bg-surface-tint focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-link disabled:opacity-50";
+  "flex min-h-8 w-full items-center gap-2 rounded-control px-2 py-1 text-left text-body text-ink enabled:hover:bg-surface-hover disabled:opacity-50 coarse:min-h-touch";
 
 /**
  * What can be done with the text just selected in the document: add it to a
@@ -105,11 +105,11 @@ export function SelectionMenu({
       // Keeps the selection while the mouse is used on the menu; the keyboard still works.
       onMouseDown={(event) => event.preventDefault()}
       style={{ left: place.left, top: place.top, width: SELECTION_MENU_WIDTH }}
-      className="absolute z-20 max-w-full rounded-lg border border-border-subtle bg-surface-raised p-2 text-ink shadow-card select-none"
+      className="absolute z-20 max-w-full rounded-panel border border-border-subtle bg-surface-raised p-1 text-ink shadow-float select-none"
     >
       <p
         id={titleId}
-        className="truncate px-2 pb-1 text-[13px] leading-5 font-semibold text-ink-heading"
+        className="truncate px-2 pt-1 pb-1.5 text-small font-semibold text-ink-heading"
       >
         <span className="sr-only">Selected text: </span>
         {shortenQuote(text)}
@@ -117,7 +117,7 @@ export function SelectionMenu({
 
       {record && record.type.fields.length > 0 && (
         <div role="group" aria-labelledby={fieldsId} className="border-t border-border-subtle pt-1">
-          <p id={fieldsId} className="truncate px-2 py-1 text-[12px] leading-4 text-ink-muted">
+          <p id={fieldsId} className="truncate px-2 py-1 text-caption text-ink-muted">
             Add to {record.heading}
           </p>
           {record.type.fields.map((field) => {
@@ -132,7 +132,7 @@ export function SelectionMenu({
               >
                 <span
                   className={cn(
-                    "rounded-sm border px-1.5 text-[12px] leading-5 font-semibold",
+                    "rounded-pill border px-1.5 text-caption font-semibold",
                     label?.style.chip,
                   )}
                 >
@@ -150,7 +150,7 @@ export function SelectionMenu({
           aria-labelledby={recordsId}
           className="border-t border-border-subtle pt-1"
         >
-          <p id={recordsId} className="px-2 py-1 text-[12px] leading-4 text-ink-muted">
+          <p id={recordsId} className="px-2 py-1 text-caption text-ink-muted">
             Start a record
           </p>
           {recordTypes.map((type) => (

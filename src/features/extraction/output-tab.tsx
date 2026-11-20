@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
 import { MarkdownViewer } from "@/components/pipeline/markdown-viewer";
-import { SplitView } from "@/components/pipeline/split-view";
 import { useFileExtraction } from "@/features/run/use-extraction";
 import { renderOutput } from "@/lib/output-template";
 import { cn } from "@/lib/utils";
@@ -16,6 +15,7 @@ import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { useSelectedFiles } from "@/store/selectors";
 import { STAGE_META } from "@/features/stages/config";
+import { FileList, ReviewPanes } from "./review-panes";
 
 const FORMAT_LABEL: Record<OutputFormat, string> = {
   json: "JSON",
@@ -44,31 +44,15 @@ export function OutputTab({ definition }: { definition: ExtractionDefinition }) 
   }
 
   return (
-    <SplitView
+    <ReviewPanes
       listLabel="Files with output"
       list={
-        <ul className="flex flex-col gap-1 p-2">
-          {rows.map((file) => (
-            <li key={file.id}>
-              <button
-                type="button"
-                onClick={() => setActiveDoc(file.id)}
-                aria-current={active?.id === file.id ? "true" : undefined}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors",
-                  active?.id === file.id
-                    ? "bg-surface-raised shadow-card"
-                    : "hover:bg-surface-raised/60",
-                )}
-              >
-                <FileText aria-hidden className="size-5 shrink-0 text-link" />
-                <span className="block min-w-0 truncate text-[14px] leading-5 font-medium text-ink">
-                  {file.name}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <FileList
+          icon={FileText}
+          activeId={active?.id}
+          onSelect={setActiveDoc}
+          items={rows.map((file) => ({ id: file.id, name: file.name }))}
+        />
       }
       detail={active ? <FileOutput fileId={active.id} definition={definition} /> : null}
     />
@@ -82,7 +66,7 @@ function FileOutput({ fileId, definition }: { fileId: string; definition: Extrac
 
   if (error) {
     return (
-      <div className="flex flex-col items-start gap-3 px-6 py-6">
+      <div className="flex flex-col items-start gap-3 px-4 py-4 sm:px-6">
         <p>
           <span className="font-semibold text-ink">Couldn&apos;t load the output.</span>{" "}
           {describeApiError(error)}
@@ -95,7 +79,7 @@ function FileOutput({ fileId, definition }: { fileId: string; definition: Extrac
   }
   if (isLoading || !data || data.fileId !== fileId) {
     return (
-      <div aria-busy="true" aria-label="Loading output" className="space-y-3 px-6 py-6">
+      <div aria-busy="true" aria-label="Loading output" className="space-y-3 px-4 py-4 sm:px-6">
         <Skeleton className="h-6 w-1/3" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-4/5" />
@@ -117,8 +101,8 @@ function FileOutput({ fileId, definition }: { fileId: string; definition: Extrac
 
   return (
     <div className="flex flex-col">
-      <div className="sticky top-0 flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-surface-raised px-6 py-3">
-        <span className="text-[14px] font-medium text-ink">Output as {FORMAT_LABEL[format]}</span>
+      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-background px-4 py-2 sm:px-6">
+        <span className="text-small font-medium text-ink">Output as {FORMAT_LABEL[format]}</span>
         {!empty && (
           <span className="flex items-center gap-2">
             {format === "markdown" && (
@@ -139,15 +123,15 @@ function FileOutput({ fileId, definition }: { fileId: string; definition: Extrac
         )}
       </div>
       {empty ? (
-        <p className="px-6 py-6 text-ink-muted">Nothing was extracted from this file.</p>
+        <p className="px-4 py-4 text-ink-muted sm:px-6">Nothing was extracted from this file.</p>
       ) : format === "markdown" && rendered ? (
-        <MarkdownViewer markdown={text} className="px-6 py-6" />
+        <MarkdownViewer markdown={text} className="px-4 py-4 sm:px-6" />
       ) : (
         <pre
           tabIndex={0}
           aria-label={`${FORMAT_LABEL[format]} output`}
           className={cn(
-            "px-6 py-6 font-mono text-[13px] leading-5 text-ink",
+            "m-4 rounded-panel border border-border-subtle p-3 font-mono text-small text-ink sm:m-6",
             format === "csv" ? "overflow-x-auto whitespace-pre" : "break-words whitespace-pre-wrap",
           )}
         >

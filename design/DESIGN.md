@@ -23,6 +23,7 @@ What stays: ultramarine ink and one orange action per view, a designed dark them
    | `text-body` | 14 / 20 | 400 | Default text, controls, table cells |
    | `text-small` | 13 / 18 | 400 | Labels, helper text, secondary facts |
    | `text-caption` | 12 / 16 | 400 | Badges, timestamps, shortcuts |
+| `text-reading` | 15 / 24 | 400 | A document being read (Review tab): the one place body text is larger |
 
    Numbers in tables are tabular (`font-variant-numeric: tabular-nums` on `body`). `h1` is `text-title`, `h2` to `h4` are `text-section`, so a heading needs no class. Screens use these names, not `text-[13px] leading-[18px]`.
 4. **App density.** Controls are 32px tall (`h-control`), a page's main actions 36px (`h-control-lg`), dense actions inside a row 28 and 24px (`h-control-sm`, `h-control-xs`). Table rows are up to 44px. The working spacing steps are 8, 12, 16 and 24 (`space-2`, `-3`, `-4`, `-6`). On a touch device (`pointer: coarse`, the `coarse:` variant) every target is at least `touch-target` (44px) and text fields are 16px so a phone doesn't zoom.

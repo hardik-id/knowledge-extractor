@@ -44,7 +44,7 @@ function RecordActions({
         aria-label="Delete this record?"
         className="flex flex-wrap items-center gap-1"
       >
-        <span className="text-[13px] leading-[18px] text-ink">Delete this record?</span>
+        <span className="text-small text-ink">Delete this record?</span>
         <Button
           type="button"
           variant="outline"
@@ -144,10 +144,10 @@ function ExampleToggle({
         }
       />
       <div className="space-y-0.5">
-        <label htmlFor={id} className="text-[13px] leading-[18px] font-semibold text-ink">
+        <label htmlFor={id} className="text-small font-semibold text-ink">
           Use as an example
         </label>
-        <p id={`${id}-help`} className="text-[12px] leading-4 text-ink-muted">
+        <p id={`${id}-help`} className="text-caption text-ink-muted">
           Later extraction runs show this record to the model as an example of what you want.
         </p>
       </div>
@@ -187,41 +187,38 @@ export function RecordCard({
       data-record={record.id}
       aria-current={selected ? "true" : undefined}
       className={cn(
-        "rounded-lg border bg-surface-raised p-3 shadow-card",
-        selected ? "border-ink-heading ring-1 ring-ink-heading" : "border-border-subtle",
-        collapsed && "bg-surface-tint",
+        "border-b border-l-2 border-b-border-subtle px-4 py-3",
+        selected ? "border-l-ink-heading bg-surface-tint" : "border-l-transparent",
       )}
     >
-      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+      <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <h4
           className={cn(
-            "min-w-0 text-[16px] leading-6 font-semibold text-ink-heading",
+            "min-w-0 flex-1 basis-32 text-body font-semibold text-ink-heading",
             collapsed && "font-normal text-ink-muted",
           )}
         >
           <button
             type="button"
             onClick={() => onSelectRecord(record)}
-            className="line-clamp-2 rounded-sm text-left break-words hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+            className="line-clamp-2 rounded-control text-left break-words hover:underline"
           >
             {heading}
           </button>
         </h4>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <ReviewStateLabel state={record.review} />
+        {editable && <RecordActions record={record} actions={actions} />}
+      </header>
+      {((editable && record.origin === "human") || record.useAsExample) && (
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
           {editable && record.origin === "human" && <HumanMarker text="Added by you" />}
           {record.useAsExample && (
-            <span className="inline-flex items-center gap-1 text-[12px] leading-4 text-ink-muted">
-              <BookmarkCheck aria-hidden className="size-3.5 shrink-0" />
+            <span className="inline-flex items-center gap-1 text-caption text-ink-muted">
+              <BookmarkCheck aria-hidden className="size-3 shrink-0" />
               Example
             </span>
           )}
-          <ReviewStateLabel state={record.review} />
-        </span>
-      </header>
-      {editable && (
-        <div className="mt-2">
-          <RecordActions record={record} actions={actions} />
-        </div>
+        </p>
       )}
       {editable && record.review === "accepted" && (
         <div className="mt-2">
@@ -230,23 +227,24 @@ export function RecordCard({
       )}
 
       {!collapsed && (
-        <dl className="mt-3 flex flex-col gap-3">
+        <dl className="mt-2 grid grid-cols-[6.25rem_minmax(0,1fr)] gap-x-3 gap-y-1.5">
           {orderedIds.map((fieldId) => {
             const label = labels.get(fieldId)!;
             const values = record.fields.filter((v) => v.fieldId === fieldId);
             return (
-              <div key={fieldId} className="flex flex-col items-start gap-1">
-                <dt>
+              <div key={fieldId} className="col-span-2 grid grid-cols-subgrid items-start">
+                <dt className="pt-0.5">
                   <span
+                    title={label.field.name}
                     className={cn(
-                      "inline-block rounded-sm border px-1.5 text-[12px] leading-5 font-semibold",
+                      "inline-block max-w-full truncate rounded-pill border px-1.5 align-top text-caption font-semibold",
                       label.style.chip,
                     )}
                   >
                     {label.field.name}
                   </span>
                 </dt>
-                <dd className="flex w-full flex-col gap-2">
+                <dd className="flex min-w-0 flex-col gap-1">
                   {values.length === 0 ? (
                     <EmptyValue
                       record={record}

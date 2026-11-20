@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import type { ExtractionActions } from "@/features/run/use-extraction";
 import type {
   ExtractionDefinition,
@@ -108,9 +109,9 @@ export function RecordsPane({ definition, records, unanchored, ...rest }: Record
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <p className="text-[13px] leading-[18px] text-ink-muted tabular-nums">
+    <TooltipProvider>
+      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border-subtle bg-background px-4 py-2">
+        <p className="text-small text-ink-muted tabular-nums">
           {recordsSummary(records.length, unanchored.size)}
           {editable && records.length > 0 && <> · {reviewSummary(counts)}</>}
         </p>
@@ -128,19 +129,19 @@ export function RecordsPane({ definition, records, unanchored, ...rest }: Record
         )}
       </div>
       {records.length === 0 ? (
-        <p className="text-ink">Nothing was found in this file.</p>
+        <p className="p-4 text-body text-ink">Nothing was found in this file.</p>
       ) : (
         groups.map((group) => (
-          <section key={group.key} className="flex flex-col gap-3">
+          <section key={group.key}>
             {showTypes && (
-              <h3 className="text-[15px] leading-[22px] font-semibold text-ink-heading">
+              <h3 className="border-b border-border-subtle bg-surface-tint px-4 py-1 text-small font-semibold text-ink-heading">
                 {group.type?.name ?? "Other records"}{" "}
                 <span className="font-normal text-ink-muted tabular-nums">
                   ({group.records.length})
                 </span>
               </h3>
             )}
-            <ul className="flex flex-col gap-3">
+            <ul>
               {group.records.map(({ record, number }) => (
                 <li key={record.id}>
                   <RecordCard
@@ -156,6 +157,6 @@ export function RecordsPane({ definition, records, unanchored, ...rest }: Record
           </section>
         ))
       )}
-    </div>
+    </TooltipProvider>
   );
 }
