@@ -80,6 +80,7 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 - Find things the way a person does: `getByRole`, `getByLabel`, visible text. `data-testid` only where no role or label can name the element. Hidden pages stay in the DOM (see "Apps and branches"), so name the visible one by role.
 - A failing test leaves a screenshot and a trace in `test-results/` (CI: the trace on the first retry); the HTML report is in `playwright-report/` (`npx playwright show-report`). Neither is committed.
 - A UI change updates its tests in the same pull request.
+- `e2e/visual.spec.ts` compares screenshots of a few stable screens (light theme, Chromium on Linux; baselines in `e2e/visual.spec.ts-snapshots/`, committed). A change that makes a screen look different fails it. When the change was meant, run `npm run test:e2e:update-snapshots` and commit the new pictures: the pull request shows the changed images, and the reviewer checks them. If the change was not meant, fix the code, not the baseline. Times and dates are masked, the threshold is small on purpose (see the spec), and new screens need the same stable data every run.
 
 ### The live suite (optional, never in the merge path)
 
