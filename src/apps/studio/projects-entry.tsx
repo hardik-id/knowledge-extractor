@@ -80,7 +80,7 @@ function ProjectList() {
   const isEmpty =
     projects !== undefined && projects !== null && projects.length === 0 && next === null;
   const newProjectButton = (
-    <Button onClick={() => setCreating(true)}>
+    <Button size="lg" onClick={() => setCreating(true)}>
       <Plus data-icon="inline-start" />
       New project
     </Button>
@@ -91,7 +91,7 @@ function ProjectList() {
       id="studio-projects"
       title="Projects"
       description="Each project keeps its documents, configuration, conversation and records."
-      actions={isEmpty ? undefined : newProjectButton}
+      actions={newProjectButton}
     >
       <div ref={listRef} tabIndex={-1} className="max-w-3xl outline-none">
         {firstPage.error ? (
@@ -100,7 +100,7 @@ function ProjectList() {
             title="Couldn't load your projects"
             description={describeApiError(firstPage.error)}
             action={
-              <Button variant="outline" onClick={firstPage.retry}>
+              <Button variant="secondary" onClick={firstPage.retry}>
                 Try again
               </Button>
             }
@@ -111,15 +111,22 @@ function ProjectList() {
             <Skeleton className="h-24 w-full" />
           </div>
         ) : isEmpty ? (
-          <EmptyState
-            icon={FolderOpen}
-            title="No projects yet"
-            description="A project holds the documents you choose, how to extract from them, your conversation with the assistant and the records that come out."
-            action={newProjectButton}
-          />
+          <div className="flex flex-col items-start gap-3 py-4">
+            <FolderOpen aria-hidden className="size-6 text-ink-muted" />
+            <div className="space-y-1">
+              <h2>No projects yet</h2>
+              <p className="max-w-[60ch] text-body text-ink-muted">
+                A project holds the documents you choose, how to extract from them and the records
+                that come out.
+              </p>
+            </div>
+          </div>
         ) : (
           <>
-            <ul aria-label="Your projects" className="flex flex-col gap-3">
+            <ul
+              aria-label="Your projects"
+              className="flex flex-col divide-y divide-border-subtle border-y border-border-subtle"
+            >
               {projects.map((project) => (
                 <ProjectRow
                   key={project.id}
@@ -131,14 +138,14 @@ function ProjectList() {
             </ul>
             {next !== null && (
               <div className="mt-4 flex flex-col items-start gap-2">
-                <Button variant="outline" disabled={loadingMore} onClick={() => void showMore()}>
+                <Button variant="secondary" disabled={loadingMore} onClick={() => void showMore()}>
                   {loadingMore && (
                     <LoaderCircle data-icon="inline-start" className="animate-spin" />
                   )}
                   {loadingMore ? "Loading…" : "Show more"}
                 </Button>
                 {moreError && (
-                  <p role="alert" className="text-[13px] leading-[18px] text-danger">
+                  <p role="alert" className="text-small text-danger">
                     {moreError}
                   </p>
                 )}

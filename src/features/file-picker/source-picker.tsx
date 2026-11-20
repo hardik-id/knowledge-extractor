@@ -18,9 +18,9 @@ export function SourcePicker({ sources, value, onChange }: SourcePickerProps) {
   if (sources.length < 2) return null;
   return (
     <Tabs value={value} onValueChange={(v) => onChange(v as SourceKind)}>
-      <TabsList aria-label="File source" className="h-11! w-full bg-surface-tint sm:w-fit">
+      <TabsList aria-label="File source" className="w-full sm:w-fit">
         {sources.map((s) => (
-          <TabsTrigger key={s} value={s} className="px-4 text-[15px]">
+          <TabsTrigger key={s} value={s} className="px-4">
             {SOURCE_LABEL[s]}
           </TabsTrigger>
         ))}

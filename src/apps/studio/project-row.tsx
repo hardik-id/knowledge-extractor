@@ -10,39 +10,51 @@ interface ProjectRowProps {
   onDelete: (project: Project) => void;
 }
 
+/** What the quiet icon buttons share: hidden until hover or focus, always shown on touch. */
+const QUIET =
+  "text-ink-muted opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 focus-visible:opacity-100 coarse:opacity-100";
+
 /** One project: its name opens it; its facts and its edit and delete controls sit beside it. */
 export function ProjectRow({ project, onEdit, onDelete }: ProjectRowProps) {
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-raised p-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0 space-y-1">
-        <h2 className="text-[17px] leading-6 font-semibold">
+    <li className="group/row flex items-start justify-between gap-3 px-2 py-3 hover:bg-surface-hover sm:px-3">
+      <div className="min-w-0 space-y-0.5">
+        <h2 className="text-body font-semibold">
           <Link
             href={openProjectHref(project)}
-            className="rounded-sm break-words text-link underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="rounded-control break-words text-link underline-offset-4 hover:underline"
           >
             {project.name}
           </Link>
         </h2>
         {project.description && (
-          <p className="max-w-[70ch] text-[15px] leading-[22px] break-words text-ink-muted">
-            {project.description}
-          </p>
+          <p className="truncate text-body text-ink">{project.description}</p>
         )}
-        <p className="text-[13px] leading-[18px] text-ink-muted">
+        <p className="text-caption text-ink-muted">
           {documentsFact(project)} · {configurationFact(project)} · Changed{" "}
           <time dateTime={project.updatedAt}>{changedFact(project)}</time>
         </p>
       </div>
-      <div className="flex shrink-0 gap-2">
-        <Button variant="outline" size="sm" onClick={() => onEdit(project)}>
-          <Pencil data-icon="inline-start" />
-          Edit
-          <span className="sr-only"> {project.name}</span>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className={QUIET}
+          title="Edit"
+          onClick={() => onEdit(project)}
+        >
+          <Pencil />
+          <span className="sr-only">Edit {project.name}</span>
         </Button>
-        <Button variant="outline" size="sm" onClick={() => onDelete(project)}>
-          <Trash2 data-icon="inline-start" />
-          Delete
-          <span className="sr-only"> {project.name}</span>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className={QUIET}
+          title="Delete"
+          onClick={() => onDelete(project)}
+        >
+          <Trash2 />
+          <span className="sr-only">Delete {project.name}</span>
         </Button>
       </div>
     </li>

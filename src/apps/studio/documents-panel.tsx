@@ -121,14 +121,15 @@ export function DocumentsPanel() {
       description="Choose enriched documents from your storage container."
       status={<SelectionSummary itemNoun="document" />}
       actions={
-        <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:gap-4">
+        <>
           {count === 0 && (
-            <p id="open-hint" className="text-[13px] leading-[18px] text-ink-muted sm:text-right">
+            <p id="open-hint" className="text-small text-ink-muted sm:text-right">
               Select at least one document.
             </p>
           )}
           <Button
-            variant="outline"
+            variant="secondary"
+            size="lg"
             onClick={() => void submit(false)}
             disabled={count === 0 || !changed || working}
           >
@@ -138,6 +139,7 @@ export function DocumentsPanel() {
             {working && !opening ? "Saving…" : "Save documents"}
           </Button>
           <Button
+            size="lg"
             onClick={() => void submit(true)}
             disabled={count === 0 || working}
             aria-describedby={count === 0 ? "open-hint" : undefined}
@@ -154,7 +156,7 @@ export function DocumentsPanel() {
               </>
             )}
           </Button>
-        </div>
+        </>
       }
     >
       {busy && (
@@ -173,7 +175,7 @@ export function DocumentsPanel() {
 
       <Dialog open={asking !== null} onOpenChange={(open) => !open && setAsking(null)}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="pr-8">
             <DialogTitle>Remove documents with reviewed records?</DialogTitle>
             <DialogDescription>
               You accepted, rejected, added or edited records in{" "}
@@ -183,7 +185,7 @@ export function DocumentsPanel() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAsking(null)}>
+            <Button variant="secondary" onClick={() => setAsking(null)}>
               Cancel
             </Button>
             <Button
