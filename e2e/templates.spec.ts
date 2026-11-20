@@ -99,6 +99,8 @@ test.describe("at phone width", () => {
     const dialog = await openNewProjectDialog(page);
     await expect(dialog.getByRole("radio", { name: /^Blank/ })).toBeAttached();
     expect(await scrollsSideways(page)).toBe(false);
+    // The dialog itself must not scroll sideways either (its form once grew to the width of the text).
+    expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await expect(dialog.getByRole("button", { name: "Create project" })).toBeInViewport();
     await expect(dialog.getByRole("button", { name: "Cancel" })).toBeInViewport();
   });

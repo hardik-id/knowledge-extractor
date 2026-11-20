@@ -102,7 +102,7 @@ function ProjectForm({
   };
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+    <form onSubmit={(event) => void submit(event)} className="flex min-w-0 flex-col gap-4">
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
