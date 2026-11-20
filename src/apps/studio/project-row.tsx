@@ -39,7 +39,7 @@ export function ProjectRow({ project, onEdit, onDelete }: ProjectRowProps) {
           Edit
           <span className="sr-only"> {project.name}</span>
         </Button>
-        <Button variant="destructive" size="sm" onClick={() => onDelete(project)}>
+        <Button variant="outline" size="sm" onClick={() => onDelete(project)}>
           <Trash2 data-icon="inline-start" />
           Delete
           <span className="sr-only"> {project.name}</span>

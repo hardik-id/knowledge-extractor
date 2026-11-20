@@ -1,5 +1,7 @@
 # Button
 
+> In the app: a 32px control, `radius-control`, a neutral 1px `border-control` for the secondary button, and a filled `danger` button only at the confirming step. See "Polder for apps" in `../DESIGN.md`; the sizes below are the website's.
+
 Buttons start one action; the primary variant marks the single most important step in a view.
 
 ## Variants

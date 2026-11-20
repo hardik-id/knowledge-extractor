@@ -3,26 +3,29 @@
 @import "shadcn/tailwind.css";
 
 /*
- * Polder design tokens — source: design/tokens.json, rules: design/DESIGN.md.
- * Change a colour here AND in design/tokens.json in the same PR.
+ * Polder design tokens — source: design/tokens.json, rules: design/DESIGN.md ("Polder for apps").
+ * Change a token here AND in design/tokens.json in the same PR.
  * Light values on :root, dark values on .dark (set by next-themes).
  */
 
 @custom-variant dark (&:is(.dark *));
+/* A touch screen: targets stay at least 44px (--touch-target). */
+@custom-variant coarse (@media (pointer: coarse));
 
 :root {
   /* Polder colour tokens — light */
   --bg: #ffffff;
-  --surface-tint: #eef2fc;
+  --surface-tint: #f5f6f8;
   --surface-raised: #ffffff;
+  --surface-hover: #eceef2;
   --bg-hero: #000a6e;
   --on-hero: #ffffff;
   --on-hero-muted: #c9d2ff;
   --ink: #0b1033;
   --ink-heading: #000a6e;
-  --ink-muted: #4a5170;
-  --border-subtle: #d5dbef;
-  --border-control: #8a93b8;
+  --ink-muted: #565d70;
+  --border-subtle: #e3e5ea;
+  --border-control: #868c9b;
   --brand-blue: #000a8c;
   --brand-orange: #ff6a00;
   --on-brand-orange: #000a6e;
@@ -34,6 +37,7 @@
   --success: #0d7a3e;
   --warning: #8a5a00;
   --danger: #c0182c;
+  --on-danger: #ffffff;
   --success-soft: #e5f4ec;
   --warning-soft: #fbf1dc;
   --danger-soft: #fbe8ea;
@@ -52,6 +56,18 @@
   --label-6-soft: #e0f2d9;
   --elev-card: 0 1px 2px rgba(0, 10, 110, 0.06), 0 4px 16px rgba(0, 10, 110, 0.08);
   --elev-lift: 0 8px 32px rgba(0, 10, 110, 0.16);
+  --elev-float: 0 1px 2px rgba(11, 16, 51, 0.06), 0 8px 24px rgba(11, 16, 51, 0.12);
+  --scrim: rgba(11, 16, 51, 0.45);
+
+  /* App sizes: controls, touch targets, the radius scale (4px controls, 6px panels, pill) */
+  --control-h: 32px;
+  --control-h-sm: 28px;
+  --control-h-xs: 24px;
+  --control-h-lg: 36px;
+  --touch-target: 44px;
+  --radius-control: 4px;
+  --radius-panel: 6px;
+  --radius-pill: 999px;
 
   /* shadcn/ui variables, pointed at Polder tokens */
   --background: var(--bg);
@@ -63,22 +79,22 @@
   --primary: var(--action);
   --primary-foreground: var(--on-action);
   --secondary: var(--surface-tint);
-  --secondary-foreground: var(--ink-heading);
+  --secondary-foreground: var(--ink);
   --muted: var(--surface-tint);
   --muted-foreground: var(--ink-muted);
-  --accent: var(--surface-tint);
-  --accent-foreground: var(--ink-heading);
+  --accent: var(--surface-hover);
+  --accent-foreground: var(--ink);
   --destructive: var(--danger);
   --border: var(--border-subtle);
   --input: var(--border-control);
   --ring: var(--focus-ring);
-  --radius: 1rem;
+  --radius: var(--radius-panel);
   --sidebar: var(--surface-tint);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--ink-heading);
   --sidebar-primary-foreground: var(--bg);
-  --sidebar-accent: var(--surface-raised);
-  --sidebar-accent-foreground: var(--ink-heading);
+  --sidebar-accent: var(--surface-hover);
+  --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--border-subtle);
   --sidebar-ring: var(--focus-ring);
   --chart-1: var(--brand-blue);
@@ -89,17 +105,18 @@
 }
 
 .dark {
-  --bg: #070b26;
-  --surface-tint: #0d1338;
-  --surface-raised: #141b4a;
-  --bg-hero: #0d1338;
+  --bg: #0d111f;
+  --surface-tint: #141929;
+  --surface-raised: #1a2033;
+  --surface-hover: #1e2538;
+  --bg-hero: #141929;
   --on-hero: #ffffff;
   --on-hero-muted: #a9b1d6;
-  --ink: #eef1ff;
+  --ink: #e8ebf5;
   --ink-heading: #ffffff;
-  --ink-muted: #a9b1d6;
-  --border-subtle: #232b5e;
-  --border-control: #5a6499;
+  --ink-muted: #a3abc4;
+  --border-subtle: #262c42;
+  --border-control: #68708f;
   --brand-blue: #2f45e6;
   --brand-orange: #ff7a21;
   --on-brand-orange: #0d1338;
@@ -111,6 +128,7 @@
   --success: #4fd08a;
   --warning: #f2c14e;
   --danger: #ff8a94;
+  --on-danger: #2a0810;
   --success-soft: #0f2f2a;
   --warning-soft: #2e2610;
   --danger-soft: #33141f;
@@ -128,12 +146,14 @@
   --label-6-soft: #1b3a16;
   --elev-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.35);
   --elev-lift: 0 10px 36px rgba(0, 0, 0, 0.5);
+  --elev-float: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+  --scrim: rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
 
 @theme inline {
   /* Fonts (next/font variables set in app/layout.tsx) */
-  --font-sans: var(--font-source-sans), "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-source-code), ui-monospace, Menlo, monospace;
   --font-heading: var(--font-sans);
 
@@ -142,23 +162,50 @@
   --breakpoint-md: 960px;
   --breakpoint-lg: 1280px;
 
-  /* Polder radii */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-2xl: 24px;
-  --radius-3xl: 24px;
-  --radius-4xl: 24px;
+  /*
+   * App type scale: text-body, text-small, text-caption, text-title, text-section.
+   * Headings take the colour text-ink-heading and are no larger than these.
+   */
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-small: 13px;
+  --text-small--line-height: 18px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-title: 22px;
+  --text-title--line-height: 28px;
+  --text-title--font-weight: 600;
+  --text-section: 16px;
+  --text-section--line-height: 24px;
+  --text-section--font-weight: 600;
 
-  /* Polder shadows */
+  /*
+   * Radius scale: rounded-control (4px: buttons, fields, checkboxes), rounded-panel (6px:
+   * panels, dialogs, menus), rounded-pill (badges, chips). The Tailwind steps map onto it,
+   * so nothing in the app is rounder than a panel.
+   */
+  --radius-control: 4px;
+  --radius-panel: 6px;
+  --radius-pill: 999px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 6px;
+  --radius-2xl: 6px;
+  --radius-3xl: 6px;
+  --radius-4xl: 6px;
+
+  /* Polder shadows: shadow-float is for what floats (dialogs, menus, popovers, toasts) */
   --shadow-card: var(--elev-card);
   --shadow-lift: var(--elev-lift);
+  --shadow-float: var(--elev-float);
 
   /* Polder colours as utilities: bg-surface-tint, text-ink-heading, … */
   --color-bg: var(--bg);
   --color-surface-tint: var(--surface-tint);
   --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-scrim: var(--scrim);
   --color-hero: var(--bg-hero);
   --color-on-hero: var(--on-hero);
   --color-on-hero-muted: var(--on-hero-muted);
@@ -177,6 +224,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
   --color-success-soft: var(--success-soft);
   --color-warning-soft: var(--warning-soft);
   --color-danger-soft: var(--danger-soft);
@@ -236,9 +284,9 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-background text-foreground;
-    font-size: 17px;
-    line-height: 26px;
+    @apply bg-background text-body text-foreground;
+    /* Inter's tabular figures: numbers line up in tables and counts. */
+    font-variant-numeric: tabular-nums;
   }
   h1,
   h2,
@@ -247,6 +295,15 @@
     @apply text-ink-heading;
     text-wrap: balance;
   }
+  h1 {
+    @apply text-title;
+  }
+  h2,
+  h3,
+  h4 {
+    @apply text-section;
+  }
+  /* Focus is always visible: a 2px ring with an offset, on every interactive thing, both themes. */
   :focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
@@ -265,32 +322,61 @@
   }
 }
 
-/* Markdown preview (MarkdownViewer). Polder type scale, tokens only. */
+/* Control heights (design/tokens.json: control-h*). */
+@utility h-control {
+  height: var(--control-h);
+}
+@utility h-control-sm {
+  height: var(--control-h-sm);
+}
+@utility h-control-xs {
+  height: var(--control-h-xs);
+}
+@utility h-control-lg {
+  height: var(--control-h-lg);
+}
+@utility size-control {
+  width: var(--control-h);
+  height: var(--control-h);
+}
+@utility size-control-sm {
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
+}
+@utility size-control-xs {
+  width: var(--control-h-xs);
+  height: var(--control-h-xs);
+}
+@utility size-control-lg {
+  width: var(--control-h-lg);
+  height: var(--control-h-lg);
+}
+@utility min-h-touch {
+  min-height: var(--touch-target);
+}
+@utility min-w-touch {
+  min-width: var(--touch-target);
+}
+
+/* Markdown preview (MarkdownViewer). The app type scale, tokens only. */
 @layer components {
   .md-prose {
     max-width: 68ch;
     color: var(--ink);
-    font-size: 17px;
-    line-height: 26px;
+    @apply text-body;
   }
   .md-prose > * + * {
     margin-top: 1rem;
   }
   .md-prose h1 {
-    font-size: 32px;
-    line-height: 40px;
-    font-weight: 700;
+    @apply text-title;
   }
   .md-prose h2 {
-    font-size: 24px;
-    line-height: 32px;
-    font-weight: 600;
+    @apply text-section;
     margin-top: 2rem;
   }
   .md-prose h3 {
-    font-size: 20px;
-    line-height: 28px;
-    font-weight: 600;
+    @apply text-body font-semibold;
     margin-top: 1.5rem;
   }
   .md-prose em {
@@ -322,8 +408,7 @@
     border-radius: var(--radius-md);
     padding: 0.75rem 1rem;
     color: var(--ink-muted);
-    font-size: 15px;
-    line-height: 22px;
+    @apply text-small;
   }
   .md-prose code {
     font-family: var(--font-mono);
@@ -346,8 +431,7 @@
     display: block;
     overflow-x: auto;
     border-collapse: collapse;
-    font-size: 15px;
-    line-height: 22px;
+    @apply text-small;
     font-variant-numeric: tabular-nums;
   }
   .md-prose th,

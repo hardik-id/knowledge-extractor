@@ -11,6 +11,7 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 - Code uses the tokens through `src/app/globals.css` (CSS variables plus Tailwind utilities such as `bg-surface-tint`, `text-ink-heading`, `text-link`, `bg-action`).
 - **Never use raw hex or Tailwind palette colours** (`text-blue-600`) in components. If a colour is missing, add a token to `design/tokens.json` and `globals.css` in the same change, with light and dark values that pass 4.5:1.
 - One primary (orange) button per view. Status always pairs an icon with a word.
+- The app follows "Polder for apps" (`design/DESIGN.md`): 1px hairlines instead of frames, shadows (`shadow-float`) only on what floats, radii `rounded-control` (4px) / `rounded-panel` (6px) / `rounded-pill`, controls 32px (`h-control`; `h-control-lg` 36px for a page's main actions), Inter. Type steps are named utilities, not raw sizes: `text-title`, `text-section`, `text-body`, `text-small`, `text-caption`; never `text-[13px] leading-[18px]`. Buttons: `default` is the one orange primary, `secondary` (or `outline`) a neutral border, `ghost`, and `destructive` (filled) only at the confirming step. The focus ring is one rule in `globals.css`: components don't set their own. `src/components/ui` takes tokens only (`ui-rules.test.ts` checks it); `design-tokens.test.ts` checks `tokens.json` against `globals.css` and the contrast of every pair.
 - Breakpoints are Polder's: `sm` 600px, `md` 960px, `lg` 1280px (they override Tailwind's defaults).
 
 ## Apps and branches
