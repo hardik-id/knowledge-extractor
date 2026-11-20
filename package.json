@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/register.mjs --test \"src/**/*.test.ts\"",
     "test:e2e": "playwright test",
+    "test:e2e:live": "E2E_LIVE=1 playwright test",
+    "e2e:save-login": "node e2e-live/save-login.mjs",
     "test:e2e:ui": "playwright test --ui",
     "typecheck:e2e": "tsc --noEmit -p e2e/tsconfig.json",
     "test:api": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/register.mjs src/services/http/test-api.ts"
