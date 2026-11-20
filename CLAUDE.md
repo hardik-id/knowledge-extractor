@@ -72,6 +72,10 @@ A Next.js 16 (App Router, Cache Components) UI for a document pipeline:
 - The app runs on the mock by default. The Django API (`hardik-id/knowledge-extractor-api`) serves what Studio uses (`docs/studio-api.md`), not yet everything the pipeline uses. If the mock and the real API disagree, fix `services/http` and `services/mock`, not the store or the panels.
 - In mock mode, `window.__mockBackend` in the console can `dropConnection(ms)`, `failNext(stage)`, `unanchorNext()`, `lastExamplesUsed(runId)` and `setSpeed(n)`. The mock assistant understands a fixed set of requests (see `services/mock/mock-assistant.ts`).
 
+## Container image
+
+- `Dockerfile` (multi-stage, Next.js standalone output) builds the UI; the `NEXT_PUBLIC_*` settings are build arguments with no defaults, so an image serves one environment. `GET /healthz` (`src/app/healthz/route.ts`) is the probe path. Build, run and probe: `docs/docker.md`.
+
 ## End-to-end tests
 
 - `npm run test:e2e` runs the suite (Playwright, Chromium only) in `e2e/`; `npm run test:e2e:ui` opens Playwright's UI mode. The backend stack must be up (`make up` in `knowledge-extractor-api`); without it the run stops at once with a line saying so. `npm run typecheck:e2e` checks the tests' types (the root `tsc`, ESLint's ignores and `npm run build` leave `e2e/` out of the app).

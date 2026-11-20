@@ -6,7 +6,8 @@ const offersPipeline = APPS.some((app) => app.id === "pipeline");
 const nextConfig: NextConfig = {
   // The end-to-end runner sets this to build apart from a developer's own `.next` (see playwright.config.ts).
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  /* config options here */
+  // A self-contained server in `.next/standalone`, for the container image (see docs/docker.md).
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   // Development only: lets a Windows browser open the dev server by the WSL
