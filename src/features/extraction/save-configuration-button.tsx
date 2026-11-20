@@ -13,12 +13,13 @@ import type { ExtractionRun } from "./use-extraction-run";
 export function SaveConfigurationButton({ extraction }: { extraction: ExtractionRun }) {
   const { definition, running } = extraction;
   const [open, setOpen] = useState(false);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(definition.suggestedNote);
   const id = useId();
   // Loading a template changes what the note starts with: a form left open would show the old one.
   const [seenHint, setSeenHint] = useState(definition.suggestedNote);
   if (seenHint !== definition.suggestedNote) {
     setSeenHint(definition.suggestedNote);
+    setNote(definition.suggestedNote);
     setOpen(false);
   }
 
@@ -35,7 +36,6 @@ export function SaveConfigurationButton({ extraction }: { extraction: Extraction
       });
       return;
     }
-    setNote(definition.suggestedNote);
     setOpen(true);
   };
 

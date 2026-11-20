@@ -7,7 +7,6 @@ import { isApiError } from "@/lib/api/api-error";
 import { services } from "@/services";
 import type { DefinitionTemplate, ExtractionDefinition } from "@/services/contracts";
 import { toastFailure } from "@/features/auth/report-failure";
-import { MAX_DEFINITION_NOTE_LENGTH } from "@/services/contracts";
 import type { ExtractionNoun } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import {
@@ -18,6 +17,9 @@ import {
   type Draft,
   type DraftErrors,
 } from "./definition-draft";
+import { keptSuggestedNote, noteForSave, templateNote } from "./template-note";
+
+export { templateNote };
 
 export interface ExtractionDefinitionState {
   isLoading: boolean;
@@ -43,11 +45,6 @@ export interface ExtractionDefinitionState {
   applyTemplate: (template: DefinitionTemplate) => void;
   /** The note a save starts with after a template was loaded ("From template: <name>"), until it is saved or discarded. */
   suggestedNote: string;
-}
-
-/** The note a template's save starts with. */
-export function templateNote(name: string): string {
-  return `From template: ${name}`.slice(0, MAX_DEFINITION_NOTE_LENGTH);
 }
 
 const NO_ERRORS: DraftErrors = { types: {}, fields: {}, general: [] };
@@ -87,9 +84,15 @@ export function useExtractionDefinition(
   const valid = isValid(errors);
 
   const setDraft: ExtractionDefinitionState["setDraft"] = (next) =>
-    setLocal((prev) =>
-      prev ? { ...prev, draft: typeof next === "function" ? next(prev.draft) : next } : prev,
-    );
+    setLocal((prev) => {
+      if (!prev) return prev;
+      const draft = typeof next === "function" ? next(prev.draft) : next;
+      return {
+        ...prev,
+        draft,
+        suggestedNote: keptSuggestedNote(prev.suggestedNote, isDirty(draft, prev.saved)),
+      };
+    });
 
   const reportFailure = (e: unknown, title: string) => {
     if (isApiError(e) && e.code === "definition_conflict") {
@@ -115,7 +118,7 @@ export function useExtractionDefinition(
         runId,
         current.draft,
         current.saved.version,
-        (note ?? current.suggestedNote).trim() || undefined,
+        noteForSave(note, current.suggestedNote),
       );
       setLocal((prev) =>
         prev ? { ...prev, saved: result, draft: toDraft(result), suggestedNote: "" } : prev,

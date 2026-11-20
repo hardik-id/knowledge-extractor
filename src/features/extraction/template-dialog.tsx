@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleCheck, LayoutTemplate } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,17 +53,20 @@ function fieldHow(field: FieldDef): string {
 /** The records of every file of the run that was extracted, to say what the next run does to them. */
 function useRunRecords(): { records: ExtractionRecord[] | undefined; error: unknown } {
   const runId = usePipelineStore((s) => s.runId);
-  // Only a file an extraction ran on has records to ask for.
-  const extracted = usePipelineStore((s) =>
-    s.runFiles
-      .filter((f) => s.cells[f.id]?.extract?.output)
-      .map((f) => `${f.id}@${s.cells[f.id]?.extract?.output?.etag ?? ""}`)
-      .join(","),
+  const runFiles = usePipelineStore((s) => s.runFiles);
+  const cells = usePipelineStore((s) => s.cells);
+  // Only a file an extraction ran on has records to ask for; its ETag says when they changed.
+  const extracted = useMemo(
+    () =>
+      runFiles
+        .filter((f) => cells[f.id]?.extract?.output)
+        .map((f) => ({ id: f.id, etag: cells[f.id]?.extract?.output?.etag ?? "" })),
+    [runFiles, cells],
   );
-  const { data, error } = useAsyncData(runId ? `${runId}:${extracted}` : null, async (signal) => {
+  const key = runId ? JSON.stringify([runId, extracted.map((f) => [f.id, f.etag])]) : null;
+  const { data, error } = useAsyncData(key, async (signal) => {
     const all = await Promise.all(
-      (extracted ? extracted.split(",") : []).map(async (entry) => {
-        const fileId = entry.split("@")[0]!;
+      extracted.map(async ({ id: fileId }) => {
         try {
           return (await services.extraction.getFileExtraction(runId!, fileId, signal)).records;
         } catch (e) {
@@ -87,12 +90,14 @@ function TemplateDialog({
   const { draft, dirty, applyTemplate } = definition;
   const [chosenId, setChosenId] = useState<string | null>(null);
   const list = useAsyncData("templates", (signal) => services.templates.list(signal));
-  const { records } = useRunRecords();
+  const { records, error: recordsError } = useRunRecords();
 
   const templates = list.data;
   const chosen = templates?.find((t) => t.id === chosenId) ?? null;
   const changes = chosen && draft ? diffProposal(draft, chosen.definition) : [];
   const same = !!chosen && changes.length === 0;
+  // Until the records are known the dialog can't say what the next run does to them.
+  const checking = !same && !records && !recordsError;
 
   const use = (template: DefinitionTemplate) => {
     applyTemplate(template);
@@ -159,6 +164,17 @@ function TemplateDialog({
                         You have unsaved changes in the editor. Using this template replaces them.
                       </p>
                     )}
+                    {checking && (
+                      <p className="text-[13px] leading-[18px] text-ink-muted">
+                        Checking your records...
+                      </p>
+                    )}
+                    {!same && !records && !!recordsError && (
+                      <p className="text-[13px] leading-[18px] font-semibold text-ink">
+                        Couldn&apos;t read your records, so we can&apos;t say what the next run does
+                        to them.
+                      </p>
+                    )}
                     {!same && records && (
                       <RecordsNote
                         records={records}
@@ -178,7 +194,7 @@ function TemplateDialog({
           </Button>
           <Button
             variant="outline"
-            disabled={!chosen || same}
+            disabled={!chosen || same || checking}
             onClick={() => chosen && use(chosen)}
           >
             Use this template
