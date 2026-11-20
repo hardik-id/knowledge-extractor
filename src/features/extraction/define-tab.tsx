@@ -22,6 +22,7 @@ import {
 } from "./definition-draft";
 import { AssistantPanel } from "./assistant-panel";
 import { FieldTable, Problem } from "./field-table";
+import { TemplatesEntry } from "./template-dialog";
 import type { ExtractionDefinitionState } from "./use-extraction-definition";
 
 const FORMAT_LABEL: Record<OutputFormat, string> = {
@@ -60,7 +61,10 @@ export function DefineTab({ definition, definitionNote, showSave = true }: Defin
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-8">
       <div className="flex min-w-0 flex-col gap-8">
-        <p className="max-w-[68ch] text-ink-muted">{definitionNote}</p>
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1">
+          <p className="max-w-[68ch] text-ink-muted">{definitionNote}</p>
+          <TemplatesEntry definition={definition} />
+        </div>
 
         {showErrors && errors.general.length > 0 && (
           <div role="alert" className="space-y-1">

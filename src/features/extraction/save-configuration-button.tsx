@@ -15,6 +15,12 @@ export function SaveConfigurationButton({ extraction }: { extraction: Extraction
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const id = useId();
+  // Loading a template changes what the note starts with: a form left open would show the old one.
+  const [seenHint, setSeenHint] = useState(definition.suggestedNote);
+  if (seenHint !== definition.suggestedNote) {
+    setSeenHint(definition.suggestedNote);
+    setOpen(false);
+  }
 
   const toggle = () => {
     if (open) {
@@ -29,6 +35,7 @@ export function SaveConfigurationButton({ extraction }: { extraction: Extraction
       });
       return;
     }
+    setNote(definition.suggestedNote);
     setOpen(true);
   };
 
