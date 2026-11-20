@@ -2,7 +2,8 @@ import { addDocument } from "./pages/studio";
 import { expect, test } from "./fixtures";
 
 test.describe("on a desktop", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  // Short enough that the compact document table still has to scroll.
+  test.use({ viewport: { width: 1280, height: 480 } });
 
   test("the page header stays in view while the content scrolls, and nothing scrolls sideways", async ({
     api,

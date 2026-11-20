@@ -133,3 +133,14 @@ export async function scrollsSideways(page: Page): Promise<boolean> {
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
 }
+
+/** True when something inside `box` scrolls (it has more content than room). */
+export async function hasInnerScroll(box: import("@playwright/test").Locator): Promise<boolean> {
+  return box.evaluate((root) =>
+    [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))].some(
+      (el) =>
+        el.scrollHeight > el.clientHeight + 1 &&
+        ["auto", "scroll"].includes(getComputedStyle(el).overflowY),
+    ),
+  );
+}

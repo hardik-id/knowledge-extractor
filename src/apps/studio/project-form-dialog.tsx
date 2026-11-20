@@ -49,7 +49,7 @@ interface ProjectFormDialogProps {
 export function ProjectFormDialog({ open, onOpenChange, ...rest }: ProjectFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:p-0">
         {/* Mounted only while open, so it starts from `initial` every time. */}
         <ProjectForm onOpenChange={onOpenChange} {...rest} />
       </DialogContent>
@@ -102,53 +102,60 @@ function ProjectForm({
   };
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="flex min-w-0 flex-col gap-4">
-      <DialogHeader>
+    <form onSubmit={(event) => void submit(event)} className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <DialogHeader className="px-4 pt-4 pr-12 sm:px-6 sm:pt-6">
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={nameId}>Name</Label>
-        <Input
-          id={nameId}
-          value={name}
-          maxLength={120}
-          autoFocus
-          required
-          onChange={(event) => setName(event.target.value)}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
-        />
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={nameId}>Name</Label>
+          <Input
+            id={nameId}
+            value={name}
+            maxLength={120}
+            autoFocus
+            required
+            onChange={(event) => setName(event.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={descriptionId}>Description (optional)</Label>
+          <Textarea
+            id={descriptionId}
+            value={text}
+            rows={2}
+            onChange={(event) => setText(event.target.value)}
+          />
+        </div>
+        {chooseTemplate && available.length > 0 && (
+          <TemplatePicker
+            templates={available}
+            value={templateId ?? null}
+            onChange={setPicked}
+            disabled={busy}
+          />
+        )}
+        {chooseTemplate && templates.error !== undefined && (
+          <p role="status" className="text-small text-ink-muted">
+            The templates could not be loaded. The project starts from the default one.
+          </p>
+        )}
+        {error && (
+          <p id={errorId} role="alert" className="text-small text-danger">
+            {error}
+          </p>
+        )}
       </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={descriptionId}>Description (optional)</Label>
-        <Textarea
-          id={descriptionId}
-          value={text}
-          rows={3}
-          onChange={(event) => setText(event.target.value)}
-        />
-      </div>
-      {chooseTemplate && available.length > 0 && (
-        <TemplatePicker
-          templates={available}
-          value={templateId ?? null}
-          onChange={setPicked}
+      <DialogFooter className="border-t border-border-subtle px-4 py-3 sm:px-6">
+        <Button
+          type="button"
+          variant="secondary"
           disabled={busy}
-        />
-      )}
-      {chooseTemplate && templates.error !== undefined && (
-        <p role="status" className="text-[13px] leading-[18px] text-ink-muted">
-          The templates could not be loaded. The project starts from the default one.
-        </p>
-      )}
-      {error && (
-        <p id={errorId} role="alert" className="text-[13px] leading-[18px] text-danger">
-          {error}
-        </p>
-      )}
-      <DialogFooter className="sticky bottom-0 -mb-6 bg-surface-raised pt-2 pb-6">
-        <Button type="button" variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+          onClick={() => onOpenChange(false)}
+        >
           Cancel
         </Button>
         <Button type="submit" disabled={busy}>

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
-import { FileList } from "@/components/pipeline/file-list";
 import { SOURCE_LABEL, plural } from "@/lib/format";
 import { useAsyncData } from "@/lib/use-async-data";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -15,6 +14,7 @@ import { services } from "@/services";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import type { SourceKind } from "@/types/pipeline";
+import { FileTable } from "./file-table";
 import { SourcePicker } from "./source-picker";
 
 const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
@@ -34,34 +34,13 @@ interface FileBrowserProps {
 export function FileBrowser({ sources, itemNoun, searchHint }: FileBrowserProps) {
   const storedSource = usePipelineStore((s) => s.activeSource);
   const setActiveSource = usePipelineStore((s) => s.setActiveSource);
-  const searchQuery = usePipelineStore((s) => s.searchQuery);
-  const setSearchQuery = usePipelineStore((s) => s.setSearchQuery);
   // A stored source this app doesn't offer (or a single-source app) falls back to the first.
   const activeSource =
     sources.length > 1 && sources.includes(storedSource) ? storedSource : sources[0];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SourcePicker sources={sources} value={activeSource} onChange={setActiveSource} />
-        {activeSource !== "upload" && (
-          <div className="relative w-full sm:max-w-xs">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted"
-            />
-            <Input
-              id="file-search"
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={searchHint}
-              aria-label={`Search ${itemNoun}s`}
-              className="h-11 pl-9"
-            />
-          </div>
-        )}
-      </div>
+    <div className="flex flex-col gap-3">
+      <SourcePicker sources={sources} value={activeSource} onChange={setActiveSource} />
 
       {activeSource === "upload" ? (
         <EmptyState
@@ -69,7 +48,7 @@ export function FileBrowser({ sources, itemNoun, searchHint }: FileBrowserProps)
           title="Upload files"
           description="Drag PDF, Word, Excel or PowerPoint files here. Uploading is not connected yet."
           action={
-            <Button variant="outline" disabled>
+            <Button variant="secondary" disabled>
               Choose files
             </Button>
           }
@@ -80,6 +59,7 @@ export function FileBrowser({ sources, itemNoun, searchHint }: FileBrowserProps)
           key={activeSource}
           source={activeSource}
           itemNoun={itemNoun}
+          searchHint={searchHint}
           showSource={sources.length > 1}
         />
       )}
@@ -92,7 +72,7 @@ export function SelectionSummary({ itemNoun }: { itemNoun: string }) {
   const selectedCount = usePipelineStore((s) => s.selectedFiles.length);
   const clearSelection = usePipelineStore((s) => s.clearSelection);
   return (
-    <p className="font-semibold text-ink" aria-live="polite">
+    <p className="text-small font-semibold text-ink" aria-live="polite">
       {plural(selectedCount, itemNoun)} selected
       {selectedCount > 0 && (
         <Button variant="link" size="sm" onClick={clearSelection} className="ml-2 h-auto px-0">
@@ -107,16 +87,16 @@ export function SelectionSummary({ itemNoun }: { itemNoun: string }) {
 function CatalogFiles({
   source,
   itemNoun,
+  searchHint,
   showSource,
 }: {
   source: SourceKind;
   itemNoun: string;
+  searchHint: string;
   showSource: boolean;
 }) {
-  const query = useDebouncedValue(
-    usePipelineStore((s) => s.searchQuery).trim(),
-    SEARCH_DEBOUNCE_MS,
-  );
+  const searchQuery = usePipelineStore((s) => s.searchQuery);
+  const query = useDebouncedValue(searchQuery.trim(), SEARCH_DEBOUNCE_MS);
   const setSearchQuery = usePipelineStore((s) => s.setSearchQuery);
   const selectedFiles = usePipelineStore((s) => s.selectedFiles);
   const toggleFile = usePipelineStore((s) => s.toggleFile);
@@ -132,38 +112,45 @@ function CatalogFiles({
   );
   const selectedIds = useMemo(() => selectedFiles.map((f) => f.id), [selectedFiles]);
 
+  const allShownSelected =
+    files !== undefined && files.length > 0 && files.every((f) => selectedIds.includes(f.id));
+  const toggleAllShown = () => {
+    if (!files) return;
+    setSelection(
+      allShownSelected
+        ? selectedFiles.filter((selected) => !files.some((f) => f.id === selected.id))
+        : [...selectedFiles, ...files],
+    );
+  };
+
+  let body: React.ReactNode;
   if (error) {
-    return (
+    body = (
       <EmptyState
         icon={CloudOff}
         title={`Couldn't load ${itemNoun}s from ${SOURCE_LABEL[source]}`}
         description={describeApiError(error)}
         action={
-          <Button variant="outline" onClick={retry}>
+          <Button variant="secondary" onClick={retry}>
             Try again
           </Button>
         }
       />
     );
-  }
-
-  if (!files) {
-    return (
+  } else if (!files) {
+    body = (
       <div aria-busy="true" aria-label={`Loading ${itemNoun}s`} className="space-y-2">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-64 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
-  }
-
-  if (files.length === 0 && !isLoading) {
-    return query ? (
+  } else if (files.length === 0 && !isLoading) {
+    body = query ? (
       <EmptyState
         icon={SearchX}
         title={`No ${itemNoun}s match your search`}
         description={`Nothing in ${SOURCE_LABEL[source]} matches “${query}”. Try a shorter word.`}
         action={
-          <Button variant="outline" onClick={() => setSearchQuery("")}>
+          <Button variant="secondary" onClick={() => setSearchQuery("")}>
             Clear search
           </Button>
         }
@@ -175,26 +162,9 @@ function CatalogFiles({
         description={`${capitalize(itemNoun)}s you have access to in this source will be listed here.`}
       />
     );
-  }
-
-  const allShownSelected = files.length > 0 && files.every((f) => selectedIds.includes(f.id));
-  const toggleAllShown = () =>
-    setSelection(
-      allShownSelected
-        ? selectedFiles.filter((selected) => !files.some((f) => f.id === selected.id))
-        : [...selectedFiles, ...files],
-    );
-
-  return (
-    // While a new search is on its way the previous results stay, dimmed.
-    <div aria-busy={isLoading} className={cn("flex flex-col gap-4", isLoading && "opacity-60")}>
-      <div className="flex items-center justify-between">
-        <p className="text-[15px] text-ink-muted">{plural(files.length, itemNoun)} found</p>
-        <Button variant="link" size="sm" className="px-0" onClick={toggleAllShown}>
-          {allShownSelected ? "Deselect all shown" : "Select all shown"}
-        </Button>
-      </div>
-      <FileList
+  } else {
+    body = (
+      <FileTable
         label={`${capitalize(itemNoun)}s`}
         files={files}
         showSource={showSource}
@@ -204,6 +174,40 @@ function CatalogFiles({
           if (file) toggleFile(file);
         }}
       />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="relative w-full sm:max-w-xs">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-muted"
+          />
+          <Input
+            id="file-search"
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={searchHint}
+            aria-label={`Search ${itemNoun}s`}
+            className="pl-8"
+          />
+        </div>
+        {files && files.length > 0 && (
+          <>
+            <p className="text-small text-ink-muted">{plural(files.length, itemNoun)} found</p>
+            <Button variant="ghost" size="sm" className="text-link" onClick={toggleAllShown}>
+              {allShownSelected ? "Deselect all shown" : "Select all shown"}
+            </Button>
+          </>
+        )}
+      </div>
+      {/* While a new search is on its way the previous results stay, dimmed. */}
+      <div aria-busy={isLoading} className={cn(isLoading && "opacity-60")}>
+        {body}
+      </div>
     </div>
   );
 }

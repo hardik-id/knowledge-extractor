@@ -62,28 +62,29 @@ function DeleteContent({
 
   return (
     <DialogContent
+      className="sm:max-w-md"
       onCloseAutoFocus={(event) => {
         if (!deleted.current) return;
         event.preventDefault();
         onClosedAfterDelete();
       }}
     >
-      <DialogHeader>
+      <DialogHeader className="pr-8">
         <DialogTitle>Delete “{project.name}”?</DialogTitle>
         <DialogDescription>This can’t be undone. Deleting the project removes:</DialogDescription>
       </DialogHeader>
-      <ul className="list-disc space-y-1 pl-5 text-[15px] leading-[22px]">
+      <ul className="list-disc space-y-1 pl-5 text-body">
         {deletionConsequences(project).map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
       {error && (
-        <p role="alert" className="text-[13px] leading-[18px] text-danger">
+        <p role="alert" className="text-small text-danger">
           {error}
         </p>
       )}
       <DialogFooter>
-        <Button variant="outline" disabled={busy} onClick={onCancel}>
+        <Button variant="secondary" disabled={busy} onClick={onCancel}>
           Keep project
         </Button>
         <Button variant="destructive" disabled={busy} onClick={() => void confirm()}>
