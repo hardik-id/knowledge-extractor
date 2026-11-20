@@ -43,7 +43,7 @@ export function StageFooter({ stageId }: { stageId: StageId }) {
   const hintId = `proceed-hint-${stageId}`;
 
   return (
-    <footer className="sticky bottom-0 z-10 shrink-0 rounded-b-xl border-t border-border-subtle bg-surface-raised pb-[env(safe-area-inset-bottom)] md:static md:pb-0">
+    <footer className="sticky bottom-0 z-10 shrink-0 border-t border-border-subtle bg-background pb-[env(safe-area-inset-bottom)] md:static md:pb-0">
       <div className="flex flex-col-reverse gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         {prev ? (
           <Button variant="ghost" asChild className="text-link">

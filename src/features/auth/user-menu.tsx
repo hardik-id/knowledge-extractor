@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { useAuth } from "./auth-provider";
 import { initials } from "./initials";
 
@@ -28,12 +29,15 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
         className={
           compact
             ? "rounded-full"
-            : "flex w-full min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left text-base leading-6 font-semibold text-ink-heading hover:bg-surface-tint"
+            : "flex h-control w-full min-w-0 items-center gap-2 rounded-control px-2 text-left text-body text-ink-heading hover:bg-surface-tint coarse:min-h-touch"
         }
       >
         <span
           aria-hidden
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-hero text-sm font-semibold text-on-hero"
+          className={cn(
+            "grid shrink-0 place-items-center rounded-full bg-hero text-caption font-semibold text-on-hero",
+            compact ? "size-8" : "size-6",
+          )}
         >
           {initials(account.name)}
         </span>
@@ -41,18 +45,11 @@ export function UserMenu({ compact = false }: { compact?: boolean }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align={compact ? "end" : "start"} className="w-64">
         <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-2">
-          <span className="truncate text-base leading-6 font-semibold text-ink-heading">
-            {account.name}
-          </span>
-          <span className="truncate text-[15px] leading-[22px] font-normal text-ink-muted">
-            {account.username}
-          </span>
+          <span className="truncate text-body font-semibold text-ink-heading">{account.name}</span>
+          <span className="truncate text-small font-normal text-ink-muted">{account.username}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={() => void auth.signOut()}
-          className="gap-2 px-2 py-2 text-base"
-        >
+        <DropdownMenuItem onSelect={() => void auth.signOut()} className="gap-2 px-2 py-2">
           <LogOut aria-hidden />
           Sign out
         </DropdownMenuItem>

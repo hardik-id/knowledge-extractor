@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, ListOrdered } from "lucide-react";
+import { ArrowLeft, FileText, ListOrdered, Sparkles } from "lucide-react";
+import { NavRow } from "@/components/layout/nav-row";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,7 +16,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { plural } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { projectIdFromPath, STUDIO_HOME, studioSteps } from "./nav-steps";
 
@@ -29,7 +29,9 @@ function useOpenProject() {
   return { projectId, project, documentCount };
 }
 
-/** The project's name, its two steps and the way back to all projects. */
+const STEP_ICONS = { documents: FileText, extraction: Sparkles } as const;
+
+/** The project's name and facts, its two steps as rows, and a quiet way back to all projects. */
 export function StudioNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { projectId, project, documentCount } = useOpenProject();
@@ -37,74 +39,46 @@ export function StudioNav({ onNavigate }: { onNavigate?: () => void }) {
 
   if (projectId === null) {
     return (
-      <p className="px-6 pt-2 pb-6 text-[15px] leading-[22px] text-ink-muted">
+      <p className="px-5 pt-1 pb-3 text-small text-ink-muted">
         Open a project, or start a new one.
       </p>
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col gap-4 px-6 pt-2 pb-6">
+    <div className="flex min-h-full flex-col gap-3 px-3 pt-1 pb-3">
       {project ? (
-        <div className="min-w-0 space-y-1">
-          <p className="truncate text-[17px] leading-6 font-semibold text-ink-heading">
-            {project.name}
-          </p>
-          <p className="text-[15px] leading-[22px] text-ink-muted">
-            <span className="font-semibold text-ink">{plural(documentCount, "document")}</span> in
-            this project
-          </p>
+        <div className="min-w-0 space-y-0.5 px-2">
+          <p className="truncate text-body font-semibold text-ink-heading">{project.name}</p>
+          <p className="text-small text-ink-muted">{plural(documentCount, "document")}</p>
         </div>
       ) : (
-        <div aria-hidden className="space-y-2">
-          <Skeleton className="h-6 w-40" />
+        <div aria-hidden className="space-y-2 px-2">
           <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-20" />
         </div>
       )}
 
       <nav aria-label="Steps">
-        <ol className="flex flex-col gap-2">
-          {steps.map((step) => {
-            const card =
-              "flex min-h-14 items-center justify-center rounded-lg border-2 px-4 py-3 text-center text-[17px] leading-6 font-semibold";
-            return (
-              <li key={step.id}>
-                {step.disabled ? (
-                  <div
-                    aria-disabled="true"
-                    title={step.reason}
-                    className={cn(
-                      card,
-                      "cursor-not-allowed flex-col border-dashed border-border-subtle text-ink-muted",
-                    )}
-                  >
-                    {step.label}
-                    <span className="text-[13px] leading-[18px] font-normal">{step.reason}</span>
-                  </div>
-                ) : (
-                  <Link
-                    href={step.href}
-                    onClick={onNavigate}
-                    aria-current={step.current ? "step" : undefined}
-                    className={cn(
-                      card,
-                      "bg-surface-raised transition-[background-color,border-color,box-shadow]",
-                      step.current
-                        ? "border-brand-blue text-ink-heading shadow-[0_0_16px_color-mix(in_srgb,var(--brand-blue)_45%,transparent)]"
-                        : "border-border-subtle text-ink hover:border-border-control hover:shadow-card",
-                    )}
-                  >
-                    {step.label}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
+        <ol className="flex flex-col gap-0.5">
+          {steps.map((step) => (
+            <li key={step.id}>
+              <NavRow
+                href={step.href}
+                icon={STEP_ICONS[step.id]}
+                label={step.label}
+                current={step.current}
+                disabled={step.disabled}
+                reason={step.reason}
+                onNavigate={onNavigate}
+              />
+            </li>
+          ))}
         </ol>
       </nav>
 
       <div className="mt-auto pt-2">
-        <Button variant="ghost" size="sm" asChild className="-ml-3 text-ink-muted">
+        <Button variant="ghost" size="sm" asChild className="text-ink-muted">
           <Link href={STUDIO_HOME} onClick={onNavigate}>
             <ArrowLeft data-icon="inline-start" />
             All projects

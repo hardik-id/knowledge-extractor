@@ -31,10 +31,10 @@ export function SplitView({
   return (
     <div
       className={cn(
-        "grid overflow-hidden rounded-lg border border-border-subtle",
+        "grid overflow-hidden rounded-panel border border-border-subtle",
         aside
-          ? "md:h-[max(40rem,calc(100dvh-20rem))] md:grid-cols-[16rem_minmax(0,1fr)] md:grid-rows-[minmax(0,3fr)_minmax(0,2fr)] lg:h-[max(28rem,calc(100dvh-24rem))] lg:grid-cols-[16rem_minmax(0,1fr)_24rem] lg:grid-rows-1"
-          : "md:h-[max(28rem,calc(100dvh-24rem))] md:grid-cols-[18rem_minmax(0,1fr)]",
+          ? "md:h-[max(40rem,calc(100dvh-15rem))] md:grid-cols-[16rem_minmax(0,1fr)] md:grid-rows-[minmax(0,3fr)_minmax(0,2fr)] lg:h-[max(28rem,calc(100dvh-15rem))] lg:grid-cols-[16rem_minmax(0,1fr)_24rem] lg:grid-rows-1"
+          : "md:h-[max(28rem,calc(100dvh-15rem))] md:grid-cols-[18rem_minmax(0,1fr)]",
         className,
       )}
     >
