@@ -8,11 +8,17 @@ const REVIEW: Record<ReviewState, { label: string; icon: LucideIcon; className: 
   rejected: { label: "Rejected", icon: CircleX, className: "font-semibold text-danger" },
 };
 
+/** A state as a small chip: an icon and a word, never colour alone. */
 export function ReviewStateLabel({ state }: { state: ReviewState }) {
   const { label, icon: Icon, className } = REVIEW[state];
   return (
-    <span className={cn("inline-flex items-center gap-1 text-[13px] leading-[18px]", className)}>
-      <Icon aria-hidden className="size-4 shrink-0" />
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-pill border border-border-subtle px-1.5 text-caption",
+        className,
+      )}
+    >
+      <Icon aria-hidden className="size-3 shrink-0" />
       {label}
     </span>
   );
@@ -21,8 +27,8 @@ export function ReviewStateLabel({ state }: { state: ReviewState }) {
 /** "Added by you" or "Edited by you": the person made or changed this. */
 export function HumanMarker({ text }: { text: "Added by you" | "Edited by you" }) {
   return (
-    <span className="inline-flex items-center gap-1 text-[12px] leading-4 text-ink-muted">
-      <UserRound aria-hidden className="size-3.5 shrink-0" />
+    <span className="inline-flex items-center gap-1 text-caption text-ink-muted">
+      <UserRound aria-hidden className="size-3 shrink-0" />
       {text}
     </span>
   );

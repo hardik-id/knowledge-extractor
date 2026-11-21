@@ -83,7 +83,7 @@ export function AnnotatedMarkdown({
 
   return (
     <div className={cn("space-y-6", className)}>
-      <article className="md-prose">
+      <article className="md-prose md-prose-reading">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={rehypePlugins}

@@ -3,6 +3,7 @@
 import { Check, Pencil, Quote, RotateCcw, Sparkles, Trash2, TriangleAlert, X } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,7 @@ import {
 } from "./record-rules";
 import { HumanMarker, ReviewStateLabel } from "./record-review-state";
 
-const NOT_FOUND = "text-[15px] leading-[22px] text-ink-muted";
+const NOT_FOUND = "text-body text-ink-muted";
 const QUOTE_HINT = "Select text in the document to change this";
 
 /** A text, date, number or choice input with Save and Cancel. Enter saves, Escape cancels. */
@@ -96,9 +97,65 @@ function ValueEditor({
   );
 }
 
-/** Shown on hover or focus on wide screens, always on small ones. */
-const REVEAL =
-  "flex flex-wrap gap-1 md:opacity-0 md:group-focus-within/value:opacity-100 md:group-hover/value:opacity-100";
+/**
+ * A value's actions: always shown on a touch screen (under the value), and on a mouse
+ * as a small floating toolbar on hover and while anything in the row has focus. They stay
+ * in the page for the keyboard either way.
+ */
+const TOOLBAR =
+  "col-start-2 mt-1 flex items-center gap-0.5 fine-hover:absolute fine-hover:top-0 fine-hover:right-0 fine-hover:mt-0 fine-hover:rounded-control fine-hover:border fine-hover:border-border-subtle fine-hover:bg-surface-raised fine-hover:p-0.5 fine-hover:opacity-0 fine-hover:shadow-float fine-hover:group-focus-within/value:opacity-100 fine-hover:group-hover/value:opacity-100";
+
+function ToolButton({
+  label,
+  icon: Icon,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  icon: typeof Check;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon aria-hidden />
+    </Button>
+  );
+}
+
+/** Where the value came from, as a small icon: the words are its accessible name and its tooltip. */
+function Origin({
+  inferred,
+  evidence,
+  hint,
+}: {
+  inferred: boolean;
+  evidence: string[];
+  hint: boolean;
+}) {
+  const Icon = inferred ? Sparkles : Quote;
+  const text = inferred
+    ? `Inferred: worked out by the model${evidence.length > 0 ? `, from \u201c${evidence.join(" \u2026 ")}\u201d` : ""}`
+    : `Quote: taken word for word from the document${hint ? `. ${QUOTE_HINT}` : ""}`;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span role="img" aria-label={text} className="mt-0.5 inline-flex shrink-0 text-ink-muted">
+          <Icon aria-hidden className="size-3.5" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{text}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 interface ValueRowProps {
   record: ExtractionRecord;
@@ -131,6 +188,16 @@ export function ValueRow({
   const field = label.field;
   const inferred = field.mode === "inferred";
 
+  const saveEdit = async (text: string, from: FieldValue) => {
+    if (!actions) return;
+    const ok = await actions.setFieldValues(
+      record.id,
+      field.id,
+      valuesAfterEdit(siblings, from.id, text),
+    );
+    if (ok) setEditing(false);
+  };
+
   if (value.value === null) {
     if (!editable) return <span className={NOT_FOUND}>Not found</span>;
     if (editing) {
@@ -140,14 +207,7 @@ export function ValueRow({
           initial=""
           disabled={actions.pending}
           onCancel={() => setEditing(false)}
-          onSave={async (text) => {
-            const ok = await actions.setFieldValues(
-              record.id,
-              field.id,
-              valuesAfterEdit(siblings, value.id, text),
-            );
-            if (ok) setEditing(false);
-          }}
+          onSave={(text) => saveEdit(text, value)}
         />
       );
     }
@@ -168,212 +228,154 @@ export function ValueRow({
     );
   }
 
-  const ModeIcon = inferred ? Sparkles : Quote;
   const evidence = inferred ? value.spans.map((s) => s.quote).filter(Boolean) : [];
   const rejected = value.review === "rejected";
   const stateShown = editable ? rejected || showValueState(value, record) : rejected;
+  const human = editable && value.origin === "human";
+  const hasMeta = stateShown || human || unanchored;
 
-  const body = (
+  const text = (
+    <span
+      className={cn(
+        "block text-body break-words text-ink",
+        rejected && "line-through",
+        rejected && editable && "text-ink-muted",
+      )}
+    >
+      {value.value}
+    </span>
+  );
+  const meta = (
     <>
-      <span
-        className={cn(
-          "block text-[15px] leading-[22px] break-words text-ink",
-          rejected && "line-through",
-          rejected && editable && "text-ink-muted",
-        )}
-      >
-        {value.value}
-      </span>
-      <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] leading-4 text-ink-muted">
-        <span className="inline-flex items-center gap-1">
-          <ModeIcon aria-hidden className="size-3.5 shrink-0" />
-          {inferred ? "Inferred" : "Quote"}
+      {hasMeta && (
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          {stateShown && <ReviewStateLabel state={value.review} />}
+          {human && <HumanMarker text={inferred ? "Edited by you" : "Added by you"} />}
+          {unanchored && (
+            <span className="inline-flex items-center gap-1 text-caption font-semibold text-warning">
+              <TriangleAlert aria-hidden className="size-3 shrink-0" />
+              Not found in text
+            </span>
+          )}
         </span>
-        {stateShown && <ReviewStateLabel state={value.review} />}
-        {editable && value.origin === "human" && (
-          <HumanMarker text={inferred ? "Edited by you" : "Added by you"} />
-        )}
-        {unanchored && (
-          <span className="inline-flex items-center gap-1 font-semibold text-warning">
-            <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-            Not found in text
-          </span>
-        )}
-      </span>
-      {evidence.map((quote, i) => (
-        <span key={i} className="mt-1 block text-[13px] leading-[18px] break-words text-ink-muted">
-          &ldquo;{quote}&rdquo;
-        </span>
-      ))}
+      )}
       {unanchored && !inferred && value.spans.length > 0 && (
-        <span className="mt-1 block text-[13px] leading-[18px] break-words text-ink-muted">
-          The model quoted: &ldquo;{value.spans.map((s) => s.quote).join(" … ")}&rdquo;
+        <span className="mt-0.5 block text-small break-words text-ink-muted">
+          The model quoted: &ldquo;{value.spans.map((s) => s.quote).join(" \u2026 ")}&rdquo;
         </span>
       )}
     </>
   );
 
-  const frame = "w-full rounded-md border px-2 py-1.5 text-left";
-  const focusRing =
-    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link";
-
-  if (!editable) {
-    if (!canSelect) {
-      return (
-        <div
-          data-record-value={value.id}
-          className={cn(frame, "border-dashed border-border-subtle")}
-        >
-          {body}
-        </div>
-      );
-    }
-    return (
-      <button
-        type="button"
-        data-record-value={value.id}
-        aria-pressed={active}
-        onClick={onSelect}
-        className={cn(
-          frame,
-          "transition-colors",
-          focusRing,
-          active
-            ? cn("border-2 border-ink-heading", label.style.highlight)
-            : "border-border-subtle hover:bg-surface-tint",
-        )}
-      >
-        {body}
-      </button>
-    );
-  }
-
-  const setReview = (review: ReviewState) => actions.setValueReview(record.id, value.id, review);
-  const canEdit = canEditValue(field, value);
-  const wrapper = cn(
-    frame,
-    "group/value",
-    !canSelect && "border-dashed border-border-subtle",
-    canSelect &&
-      (active ? cn("border-2 border-ink-heading", label.style.highlight) : "border-border-subtle"),
+  const marked = canSelect && active;
+  const frame = cn(
+    "group/value relative grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1.5 rounded-control px-1 py-0.5",
+    marked && cn("outline-2 -outline-offset-2 outline-ink-heading", label.style.highlight),
+    !canSelect && "border border-dashed border-border-subtle",
+    !marked && canSelect && "hover:bg-surface-tint",
   );
 
-  if (editing) {
+  if (editing && editable) {
     return (
-      <div data-record-value={value.id} className={wrapper}>
-        <ValueEditor
-          field={field}
-          initial={value.value}
-          disabled={actions.pending}
-          onCancel={() => setEditing(false)}
-          onSave={async (text) => {
-            const ok = await actions.setFieldValues(
-              record.id,
-              field.id,
-              valuesAfterEdit(siblings, value.id, text),
-            );
-            if (ok) setEditing(false);
-          }}
-        />
+      <div data-record-value={value.id} className={frame}>
+        <div className="col-span-2 min-w-0">
+          <ValueEditor
+            field={field}
+            initial={value.value}
+            disabled={actions.pending}
+            onCancel={() => setEditing(false)}
+            onSave={(next) => saveEdit(next, value)}
+          />
+        </div>
       </div>
     );
   }
 
-  return (
-    <div data-record-value={value.id} className={wrapper}>
+  const content = (
+    <div className="min-w-0">
       {canSelect ? (
         <button
           type="button"
           aria-pressed={active}
           onClick={onSelect}
-          className={cn("block w-full rounded-sm text-left", focusRing)}
+          className="block w-full rounded-control text-left"
         >
-          {body}
+          {text}
         </button>
       ) : (
-        body
+        text
       )}
-      <div className={cn(REVEAL, "mt-1")}>
+      {meta}
+    </div>
+  );
+
+  if (!editable) {
+    return (
+      <div data-record-value={value.id} className={frame}>
+        <Origin inferred={inferred} evidence={evidence} hint={false} />
+        {content}
+      </div>
+    );
+  }
+
+  const setReview = (review: ReviewState) => actions.setValueReview(record.id, value.id, review);
+  const pending = actions.pending;
+  const name = `${field.name} value`;
+
+  return (
+    <div data-record-value={value.id} className={frame}>
+      <Origin inferred={inferred} evidence={evidence} hint />
+      {content}
+      <div role="group" aria-label={`Actions for ${name}`} className={TOOLBAR}>
         {rejected ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            disabled={actions.pending}
+          <ToolButton
+            label={`Undo ${name}`}
+            icon={RotateCcw}
+            disabled={pending}
             onClick={() => setReview("suggested")}
-          >
-            <RotateCcw aria-hidden />
-            Undo
-          </Button>
+          />
         ) : (
           <>
             {value.review !== "accepted" && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                disabled={actions.pending}
+              <ToolButton
+                label={`Accept ${name}`}
+                icon={Check}
+                disabled={pending}
                 onClick={() => setReview("accepted")}
-              >
-                <Check aria-hidden />
-                Accept
-              </Button>
+              />
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              disabled={actions.pending}
+            <ToolButton
+              label={`Reject ${name}`}
+              icon={X}
+              disabled={pending}
               onClick={() => setReview("rejected")}
-            >
-              <X aria-hidden />
-              Reject
-            </Button>
+            />
             {value.review === "accepted" && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                disabled={actions.pending}
+              <ToolButton
+                label={`Undo ${name}`}
+                icon={RotateCcw}
+                disabled={pending}
                 onClick={() => setReview("suggested")}
-              >
-                <RotateCcw aria-hidden />
-                Undo
-              </Button>
+              />
             )}
           </>
         )}
-        {canEdit ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            disabled={actions.pending}
+        {canEditValue(field, value) && (
+          <ToolButton
+            label={`Edit ${name}`}
+            icon={Pencil}
+            disabled={pending}
             onClick={() => setEditing(true)}
-          >
-            <Pencil aria-hidden />
-            Edit
-          </Button>
-        ) : (
-          <span
-            title={QUOTE_HINT}
-            className="inline-flex items-center text-[12px] leading-4 text-ink-muted"
-          >
-            {QUOTE_HINT}
-          </span>
+          />
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          disabled={actions.pending}
+        <ToolButton
+          label={`Remove ${name}`}
+          icon={Trash2}
+          disabled={pending}
           onClick={() =>
             actions.setFieldValues(record.id, field.id, valuesAfterRemove(siblings, value.id))
           }
-        >
-          <Trash2 aria-hidden />
-          Remove
-        </Button>
+        />
       </div>
     </div>
   );

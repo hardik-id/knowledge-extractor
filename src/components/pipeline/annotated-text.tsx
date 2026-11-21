@@ -93,8 +93,7 @@ export function Highlight({
         }
       }}
       className={cn(
-        "cursor-pointer rounded-[3px] border-b-2 [box-decoration-break:clone] px-px text-ink",
-        "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-link",
+        "cursor-pointer rounded-control border-b-2 [box-decoration-break:clone] px-px text-ink",
         style.highlight,
         style.underline,
         active && "border-b-4 outline-2 outline-offset-1 outline-ink-heading",
@@ -107,7 +106,7 @@ export function Highlight({
             key={item.id}
             aria-hidden
             className={cn(
-              "mr-1 inline-block rounded-sm border px-1 align-middle font-sans text-[11px] leading-4 font-semibold select-none",
+              "mr-1 inline-block rounded-pill border px-1.5 align-middle font-sans text-caption font-semibold select-none",
               chip.chip,
             )}
           >
@@ -142,12 +141,7 @@ export function AnnotatedText({
 }: AnnotatedTextProps) {
   const pieces = useMemo(() => segmentText(text, marks), [text, marks]);
   return (
-    <div
-      className={cn(
-        "font-mono text-[14px] leading-7 break-words whitespace-pre-wrap text-ink",
-        className,
-      )}
-    >
+    <div className={cn("font-mono text-body break-words whitespace-pre-wrap text-ink", className)}>
       {pieces.map((piece) =>
         piece.marks.length === 0 ? (
           <span key={piece.start} {...{ [TEXT_START]: piece.start }}>

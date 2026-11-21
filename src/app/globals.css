@@ -11,6 +11,8 @@
 @custom-variant dark (&:is(.dark *));
 /* A touch screen: targets stay at least 44px (--touch-target). */
 @custom-variant coarse (@media (pointer: coarse));
+/* A mouse or trackpad that can hover: what appears on hover may stay hidden until then. */
+@custom-variant fine-hover (@media (hover: hover) and (pointer: fine));
 
 :root {
   /* Polder colour tokens — light */
@@ -163,7 +165,8 @@
   --breakpoint-lg: 1280px;
 
   /*
-   * App type scale: text-body, text-small, text-caption, text-title, text-section.
+   * App type scale: text-body, text-small, text-caption, text-title, text-section, and
+   * text-reading (15px) for the one place body text may be larger: a document being read.
    * Headings take the colour text-ink-heading and are no larger than these.
    */
   --text-body: 14px;
@@ -178,6 +181,8 @@
   --text-section: 16px;
   --text-section--line-height: 24px;
   --text-section--font-weight: 600;
+  --text-reading: 15px;
+  --text-reading--line-height: 24px;
 
   /*
    * Radius scale: rounded-control (4px: buttons, fields, checkboxes), rounded-panel (6px:
@@ -364,6 +369,9 @@
     max-width: 68ch;
     color: var(--ink);
     @apply text-body;
+  }
+  .md-prose-reading {
+    @apply text-reading;
   }
   .md-prose > * + * {
     margin-top: 1rem;

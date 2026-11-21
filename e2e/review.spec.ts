@@ -136,3 +136,48 @@ test("a reviewed record survives a run again with another configuration version"
     extraction.record(SECOND).getByText("Rejected", { exact: true }).first(),
   ).toBeVisible();
 });
+
+test("a record with six values fits one screen and its value actions work by keyboard", async ({
+  api,
+  page,
+  person,
+  request,
+}) => {
+  const extraction = await reviewing(page, [api, person, request, [DOCUMENT]]);
+  const record = extraction.record(FIRST);
+  const values = record.locator("[data-record-value]");
+  await expect(values).toHaveCount(6);
+  const box = await record.boundingBox();
+  expect(box!.height, "one ADR record with six values").toBeLessThan(450);
+
+  // Where a value came from is an icon with a name, not a line of its own.
+  await expect(values.nth(0).getByRole("img", { name: /^Quote:/ })).toBeVisible();
+  await expect(values.nth(1).getByRole("img", { name: /^Inferred:/ })).toBeVisible();
+
+  // The actions appear when the keyboard reaches them.
+  const decided = values.nth(2);
+  const edit = decided.getByRole("button", { name: "Edit Decided on value" });
+  await edit.focus();
+  await expect(edit).toBeVisible();
+  await expect(decided.getByRole("group", { name: "Actions for Decided on value" })).toHaveCSS(
+    "opacity",
+    "1",
+  );
+
+  // Edit with the keyboard: Enter opens the editor, Enter saves.
+  await page.keyboard.press("Enter");
+  const input = decided.getByLabel("Decided on value", { exact: true });
+  await expect(input).toBeFocused();
+  await input.fill("2026-11-02");
+  await page.keyboard.press("Enter");
+  await expect(decided.getByText("2026-11-02")).toBeVisible();
+  await expect(decided.getByText("Edited by you")).toBeVisible();
+
+  // Reject one value, then remove another.
+  await decided.getByRole("button", { name: "Reject Decided on value" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(decided.getByText("Rejected", { exact: true })).toBeVisible();
+  await values.nth(3).getByRole("button", { name: "Remove Approved by value" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(record.locator("[data-record-value]")).toHaveCount(5);
+});

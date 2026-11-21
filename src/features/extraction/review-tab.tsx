@@ -6,7 +6,6 @@ import { AnnotatedMarkdown } from "@/components/pipeline/annotated-markdown";
 import { AnnotatedText, type HighlightData } from "@/components/pipeline/annotated-text";
 import { CellStatusLabel } from "@/components/pipeline/cell-status-label";
 import { EmptyState } from "@/components/pipeline/empty-state";
-import { SplitView } from "@/components/pipeline/split-view";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExtractionActions, useFileExtraction } from "@/features/run/use-extraction";
@@ -34,6 +33,7 @@ import type { SourceFile } from "@/types/pipeline";
 import { STAGE_META } from "@/features/stages/config";
 import { fieldLabels } from "./labels";
 import { RecordsPane } from "./records-pane";
+import { FileList, ReviewPanes, Segmented } from "./review-panes";
 import { buildReviewMarks } from "./review-marks";
 import {
   findHighlight,
@@ -266,69 +266,53 @@ function ReviewWorkspace({
   }, [labels, records]);
 
   return (
-    <SplitView
+    <ReviewPanes
       listLabel="Files"
       asideLabel="Extracted records"
       list={
-        <ul className="flex flex-col gap-1 p-2">
-          {rows.map(({ file, cell }) => {
-            const selected = active?.file.id === file.id;
-            return (
-              <li key={file.id}>
-                <button
-                  type="button"
-                  onClick={() => setActiveDoc(file.id)}
-                  aria-current={selected ? "true" : undefined}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors",
-                    selected
-                      ? "bg-surface-raised shadow-card"
-                      : "enabled:hover:bg-surface-raised/60",
-                  )}
-                >
-                  <FileCode aria-hidden className="size-5 shrink-0 text-link" />
-                  <span className="min-w-0">
-                    <span className="block truncate font-mono text-[14px] leading-5 font-medium text-ink">
-                      {file.name}
-                    </span>
-                    {cell && cell.status !== "succeeded" && cell.status !== "pending" && (
-                      <CellStatusLabel status={cell.status} title={cell.error?.message} />
-                    )}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <FileList
+          icon={FileCode}
+          activeId={active?.file.id}
+          onSelect={setActiveDoc}
+          items={rows.map(({ file, cell }) => ({
+            id: file.id,
+            name: file.name,
+            note:
+              cell && cell.status !== "succeeded" && cell.status !== "pending" ? (
+                <CellStatusLabel status={cell.status} title={cell.error?.message} />
+              ) : undefined,
+          }))}
+        />
       }
       detail={
         <div className="flex flex-col">
-          <div className="sticky top-0 z-10 flex flex-col gap-2 border-b border-border-subtle bg-surface-raised px-6 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="min-w-0 truncate font-mono text-[14px] font-medium text-ink">
+          <div className="sticky top-0 z-10 flex flex-col gap-1.5 border-b border-border-subtle bg-background px-4 py-2 sm:px-6">
+            <div className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate font-mono text-small font-medium text-ink">
                 {active?.file.name}
               </span>
-              <div role="group" aria-label="Document view" className="flex gap-1">
-                {(["rendered", "source"] as const).map((v) => (
-                  <Button
-                    key={v}
-                    size="sm"
-                    variant={view === v ? "secondary" : "outline"}
-                    aria-pressed={view === v}
-                    onClick={() => setView(v)}
-                  >
-                    {v === "rendered" ? "Rendered" : "Source"}
-                  </Button>
-                ))}
-              </div>
+              <Segmented
+                label="Document view"
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: "rendered", label: "Rendered" },
+                  { value: "source", label: "Source" },
+                ]}
+              />
             </div>
             {legend.length > 0 && (
-              <ul aria-label="Labels" className="flex flex-wrap gap-1.5">
+              <ul
+                aria-label="Labels"
+                // One line; a long one scrolls sideways, and the keyboard can reach it.
+                tabIndex={0}
+                className="flex gap-1 overflow-x-auto pb-0.5"
+              >
                 {legend.map((l) => (
                   <li
                     key={l.field.id}
                     className={cn(
-                      "rounded-sm border px-1.5 text-[12px] leading-5 font-semibold",
+                      "shrink-0 rounded-pill border px-1.5 text-caption font-semibold",
                       l.style.chip,
                     )}
                   >
@@ -338,12 +322,12 @@ function ReviewWorkspace({
               </ul>
             )}
             {!failure && !loading && (
-              <p className="text-[13px] leading-[18px] text-ink-muted">
+              <p className="text-caption text-ink-muted">
                 Select text in the document to mark it yourself.
               </p>
             )}
             {outdated && (
-              <p className="flex items-start gap-1.5 text-[13px] leading-[18px] text-ink">
+              <p className="flex items-start gap-1.5 text-small text-ink">
                 <History aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
                 <span>
                   <span className="font-semibold text-warning">Out of date.</span> The document
@@ -356,7 +340,7 @@ function ReviewWorkspace({
           <div ref={frameRef} className="relative">
             <div
               ref={documentRef}
-              className="px-6 py-6"
+              className="px-4 py-4 sm:px-6"
               onPointerDown={(event) => {
                 touchRef.current = event.pointerType === "touch";
               }}
@@ -422,7 +406,7 @@ function ReviewWorkspace({
       aside={
         <div ref={recordsRef}>
           {failure ? (
-            <p className="p-4 text-[15px] text-ink-muted">Records couldn&apos;t be loaded.</p>
+            <p className="p-4 text-body text-ink-muted">Records couldn&apos;t be loaded.</p>
           ) : loading || !extraction.data || !review ? (
             <div className="p-4">
               <Loading label="Loading records" />
