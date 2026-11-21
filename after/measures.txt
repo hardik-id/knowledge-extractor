@@ -1,0 +1,6 @@
+1280x800-light record=375px sideways=0px
+1280x800-dark record=375px sideways=0px
+1360x900-light record=375px sideways=0px
+1360x900-dark record=375px sideways=0px
+390x844-light record=683px sideways=0px
+390x844-dark record=683px sideways=0px
