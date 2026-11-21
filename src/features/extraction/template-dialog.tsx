@@ -26,7 +26,7 @@ import type { ExtractionDefinitionState } from "./use-extraction-definition";
 
 const FORMAT_NAMES = { json: "JSON", markdown: "Markdown", csv: "CSV" } as const;
 
-/** The one quiet entry on the Define tab, and the dialog it opens. */
+/** The quiet "Templates" link (in the page header, or on the Define tab), and the dialog it opens. */
 export function TemplatesEntry({ definition }: { definition: ExtractionDefinitionState }) {
   const [open, setOpen] = useState(false);
   return (
@@ -34,7 +34,7 @@ export function TemplatesEntry({ definition }: { definition: ExtractionDefinitio
       <Button
         variant="link"
         size="sm"
-        className="h-auto shrink-0 px-0"
+        className="h-auto shrink-0 px-0 no-underline hover:underline"
         onClick={() => setOpen(true)}
       >
         <LayoutTemplate data-icon="inline-start" aria-hidden />
@@ -143,34 +143,32 @@ function TemplateDialog({
               ) : (
                 <>
                   <TemplateContents template={chosen} />
-                  <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-tint p-3">
-                    <h3 className="text-[15px] leading-6 font-semibold text-ink-heading">
+                  <div className="space-y-2 rounded-panel bg-surface-tint p-3">
+                    <h3 className="text-body font-semibold text-ink-heading">
                       Compared with the editor
                     </h3>
                     {same ? (
-                      <p className="flex items-center gap-1 text-[13px] leading-[18px] font-semibold text-ink-muted">
+                      <p className="flex items-center gap-1 text-small font-semibold text-ink-muted">
                         <CircleCheck aria-hidden className="size-4 shrink-0" />
                         Already what you have
                       </p>
                     ) : (
-                      <ul className="list-disc space-y-0.5 pl-5 text-[13px] leading-[18px] text-ink">
+                      <ul className="list-disc space-y-0.5 pl-5 text-small text-ink">
                         {changes.map((c) => (
                           <li key={c}>{c}</li>
                         ))}
                       </ul>
                     )}
                     {!same && dirty && (
-                      <p className="text-[13px] leading-[18px] font-semibold text-ink">
+                      <p className="text-small font-semibold text-ink">
                         You have unsaved changes in the editor. Using this template replaces them.
                       </p>
                     )}
                     {checking && (
-                      <p className="text-[13px] leading-[18px] text-ink-muted">
-                        Checking your records...
-                      </p>
+                      <p className="text-small text-ink-muted">Checking your records...</p>
                     )}
                     {!same && !records && !!recordsError && (
-                      <p className="text-[13px] leading-[18px] font-semibold text-ink">
+                      <p className="text-small font-semibold text-ink">
                         Couldn&apos;t read your records, so we can&apos;t say what the next run does
                         to them.
                       </p>
@@ -214,23 +212,21 @@ function RecordsNote({
 }) {
   const text = recordsImpact(records, typeIds);
   if (!text) return null;
-  return <p className="text-[13px] leading-[18px] text-ink">{text}</p>;
+  return <p className="text-small text-ink">{text}</p>;
 }
 
 /** What the template sets up, read-only and compact. */
 function TemplateContents({ template }: { template: DefinitionTemplate }) {
   const { prompt, recordTypes, output } = template.definition;
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-3 text-body">
       <p className="text-ink">{template.description}</p>
       <div className="space-y-1">
-        <h3 className="text-[13px] leading-[18px] font-semibold text-ink-heading">
-          What to extract
-        </h3>
+        <h3 className="text-small font-semibold text-ink-heading">What to extract</h3>
         <p className="max-h-24 overflow-y-auto text-ink-muted">{prompt || "Nothing yet."}</p>
       </div>
       <div className="space-y-1">
-        <h3 className="text-[13px] leading-[18px] font-semibold text-ink-heading">Record types</h3>
+        <h3 className="text-small font-semibold text-ink-heading">Record types</h3>
         {recordTypes.length === 0 ? (
           <p className="text-ink-muted">None: it starts empty.</p>
         ) : (
@@ -243,7 +239,7 @@ function TemplateContents({ template }: { template: DefinitionTemplate }) {
                   <ul className="mt-0.5 columns-1 gap-4 text-ink-muted sm:columns-2">
                     {type.fields.map((f) => (
                       <li key={f.id} className="break-inside-avoid">
-                        {f.name || f.key} <span className="text-[13px]">({fieldHow(f)})</span>
+                        {f.name || f.key} <span className="text-small">({fieldHow(f)})</span>
                       </li>
                     ))}
                   </ul>

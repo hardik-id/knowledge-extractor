@@ -20,14 +20,17 @@ import { usePipelineStore } from "@/store/pipeline-store";
 import { formatSavedDate, versionLine } from "./version-format";
 import type { ExtractionDefinitionState } from "./use-extraction-definition";
 
-/** The version beside the configuration, "Unsaved changes" when the draft differs, and Version history. */
+/**
+ * The version of the configuration, "Unsaved changes" when the draft differs, and Version
+ * history: inline, for the facts line of the page header.
+ */
 export function VersionBar({ definition }: { definition: ExtractionDefinitionState }) {
   const { saved, dirty } = definition;
   const [open, setOpen] = useState(false);
   if (!saved) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-      <p className="text-sm text-ink-muted">
+    <>
+      <p>
         <span data-testid="version-line">{versionLine(saved.version, saved.createdAt)}</span>
         {dirty && (
           <>
@@ -36,12 +39,17 @@ export function VersionBar({ definition }: { definition: ExtractionDefinitionSta
           </>
         )}
       </p>
-      <Button variant="link" size="sm" className="h-auto px-0" onClick={() => setOpen(true)}>
+      <Button
+        variant="link"
+        size="sm"
+        className="h-auto px-0 no-underline hover:underline"
+        onClick={() => setOpen(true)}
+      >
         <History data-icon="inline-start" aria-hidden />
         Version history
       </Button>
       {open && <HistoryDialog definition={definition} onClose={() => setOpen(false)} />}
-    </div>
+    </>
   );
 }
 
@@ -141,10 +149,10 @@ function VersionList({
               )}
               <span className="font-normal text-ink-muted"> · {formatSavedDate(v.createdAt)}</span>
             </p>
-            <p className="text-sm text-ink-muted">
+            <p className="text-body text-ink-muted">
               {plural(v.recordTypeCount, "record type")}, {plural(v.fieldCount, "field")}
             </p>
-            {v.note && <p className="text-sm break-words text-ink">{v.note}</p>}
+            {v.note && <p className="text-body break-words text-ink">{v.note}</p>}
           </div>
           <Button variant="outline" size="sm" onClick={() => onView(v.version)}>
             View version {v.version}
@@ -204,7 +212,7 @@ function VersionView({
       {data && !isLatest && (
         <div className="space-y-3 border-t border-border-subtle pt-4">
           {confirming && (
-            <p role="alert" className="text-sm text-ink">
+            <p role="alert" className="text-body text-ink">
               You have unsaved changes. Restoring replaces them with version {version}.
             </p>
           )}
@@ -234,7 +242,7 @@ function VersionView({
 function ReadOnlyVersion({ version }: { version: ExtractionDefinition }) {
   return (
     <div className="space-y-4" data-testid="version-readonly">
-      <p className="text-sm text-ink-muted">
+      <p className="text-body text-ink-muted">
         {versionLine(version.version, version.createdAt)}. Read only.
         {version.note && <> Note: {version.note}</>}
       </p>
@@ -246,11 +254,11 @@ function ReadOnlyVersion({ version }: { version: ExtractionDefinition }) {
         <h3 className="font-semibold text-ink">Record types</h3>
         {version.recordTypes.length === 0 && <p className="text-ink-muted">None.</p>}
         {version.recordTypes.map((t) => (
-          <div key={t.id} className="rounded-lg border border-border-subtle p-3">
+          <div key={t.id} className="rounded-panel border border-border-subtle p-3">
             <p className="font-semibold text-ink">{t.name || "Unnamed"}</p>
-            {t.description && <p className="text-sm text-ink-muted">{t.description}</p>}
+            {t.description && <p className="text-body text-ink-muted">{t.description}</p>}
             {t.fields.length > 0 && (
-              <ul className="mt-2 flex flex-col gap-1 text-sm text-ink">
+              <ul className="mt-2 flex flex-col gap-1 text-body text-ink">
                 {t.fields.map((f) => (
                   <li key={f.id}>
                     {f.name || f.key}{" "}
