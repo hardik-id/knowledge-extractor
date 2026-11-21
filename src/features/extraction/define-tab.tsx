@@ -217,12 +217,14 @@ export function DefineTab({
             </h2>
             <fieldset>
               <legend className="text-small font-medium text-ink">Format</legend>
-              <div className="mt-1 inline-flex overflow-hidden rounded-control border border-border-control">
+              {/* No overflow clipping here: the focused option's ring is drawn outside it, as
+                  everywhere else, because on the chosen option's fill it would not show. */}
+              <div className="mt-1 inline-flex rounded-control border border-border-control">
                 {OUTPUT_FORMATS.map((f) => (
                   <label
                     key={f}
                     className={cn(
-                      "inline-flex h-control-sm cursor-pointer items-center px-3 text-small font-medium coarse:min-h-touch has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-ring",
+                      "inline-flex h-control-sm cursor-pointer items-center px-3 text-small font-medium first:rounded-l-control last:rounded-r-control has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring coarse:min-h-touch",
                       format === f
                         ? "bg-link text-bg"
                         : "bg-transparent text-ink hover:bg-surface-hover",
