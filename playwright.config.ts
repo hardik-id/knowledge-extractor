@@ -36,6 +36,9 @@ export default defineConfig({
     ? [["list"], ["./e2e-live/skip-reasons-reporter.mjs"], ["html", { open: "never" }]]
     : [["list"], ["html", { open: "never" }]],
   workers: LIVE ? 1 : undefined,
+  // The default 30 s is too tight for the longer flows (two runs and a save) when the machine is
+  // busy with other runs: they take 15-20 s alone. A broken step still fails in seconds (below).
+  timeout: 60_000,
   // A broken test should fail in seconds with the line it stopped at, not after the 30 s test timeout.
   expect: { timeout: 10_000 },
   use: {
