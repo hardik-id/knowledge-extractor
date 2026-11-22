@@ -25,14 +25,6 @@ import { describeApiError } from "@/services/errors";
 import { focusAssistantInput, resetOutcomes, useProposalSync } from "./use-proposal";
 import { useWorkspace } from "./workspace-state";
 
-const OUTCOME_LINE = {
-  open: "Waiting for you",
-  applied: "Kept",
-  dismissed: "Discarded",
-  replaced: "Replaced",
-  included: "Already in what you have",
-} as const;
-
 /**
  * The assistant at the bottom of the column: a one-line input; using it opens the conversation
  * upward, oldest message first. Its proposals are shown in the table, not here.
@@ -125,19 +117,19 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
                 </p>
               )}
               {messages.map((m) => {
-                const outcome = m.proposal ? outcomeOf(m) : null;
+                const shown = m.proposal ? outcomeOf(m) : null;
                 return (
                   <div key={m.id} className="flex flex-col gap-1">
                     <Message message={m} />
-                    {outcome && (
+                    {shown && (
                       <p
                         className={
-                          outcome === "open"
+                          shown.outcome === "open"
                             ? "text-small font-medium text-warning"
                             : "text-small text-ink-muted"
                         }
                       >
-                        {OUTCOME_LINE[outcome]}
+                        {shown.line}
                       </p>
                     )}
                   </div>

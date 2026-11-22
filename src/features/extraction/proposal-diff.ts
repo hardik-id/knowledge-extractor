@@ -63,24 +63,55 @@ export interface ProposalChange {
   text: string;
 }
 
-function fieldChanges(typeId: string, owner: string, a: FieldDef, b: FieldDef): ProposalChange[] {
+type FieldPatch = Partial<
+  Pick<FieldDef, "name" | "mode" | "valueType" | "choices" | "multiple" | "description">
+>;
+
+/** The changes to one field, each with the part of the field it sets. */
+function fieldChangeEntries(
+  typeId: string,
+  owner: string,
+  a: FieldDef,
+  b: FieldDef,
+): { change: ProposalChange; patch: FieldPatch }[] {
   const where = `${owner} / ${fieldName(b)}`;
-  const out: ProposalChange[] = [];
-  const changed = (text: string) =>
-    out.push({ kind: "changed-field", typeId, fieldId: b.id, text });
+  const out: { change: ProposalChange; patch: FieldPatch }[] = [];
+  const changed = (text: string, patch: FieldPatch) =>
+    out.push({ change: { kind: "changed-field", typeId, fieldId: b.id, text }, patch });
   if (a.name.trim() !== b.name.trim()) {
-    changed(`${owner}: field “${fieldName(a)}” renamed to “${fieldName(b)}”`);
+    changed(`${owner}: field “${fieldName(a)}” renamed to “${fieldName(b)}”`, { name: b.name });
   }
-  if (a.mode !== b.mode) changed(`${where}: now ${MODE_LABEL[b.mode]}`);
-  if (a.valueType !== b.valueType) changed(`${where}: type changed to ${TYPE_LABEL[b.valueType]}`);
+  if (a.mode !== b.mode) changed(`${where}: now ${MODE_LABEL[b.mode]}`, { mode: b.mode });
+  if (a.valueType !== b.valueType) {
+    changed(`${where}: type changed to ${TYPE_LABEL[b.valueType]}`, {
+      valueType: b.valueType,
+      choices: b.choices,
+    });
+  }
   if (a.valueType === "choice" && b.valueType === "choice" && !sameList(a.choices, b.choices)) {
-    changed(`${where}: choices changed`);
+    changed(`${where}: choices changed`, { choices: b.choices });
   }
   if (a.multiple !== b.multiple) {
-    changed(`${where}: ${b.multiple ? "now takes several values" : "now takes one value"}`);
+    changed(`${where}: ${b.multiple ? "now takes several values" : "now takes one value"}`, {
+      multiple: b.multiple,
+    });
   }
-  if (a.description.trim() !== b.description.trim()) changed(`${where}: description changed`);
+  if (a.description.trim() !== b.description.trim()) {
+    changed(`${where}: description changed`, { description: b.description });
+  }
   return out;
+}
+
+/** The fields of a record type paired with the proposal's: by id, key, then name. */
+function pairFields(a: readonly FieldDef[], b: readonly FieldDef[]) {
+  const fields = pair(a, b, (f) => f.key || f.name);
+  // The key is a second chance: a field the assistant re-issued with a new id and name.
+  const byName = pair(fields.removed, fields.added, (f) => f.name);
+  return {
+    pairs: [...fields.pairs, ...byName.pairs],
+    added: byName.added,
+    removed: byName.removed,
+  };
 }
 
 /** What applying `proposal` would change in `current`, item by item. Empty when nothing. */
@@ -128,10 +159,8 @@ export function proposalChanges(
         text: `${owner}: description changed`,
       });
     }
-    const fields = pair(a.fields, b.fields, (f) => f.key || f.name);
-    // The key is a second chance: a field the assistant re-issued with a new id and name.
-    const byName = pair(fields.removed, fields.added, (f) => f.name);
-    for (const f of byName.added) {
+    const fields = pairFields(a.fields, b.fields);
+    for (const f of fields.added) {
       out.push({
         kind: "added-field",
         typeId: b.id,
@@ -139,7 +168,7 @@ export function proposalChanges(
         text: `${owner}: field added: ${fieldName(f)}`,
       });
     }
-    for (const f of byName.removed) {
+    for (const f of fields.removed) {
       out.push({
         kind: "removed-field",
         typeId: b.id,
@@ -147,8 +176,8 @@ export function proposalChanges(
         text: `${owner}: field removed: ${fieldName(f)}`,
       });
     }
-    for (const [x, y] of [...fields.pairs, ...byName.pairs]) {
-      out.push(...fieldChanges(b.id, owner, x, y));
+    for (const [x, y] of fields.pairs) {
+      out.push(...fieldChangeEntries(b.id, owner, x, y).map((e) => e.change));
     }
   }
 
@@ -189,4 +218,95 @@ export function shownOutcome(
   changeCount: number,
 ): ProposalOutcome | "included" {
   return outcome === "open" && changeCount === 0 ? "included" : outcome;
+}
+
+/** Puts `item` where the proposal has it: after the nearest earlier sibling the list already holds. */
+function insertLike<T extends { id: string }>(list: readonly T[], item: T, proposed: readonly T[]) {
+  const at = proposed.findIndex((p) => p.id === item.id);
+  let index = 0;
+  for (let i = at - 1; i >= 0; i--) {
+    const found = list.findIndex((t) => t.id === proposed[i]!.id);
+    if (found >= 0) {
+      index = found + 1;
+      break;
+    }
+  }
+  return [...list.slice(0, index), item, ...list.slice(index)];
+}
+
+/**
+ * `draft` with only `change` put in, one of the changes `proposalChanges(draft, proposal)` lists.
+ * It pairs record types and fields the way that function does. A change that is no longer there
+ * (it was in the draft already) leaves the draft as it is.
+ */
+export function applyChange(
+  draft: ExtractionDefinitionDraft,
+  proposal: ExtractionDefinitionDraft,
+  change: ProposalChange,
+): ExtractionDefinitionDraft {
+  if (change.kind === "prompt") return { ...draft, prompt: proposal.prompt };
+  if (change.kind === "output") {
+    const output =
+      change.text === "Template changed"
+        ? { ...draft.output, template: proposal.output.template }
+        : { ...draft.output, format: proposal.output.format };
+    return { ...draft, output };
+  }
+
+  const types = pair(draft.recordTypes, proposal.recordTypes, (t) => t.name);
+  if (change.kind === "added-type") {
+    const t = types.added.find((x) => x.id === change.typeId);
+    if (!t) return draft;
+    return {
+      ...draft,
+      recordTypes: insertLike(draft.recordTypes, structuredClone(t), proposal.recordTypes),
+    };
+  }
+  if (change.kind === "removed-type") {
+    if (!types.removed.some((t) => t.id === change.typeId)) return draft;
+    return { ...draft, recordTypes: draft.recordTypes.filter((t) => t.id !== change.typeId) };
+  }
+
+  const found = types.pairs.find(([, b]) => b.id === change.typeId);
+  if (!found) return draft;
+  const [a, b] = found;
+  const withType = (patch: (t: RecordType) => RecordType): ExtractionDefinitionDraft => ({
+    ...draft,
+    recordTypes: draft.recordTypes.map((t) => (t.id === a.id ? patch(t) : t)),
+  });
+
+  if (change.kind === "changed-type") {
+    return change.text.startsWith("Record type renamed")
+      ? withType((t) => ({ ...t, name: b.name }))
+      : withType((t) => ({ ...t, description: b.description }));
+  }
+
+  const fields = pairFields(a.fields, b.fields);
+  if (change.kind === "added-field") {
+    const f = fields.added.find((x) => x.id === change.fieldId);
+    if (!f) return draft;
+    return withType((t) => ({ ...t, fields: insertLike(t.fields, { ...f }, b.fields) }));
+  }
+  if (change.kind === "removed-field") {
+    if (!fields.removed.some((f) => f.id === change.fieldId)) return draft;
+    return withType((t) => ({ ...t, fields: t.fields.filter((f) => f.id !== change.fieldId) }));
+  }
+  // changed-field
+  for (const [x, y] of fields.pairs) {
+    if (y.id !== change.fieldId) continue;
+    const entry = fieldChangeEntries(b.id, typeName(b), x, y).find(
+      (e) => e.change.text === change.text,
+    );
+    if (!entry) continue;
+    return withType((t) => ({
+      ...t,
+      fields: t.fields.map((f) => (f.id === x.id ? { ...f, ...entry.patch } : f)),
+    }));
+  }
+  return draft;
+}
+
+/** Identifies a change by what it is, so it can be told apart after the draft it was worked out against has changed. */
+export function changeKey(change: ProposalChange): string {
+  return [change.kind, change.typeId ?? "", change.fieldId ?? "", change.text].join("\u0000");
 }

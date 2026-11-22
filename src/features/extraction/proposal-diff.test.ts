@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ExtractionDefinitionDraft, FieldDef } from "@/services/contracts";
-import { diffProposal, proposalChanges, shownOutcome } from "./proposal-diff";
+import {
+  applyChange,
+  changeKey,
+  diffProposal,
+  proposalChanges,
+  shownOutcome,
+} from "./proposal-diff";
 
 const field = (id: string, key: string, name: string, over: Partial<FieldDef> = {}): FieldDef => ({
   id,
@@ -174,5 +180,151 @@ describe("proposalChanges", () => {
       diffProposal(base(), p),
       proposalChanges(base(), p).map((c) => c.text),
     );
+  });
+});
+
+/** A proposal that changes every kind of thing. */
+function everything(): ExtractionDefinitionDraft {
+  const p = base();
+  p.prompt = "Find all decisions";
+  p.output = { format: "markdown", template: "# {{title}}" };
+  p.recordTypes[0]!.name = "Decision";
+  p.recordTypes[0]!.description = "A choice made";
+  p.recordTypes[0]!.fields = [
+    field("f0", "owner", "Owner"),
+    field("f1", "title", "Titel", {
+      mode: "inferred",
+      valueType: "choice",
+      choices: ["a", "b"],
+      multiple: true,
+      description: "The title",
+    }),
+  ];
+  p.recordTypes.push({
+    id: "t2",
+    name: "Risk",
+    description: "",
+    fields: [field("r1", "risk", "Risk")],
+  });
+  return p;
+}
+
+describe("applyChange", () => {
+  const find = (p: ExtractionDefinitionDraft, kind: string, text?: RegExp) =>
+    proposalChanges(base(), p).find((c) => c.kind === kind && (!text || text.test(c.text)))!;
+
+  it("puts in the prompt alone", () => {
+    const p = everything();
+    const d = applyChange(base(), p, find(p, "prompt"));
+    assert.equal(d.prompt, "Find all decisions");
+    assert.deepEqual({ ...d, prompt: "Find decisions" }, base());
+  });
+
+  it("puts in the format and the template separately", () => {
+    const p = everything();
+    const d = applyChange(base(), p, find(p, "output", /format/));
+    assert.deepEqual(d.output, { format: "markdown", template: "" });
+    const e = applyChange(base(), p, find(p, "output", /Template/));
+    assert.deepEqual(e.output, { format: "json", template: "# {{title}}" });
+  });
+
+  it("adds a record type with its fields, and removes one", () => {
+    const p = everything();
+    const added = applyChange(base(), p, find(p, "added-type"));
+    assert.deepEqual(
+      added.recordTypes.map((t) => t.name),
+      ["ADR", "Risk"],
+    );
+    assert.equal(added.recordTypes[1]!.fields.length, 1);
+    const gone = base();
+    const none = { ...base(), recordTypes: [] };
+    const removed = applyChange(gone, none, proposalChanges(gone, none)[0]!);
+    assert.deepEqual(removed.recordTypes, []);
+  });
+
+  it("renames a record type and changes its description separately", () => {
+    const p = everything();
+    const renamed = applyChange(base(), p, find(p, "changed-type", /renamed/));
+    assert.equal(renamed.recordTypes[0]!.name, "Decision");
+    assert.equal(renamed.recordTypes[0]!.description, "");
+    const described = applyChange(base(), p, find(p, "changed-type", /description/));
+    assert.equal(described.recordTypes[0]!.name, "ADR");
+    assert.equal(described.recordTypes[0]!.description, "A choice made");
+  });
+
+  it("adds a field where the proposal has it, and removes one", () => {
+    const p = everything();
+    const added = applyChange(base(), p, find(p, "added-field"));
+    assert.deepEqual(
+      added.recordTypes[0]!.fields.map((f) => f.id),
+      ["f0", "f1", "f2"],
+    );
+    const removed = applyChange(base(), p, find(p, "removed-field"));
+    assert.deepEqual(
+      removed.recordTypes[0]!.fields.map((f) => f.id),
+      ["f1"],
+    );
+  });
+
+  it("changes one thing of a field", () => {
+    const p = everything();
+    const d = applyChange(base(), p, find(p, "changed-field", /now worked out/));
+    const f = d.recordTypes[0]!.fields[0]!;
+    assert.equal(f.mode, "inferred");
+    assert.equal(f.name, "Title");
+    assert.equal(f.multiple, false);
+    const r = applyChange(base(), p, find(p, "changed-field", /renamed/));
+    assert.equal(r.recordTypes[0]!.fields[0]!.name, "Titel");
+    assert.equal(r.recordTypes[0]!.fields[0]!.mode, "quote");
+  });
+
+  it("keeping every change one after the other ends with the proposal", () => {
+    for (const p of [everything(), { ...base(), recordTypes: [] }]) {
+      let draft = base();
+      for (let guard = 0; guard < 30; guard++) {
+        const changes = proposalChanges(draft, p);
+        if (changes.length === 0) break;
+        draft = applyChange(draft, p, changes[0]!);
+      }
+      assert.deepEqual(draft, p);
+    }
+  });
+
+  it("keeping the last change first gives the same end", () => {
+    const p = everything();
+    let draft = base();
+    for (let guard = 0; guard < 30; guard++) {
+      const changes = proposalChanges(draft, p);
+      if (changes.length === 0) break;
+      draft = applyChange(draft, p, changes[changes.length - 1]!);
+    }
+    assert.deepEqual(draft, p);
+  });
+
+  it("leaves the draft as it is for a change that is not there", () => {
+    const p = everything();
+    const ghost = { kind: "added-field", typeId: "t1", fieldId: "zz", text: "x" } as const;
+    assert.deepEqual(applyChange(base(), p, ghost), base());
+  });
+
+  it("discarding every change leaves the draft unchanged, and a discarded one stays out after another is kept", () => {
+    const p = everything();
+    const all = proposalChanges(base(), p);
+    const discarded = new Set([changeKey(all[0]!)]);
+    const draft = applyChange(base(), p, all[1]!);
+    const open = proposalChanges(draft, p).filter((c) => !discarded.has(changeKey(c)));
+    assert.equal(open.length, all.length - 2);
+    assert.ok(!open.some((c) => c.kind === "prompt"));
+  });
+});
+
+describe("changeKey", () => {
+  it("is the same for the same change worked out against another draft", () => {
+    const p = everything();
+    const before = proposalChanges(base(), p);
+    const after = proposalChanges(applyChange(base(), p, before[0]!), p);
+    const keys = new Set(before.map(changeKey));
+    assert.ok(after.every((c) => keys.has(changeKey(c))));
+    assert.equal(new Set(before.map(changeKey)).size, before.length);
   });
 });

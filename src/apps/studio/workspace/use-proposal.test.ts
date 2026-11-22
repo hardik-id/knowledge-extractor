@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "node:test";
 import {
+  currentDecisions,
   currentOffer,
   currentOutcomes,
   NOT_SEEN,
   offerProposal,
   offerStep,
+  openChanges,
+  outcomeLine,
+  recordDecision,
   resetOutcomes,
   setOutcome,
   type ProposalOffer,
@@ -98,5 +102,70 @@ describe("an offer gives way to a newer proposal of the assistant", () => {
     const cleared = offerStep("m5", undefined);
     assert.deepEqual(cleared, { withdraw: false, baseline: undefined });
     assert.equal(offerStep(cleared.baseline, "m9").withdraw, true);
+  });
+});
+
+describe("decisions one change at a time", () => {
+  afterEach(() => resetOutcomes());
+  const change = (text: string) => ({
+    kind: "changed-field" as const,
+    typeId: "t1",
+    fieldId: "f1",
+    text,
+  });
+  const key = (text: string) => ["changed-field", "t1", "f1", text].join("\u0000");
+
+  test("counts what was kept and remembers what was discarded", () => {
+    recordDecision("m1", { kept: 1 });
+    recordDecision("m1", { discarded: [key("b")] });
+    assert.deepEqual(currentDecisions().m1, { kept: 1, discarded: [key("b")], whole: false });
+  });
+
+  test("a discarded change stays out of what is open, wherever it now stands", () => {
+    recordDecision("m1", { discarded: [key("b")] });
+    const open = openChanges([change("c"), change("b"), change("a")], currentDecisions().m1);
+    assert.deepEqual(
+      open.map((c) => c.text),
+      ["c", "a"],
+    );
+    assert.equal(openChanges([change("a")], undefined).length, 1);
+  });
+
+  test("clearing the conversation forgets them", () => {
+    recordDecision("m1", { kept: 1 });
+    resetOutcomes();
+    assert.deepEqual(currentDecisions(), {});
+  });
+
+  test("an offer shown again starts afresh", () => {
+    const offer: ProposalOffer = {
+      id: "template:adr",
+      proposal: {
+        definition: { prompt: "", recordTypes: [], output: { format: "markdown", template: "" } },
+        reasons: [],
+      },
+    };
+    recordDecision("template:adr", { kept: 2 });
+    offerProposal(offer);
+    assert.equal(currentDecisions()["template:adr"], undefined);
+    offerProposal(null);
+  });
+
+  test("the line says what became of the changes", () => {
+    assert.equal(outcomeLine("open", undefined, 2), "Waiting for you");
+    assert.equal(outcomeLine("applied", undefined, 0), "Kept");
+    assert.equal(outcomeLine("dismissed", undefined, 0), "Discarded");
+    assert.equal(outcomeLine("replaced", undefined, 0), "Replaced");
+    assert.equal(outcomeLine("included", undefined, 0), "Already in what you have");
+    assert.equal(outcomeLine("applied", { kept: 1, discarded: [], whole: false }, 0), "1 kept");
+    assert.equal(
+      outcomeLine("applied", { kept: 2, discarded: ["x"], whole: false }, 0),
+      "2 kept, 1 discarded",
+    );
+    assert.equal(
+      outcomeLine("open", { kept: 1, discarded: [], whole: false }, 1),
+      "1 kept, 1 waiting",
+    );
+    assert.equal(outcomeLine("applied", { kept: 3, discarded: [], whole: true }, 0), "Kept");
   });
 });

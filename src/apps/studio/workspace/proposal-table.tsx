@@ -3,7 +3,7 @@
 import { Sparkles } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import type { ProposalChange } from "@/features/extraction/proposal-diff";
+import { changeKey, type ProposalChange } from "@/features/extraction/proposal-diff";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { plural } from "@/lib/format";
 import type { FieldDef, RecordType } from "@/services/contracts";
@@ -52,6 +52,43 @@ function lineText(change: ProposalChange): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** Keep and Discard for one change ("Keep removal" for a removal). */
+function ChangeActions({
+  change,
+  definition,
+  onDecided,
+}: {
+  change: ProposalChange;
+  definition: ExtractionDefinitionState;
+  onDecided?: (said: string) => void;
+}) {
+  const { keep, discard } = useProposal(definition, onDecided);
+  const keepLabel =
+    change.kind === "removed-field" || change.kind === "removed-type" ? "Keep removal" : "Keep";
+  return (
+    <span data-change-actions className="flex shrink-0 items-center gap-1">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        aria-label={`${keepLabel}: ${change.text}`}
+        onClick={(e) => keep(change, e.currentTarget)}
+      >
+        {keepLabel}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label={`Discard: ${change.text}`}
+        onClick={(e) => discard(change, e.currentTarget)}
+      >
+        Discard
+      </Button>
+    </span>
+  );
+}
+
 /** "3 suggested changes · Keep all · Discard all", above the table. */
 export function ProposalBar({
   definition,
@@ -96,9 +133,12 @@ export function ProposalBar({
         </Button>
       </div>
       {elsewhere.length > 0 && (
-        <ul className="space-y-0.5 pr-4 pb-2 pl-10 text-small text-ink">
-          {elsewhere.map((c, i) => (
-            <li key={`${c.kind}-${i}`}>{c.text}</li>
+        <ul className="space-y-1 pr-3 pb-2 pl-10 text-small text-ink">
+          {elsewhere.map((c) => (
+            <li key={changeKey(c)} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="min-w-0 flex-[1_1_12rem]">{c.text}</span>
+              <ChangeActions change={c} definition={definition} onDecided={onDecided} />
+            </li>
           ))}
         </ul>
       )}
@@ -127,7 +167,15 @@ function linesByField(info: ProposalInfo, type: RecordType): Map<string, Proposa
 }
 
 /** The changes proposed to one existing field, as lines under its row. */
-export function ProposalLines({ field }: { field: FieldDef }) {
+export function ProposalLines({
+  field,
+  definition,
+  onDecided,
+}: {
+  field: FieldDef;
+  definition: ExtractionDefinitionState;
+  onDecided?: (said: string) => void;
+}) {
   const { proposal, selectedTypeId } = useWorkspace();
   const info = proposal as ProposalInfo | null;
   const type = info?.current.recordTypes.find((t) => t.id === selectedTypeId);
@@ -143,19 +191,22 @@ export function ProposalLines({ field }: { field: FieldDef }) {
   if (lines.length === 0) return null;
   return (
     <ul ref={list} className="space-y-1 pr-4 pb-2.5 pl-8">
-      {lines.map((c, i) => (
+      {lines.map((c) => (
         <li
-          key={`${c.kind}-${i}`}
-          className="rounded-control bg-surface-tint py-1.5 pr-2.5 pl-2.5 text-small text-ink"
+          key={changeKey(c)}
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-control bg-surface-tint py-1 pr-1.5 pl-2.5 text-small text-ink"
         >
-          <strong
-            className={
-              c.kind === "removed-field" ? "font-semibold text-danger" : "font-semibold text-link"
-            }
-          >
-            {c.kind === "removed-field" ? "Remove" : "Change"}
-          </strong>{" "}
-          {lineText(c)}
+          <span className="min-w-0 flex-[1_1_12rem]">
+            <strong
+              className={
+                c.kind === "removed-field" ? "font-semibold text-danger" : "font-semibold text-link"
+              }
+            >
+              {c.kind === "removed-field" ? "Remove" : "Change"}
+            </strong>{" "}
+            {lineText(c)}
+          </span>
+          <ChangeActions change={c} definition={definition} onDecided={onDecided} />
         </li>
       ))}
     </ul>
@@ -163,7 +214,15 @@ export function ProposalLines({ field }: { field: FieldDef }) {
 }
 
 /** The fields proposed for the record type, as table rows (`tr`) marked "New field". */
-export function ProposedFieldRows({ typeId }: { typeId: string }) {
+export function ProposedFieldRows({
+  typeId,
+  definition,
+  onDecided,
+}: {
+  typeId: string;
+  definition: ExtractionDefinitionState;
+  onDecided?: (said: string) => void;
+}) {
   const { proposal } = useWorkspace();
   const info = proposal as ProposalInfo | null;
   const type = info?.current.recordTypes.find((t) => t.id === typeId);
@@ -175,14 +234,19 @@ export function ProposedFieldRows({ typeId }: { typeId: string }) {
   }, [firstId]);
   if (!info || !type) return null;
   const proposed = proposedType(info, type);
-  const fields = info.changes
+  const added = info.changes
     .filter((c) => c.kind === "added-field" && inType(c, type, proposed))
-    .map((c) => proposed?.fields.find((f) => f.id === c.fieldId))
-    .filter((f): f is FieldDef => !!f);
+    .map((c) => ({ change: c, field: proposed?.fields.find((f) => f.id === c.fieldId) }))
+    .filter((x): x is { change: ProposalChange; field: FieldDef } => !!x.field);
   return (
     <>
-      {fields.map((f, i) => (
-        <ProposedFieldRow key={f.id} field={f} rowRef={i === 0 ? first : undefined} />
+      {added.map(({ change, field }, i) => (
+        <ProposedFieldRow
+          key={field.id}
+          field={field}
+          rowRef={i === 0 ? first : undefined}
+          actions={<ChangeActions change={change} definition={definition} onDecided={onDecided} />}
+        />
       ))}
     </>
   );
@@ -192,27 +256,33 @@ export function ProposedFieldRows({ typeId }: { typeId: string }) {
 function ProposedFieldRow({
   field: f,
   rowRef,
+  actions,
 }: {
   field: FieldDef;
   rowRef?: React.Ref<HTMLTableRowElement>;
+  /** Keep and Discard; a field inside a new record type has none, the type has them. */
+  actions?: React.ReactNode;
 }) {
   return (
     <tr ref={rowRef} className="block border-b border-border-subtle bg-surface-tint">
-      <td className="block py-2.5 pr-4 pl-4">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span aria-hidden className="size-2 shrink-0 rounded-pill border-2 border-ink-muted" />
-          <span className="font-medium text-ink">{f.name.trim() || f.key}</span>
-          <span className="rounded-pill bg-success-soft px-2 text-caption font-semibold text-success">
-            New field
-          </span>
-          <span className="text-caption text-ink-muted">
-            {TYPE_LABEL[f.valueType]} · {f.mode === "quote" ? "exact quote" : "worked out"}
-            {f.multiple ? " · several values" : ""}
-          </span>
+      <td className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-2.5 pr-3 pl-4">
+        <div className="min-w-0 flex-[1_1_15rem]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span aria-hidden className="size-2 shrink-0 rounded-pill border-2 border-ink-muted" />
+            <span className="font-medium text-ink">{f.name.trim() || f.key}</span>
+            <span className="rounded-pill bg-success-soft px-2 text-caption font-semibold text-success">
+              New field
+            </span>
+            <span className="text-caption text-ink-muted">
+              {TYPE_LABEL[f.valueType]} · {f.mode === "quote" ? "exact quote" : "worked out"}
+              {f.multiple ? " · several values" : ""}
+            </span>
+          </div>
+          {f.description.trim() !== "" && (
+            <p className="mt-0.5 ml-4 text-small text-ink-muted">{f.description}</p>
+          )}
         </div>
-        {f.description.trim() !== "" && (
-          <p className="mt-0.5 ml-4 text-small text-ink-muted">{f.description}</p>
-        )}
+        {actions}
       </td>
     </tr>
   );
@@ -223,24 +293,35 @@ function ProposedFieldRow({
  * type", then its fields as rows marked "New field". It is how a proposal looks while the
  * configuration is still empty, and it sits under the field table otherwise.
  */
-export function ProposedTypes() {
+export function ProposedTypes({
+  definition,
+  onDecided,
+}: {
+  definition: ExtractionDefinitionState;
+  onDecided?: (said: string) => void;
+}) {
   const { proposal } = useWorkspace();
   const info = proposal as ProposalInfo | null;
   if (!info) return null;
   const types = info.changes
     .filter((c) => c.kind === "added-type")
-    .map((c) => info.proposal.definition.recordTypes.find((t) => t.id === c.typeId))
-    .filter((t): t is RecordType => !!t);
+    .map((c) => ({
+      change: c,
+      type: info.proposal.definition.recordTypes.find((t) => t.id === c.typeId),
+    }))
+    .filter((x): x is { change: ProposalChange; type: RecordType } => !!x.type);
   return (
     <>
-      {types.map((t, i) => (
+      {types.map(({ change, type: t }, i) => (
         <table key={`${t.id}-${i}`} className="block w-full">
-          <caption className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-subtle bg-surface-tint py-2 pr-4 pl-4 text-left">
+          <caption className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-subtle bg-surface-tint py-2 pr-3 pl-4 text-left">
             <span className="font-semibold text-ink-heading">{t.name.trim() || "Record type"}</span>
             <span className="rounded-pill bg-success-soft px-2 text-caption font-semibold text-success">
               New record type
             </span>
             <span className="text-caption text-ink-muted">{plural(t.fields.length, "field")}</span>
+            <span className="flex-1" />
+            <ChangeActions change={change} definition={definition} onDecided={onDecided} />
           </caption>
           <tbody className="block">
             {t.fields.length === 0 ? (
