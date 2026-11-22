@@ -86,13 +86,52 @@ test("accept a record, reject a value through its highlight, accept all suggeste
   const list = await strip.openList();
   await expect(list.getByRole("button", { name: new RegExp(SECOND) })).toBeVisible();
   await expect(list.getByRole("button", { name: new RegExp(THIRD) })).toBeVisible();
-  await list.getByRole("button", { name: "Accept all suggested" }).click();
+  // By keyboard: with the Rejected group showing, the list reaches the dev build's badge, which
+  // would take a pointer click.
+  await list.getByRole("button", { name: "Accept all suggested" }).focus();
+  await page.keyboard.press("Enter");
   await expect(list.getByText("Suggested", { exact: true })).toHaveCount(0);
   await expect(list.getByRole("button", { name: "Accept all suggested" })).toHaveCount(0);
   await list.getByRole("button", { name: new RegExp(FIRST) }).click();
   await expect(strip.position).toHaveText("Record 1 of 3");
   // The rejected value is still rejected.
   await expect(approver).toHaveCount(0);
+});
+
+test("a rejected quote value stays in the strip and is brought back from there", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  const { strip } = await RecordStripPage.openWithResults(
+    page,
+    api,
+    person,
+    request,
+    DOCUMENTS,
+    expectApiError,
+  );
+  const recordId = await strip.highlights("Title").first().getAttribute("data-record-id");
+  const approver = documentPane(page).locator(
+    `mark[data-record-id="${recordId}"][aria-label^="Approved by: "]`,
+  );
+  await expect(approver).toBeVisible();
+  const menu = await strip.openMenu("Approved by", approver);
+  await menu.getByRole("button", { name: "Reject Approved by value" }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(approver).toHaveCount(0);
+  const rejected = strip.group("Rejected");
+  await expect(rejected.getByText("Approved by", { exact: true })).toBeVisible();
+  await expect(rejected.getByText("Rejected", { exact: true }).last()).toBeVisible();
+
+  // Undo from the strip, by keyboard only.
+  const undo = rejected.getByRole("button", { name: "Undo Approved by value" });
+  await undo.focus();
+  await page.keyboard.press("Enter");
+  await expect(approver.first()).toBeVisible();
+  await expect(strip.strip.getByRole("heading", { name: "Rejected" })).toHaveCount(0);
 });
 
 test("a worked-out value is corrected on its line", async ({
@@ -282,6 +321,10 @@ for (const size of [
       );
       await expect(strip.strip).toBeVisible();
       expect(await scrollsSideways(page)).toBe(false);
+      const approver = await strip.openMenu("Approved by");
+      await approver.getByRole("button", { name: "Reject Approved by value" }).click();
+      await expect(strip.strip.getByRole("heading", { name: "Rejected" })).toBeVisible();
+      expect(await scrollsSideways(page)).toBe(false);
       const box = await strip.strip.boundingBox();
       expect(box).not.toBeNull();
       expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -324,6 +367,11 @@ for (const scheme of ["light", "dark"] as const) {
       );
       await expect(strip.line("Decided on")).toBeVisible();
       await expectAccessible(page, `record strip (${scheme})`);
+      // And with the Rejected group showing.
+      const menuOfValue = await strip.openMenu("Approved by");
+      await menuOfValue.getByRole("button", { name: "Reject Approved by value" }).click();
+      await expect(strip.strip.getByRole("heading", { name: "Rejected" })).toBeVisible();
+      await expectAccessible(page, `record strip with rejected values (${scheme})`);
       await strip.openMenu("Title");
       await expectAccessible(page, `value menu (${scheme})`);
     });

@@ -61,6 +61,14 @@ export class RecordStripPage {
       .filter({ has: this.page.getByText(fieldName, { exact: true }) });
   }
 
+  /** A group of the strip under its heading, such as "Rejected". */
+  group(heading: string) {
+    return this.strip
+      .locator("div")
+      .filter({ has: this.page.getByRole("heading", { name: heading }) })
+      .last();
+  }
+
   /** The record's own Accept and Reject sit in the first line, not in a value's group. */
   recordButton(name: "Accept" | "Reject" | "Undo" | "Delete") {
     return this.strip.getByRole("button", { name, exact: true });

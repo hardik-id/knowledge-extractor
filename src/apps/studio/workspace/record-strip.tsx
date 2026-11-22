@@ -17,7 +17,14 @@ import { useExtractionActions, useFileExtraction } from "@/features/run/use-extr
 import { cn } from "@/lib/utils";
 import type { ExtractionRecord, FieldValue } from "@/services/contracts";
 import { indexOfRecord, neighbourId, recordsOfType } from "./records-of-type";
-import { fieldsChangedSinceRun, notFoundFields, workedOutFields } from "./strip-rules";
+import {
+  fieldsChangedSinceRun,
+  notFoundFields,
+  type FieldWithValues,
+  rejectedQuoteFields,
+  unplacedQuoteFields,
+  workedOutFields,
+} from "./strip-rules";
 import { useWorkspace } from "./workspace-state";
 
 const QUIET = "text-small text-ink-muted";
@@ -193,8 +200,32 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
   };
 
   const workedOut = record && type ? workedOutFields(type, record) : [];
+  const unplaced = record && type ? unplacedQuoteFields(type, record) : [];
+  const rejectedQuotes = record && type ? rejectedQuoteFields(type, record) : [];
   const notFound = record && type ? notFoundFields(type, record) : [];
   const suggested = suggestedRecordIds(list).length;
+
+  const lines = (fields: FieldWithValues[]) =>
+    fields.map(({ field, values }) =>
+      values.map((value, position) => {
+        const label = labels.get(field.id);
+        // The field's other values too: a change to one is saved with the rest.
+        const siblings = record
+          ? record.fields.filter((v) => v.fieldId === field.id && v.value !== null)
+          : values;
+        return label && record ? (
+          <ValueLine
+            key={value.id}
+            record={record}
+            value={value}
+            siblings={siblings}
+            label={label}
+            first={position === 0}
+            actions={actions}
+          />
+        ) : null;
+      }),
+    );
 
   return (
     <TooltipProvider>
@@ -250,9 +281,7 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
                             item.id === record.id && "bg-surface-tint font-semibold",
                           )}
                         >
-                          <span className="min-w-0 flex-1 truncate">
-                            {headings[position]}
-                          </span>
+                          <span className="min-w-0 flex-1 truncate">{headings[position]}</span>
                           <ReviewStateLabel state={item.review} />
                         </button>
                       </li>
@@ -305,22 +334,25 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
                     These values are not written in the document as such.
                   </span>
                 </h2>
-                {workedOut.map(({ field, values }) =>
-                  values.map((value, position) => {
-                    const label = labels.get(field.id);
-                    return label ? (
-                      <ValueLine
-                        key={value.id}
-                        record={record}
-                        value={value}
-                        siblings={values}
-                        label={label}
-                        first={position === 0}
-                        actions={actions}
-                      />
-                    ) : null;
-                  }),
-                )}
+                {lines(workedOut)}
+              </div>
+            )}
+            {unplaced.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <h2 className="text-small font-semibold text-ink-heading">
+                  Not placed in the document{" "}
+                  <span className="font-normal text-ink-muted">
+                    The model gave these as quotes, but the words are not in the document as
+                    written.
+                  </span>
+                </h2>
+                {lines(unplaced)}
+              </div>
+            )}
+            {rejectedQuotes.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <h2 className="text-small font-semibold text-ink-heading">Rejected</h2>
+                {lines(rejectedQuotes)}
               </div>
             )}
             {notFound.length > 0 && (
