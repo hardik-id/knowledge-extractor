@@ -97,7 +97,11 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
             <table className="block w-full">
               <caption className="sr-only">Suggested fields</caption>
               <tbody className="block">
-                <ProposedFieldRows typeId={type.id} />
+                <ProposedFieldRows
+                  typeId={type.id}
+                  definition={definition}
+                  onDecided={setDecision}
+                />
               </tbody>
             </table>
           </>
@@ -114,12 +118,16 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
             descriptionUnderName
             selectedFieldId={selectedFieldId}
             onRowSelect={selection.toggle}
-            afterRow={(field) => <ProposalLines field={field} />}
-            extraRows={<ProposedFieldRows typeId={type.id} />}
+            afterRow={(field) => (
+              <ProposalLines field={field} definition={definition} onDecided={setDecision} />
+            )}
+            extraRows={
+              <ProposedFieldRows typeId={type.id} definition={definition} onDecided={setDecision} />
+            }
           />
         )}
         {/* A record type the proposal adds, also while there is no record type yet. */}
-        <ProposedTypes />
+        <ProposedTypes definition={definition} onDecided={setDecision} />
       </div>
       <p role="status" className="sr-only">
         {decision}

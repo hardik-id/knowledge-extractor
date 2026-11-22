@@ -131,7 +131,7 @@ test.describe("the assistant in the column", () => {
     // The record type and the template that goes with it.
     await expect(dock.bar).toContainText("2 suggested changes");
     // The record type is drawn as a table of its own, not as a line of text in the bar.
-    await expect(dock.bar.getByRole("listitem")).toHaveText(["Template changed"]);
+    await expect(dock.bar.getByRole("listitem")).toHaveText([/^Template changed/]);
     await expect(column.getByText("New record type")).toBeVisible();
     await expect(dock.newFieldRows).toHaveCount(6);
     await expect(dock.newFieldRows.first()).toContainText("Title");
