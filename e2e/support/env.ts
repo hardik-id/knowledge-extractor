@@ -1,10 +1,18 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-/** The backend's address: fixed, the one `make up` in the backend repository serves. */
-export const API_ORIGIN = "http://localhost:8000";
+/**
+ * The backend's address: the one `make up` in the backend repository serves, or `E2E_API_ORIGIN`
+ * for a stack the tests have to themselves (see "End-to-end tests" in CLAUDE.md). The test people
+ * are minted with `docker compose exec` in the backend repository, so a second stack also needs
+ * its compose project name in `COMPOSE_PROJECT_NAME`.
+ */
+export const API_ORIGIN = (process.env.E2E_API_ORIGIN || "http://localhost:8000").replace(
+  /\/+$/,
+  "",
+);
 export const API_BASE_URL = `${API_ORIGIN}/api/v1`;
-export const WS_BASE_URL = "ws://localhost:8000";
+export const WS_BASE_URL = API_ORIGIN.replace(/^http/, "ws");
 
 /** The port the runner starts the app on. Give each parallel run, in each worktree, its own. */
 export const E2E_PORT = Number(process.env.E2E_PORT ?? 3100);
