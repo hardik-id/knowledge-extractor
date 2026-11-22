@@ -139,7 +139,7 @@ function CatalogFiles({
     );
   } else if (!files) {
     body = (
-      <div aria-busy="true" aria-label={`Loading ${itemNoun}s`} className="space-y-2">
+      <div role="status" aria-busy="true" aria-label={`Loading ${itemNoun}s`} className="space-y-2">
         <Skeleton className="h-64 w-full" />
       </div>
     );

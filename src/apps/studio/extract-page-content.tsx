@@ -136,7 +136,12 @@ function FileProblems() {
 
 function ExtractSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading extraction" className="space-y-6 px-5 py-6 sm:px-8">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="Loading extraction"
+      className="space-y-6 px-5 py-6 sm:px-8"
+    >
       <div className="space-y-3">
         <Skeleton className="h-9 w-64" />
         <Skeleton className="h-5 w-full max-w-lg" />

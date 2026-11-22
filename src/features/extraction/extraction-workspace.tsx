@@ -42,7 +42,7 @@ export function ExtractionWorkspace({
 
   if (definition.isLoading || !saved) {
     return (
-      <div aria-busy="true" aria-label={`Loading ${noun}`} className="space-y-3">
+      <div role="status" aria-busy="true" aria-label={`Loading ${noun}`} className="space-y-3">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-40 w-full" />

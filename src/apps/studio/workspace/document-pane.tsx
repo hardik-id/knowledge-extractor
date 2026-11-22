@@ -169,6 +169,7 @@ export function DocumentPane({
   if (loading || !review || !text.data) {
     return (
       <div
+        role="status"
         aria-busy="true"
         aria-label="Loading document"
         className="space-y-3 px-4 py-6 sm:px-10 sm:py-8"

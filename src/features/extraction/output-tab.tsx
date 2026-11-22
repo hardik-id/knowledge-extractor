@@ -85,7 +85,12 @@ export function FileOutput({
   }
   if (isLoading || !data || data.fileId !== fileId) {
     return (
-      <div aria-busy="true" aria-label="Loading output" className="space-y-3 px-4 py-4 sm:px-6">
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label="Loading output"
+        className="space-y-3 px-4 py-4 sm:px-6"
+      >
         <Skeleton className="h-6 w-1/3" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-4/5" />

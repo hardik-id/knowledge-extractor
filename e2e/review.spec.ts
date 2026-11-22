@@ -44,6 +44,8 @@ test("the output follows the review: accepted values, a rejected one left out, C
   // The output: Markdown with the accepted values, and Copy puts it on the clipboard.
   await page.getByRole("button", { name: "Output", exact: true }).click();
   await expect(page.getByText("Output as Markdown")).toBeVisible();
+  // The strip belongs to the document: the output has every record already.
+  await expect(strip.strip).toHaveCount(0);
   const output = page.getByLabel("Markdown output");
   await expect(output).toContainText(`## ${FIRST}`);
   await expect(output).toContainText("**Status:** accepted");
@@ -53,4 +55,9 @@ test("the output follows the review: accepted values, a rejected one left out, C
   await expect(page.getByText("Copied to the clipboard")).toBeVisible();
   const clipboard = await page.evaluate(() => navigator.clipboard.readText());
   expect(clipboard).toBe(await output.innerText());
+
+  // Back to the document: the strip is there again, on a record.
+  await page.getByRole("button", { name: "Document", exact: true }).click();
+  await expect(strip.strip).toBeVisible();
+  await expect(strip.position).toHaveText(/^Record \d of 3$/);
 });

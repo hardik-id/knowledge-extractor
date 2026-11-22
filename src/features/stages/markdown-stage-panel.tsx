@@ -194,7 +194,12 @@ function MarkdownDocument({
           </Button>
         </div>
       ) : isLoading || !data ? (
-        <div aria-busy="true" aria-label="Loading Markdown" className="space-y-3 px-6 py-6">
+        <div
+          role="status"
+          aria-busy="true"
+          aria-label="Loading Markdown"
+          className="space-y-3 px-6 py-6"
+        >
           <Skeleton className="h-8 w-2/3" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-full" />

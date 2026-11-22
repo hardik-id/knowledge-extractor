@@ -81,7 +81,12 @@ export function ProjectScope({ children }: { children: React.ReactNode }) {
 
 export function ProjectSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading project" className="space-y-6 px-5 py-6 sm:px-8">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="Loading project"
+      className="space-y-6 px-5 py-6 sm:px-8"
+    >
       <div className="space-y-3">
         <Skeleton className="h-9 w-64" />
         <Skeleton className="h-5 w-full max-w-lg" />
