@@ -19,7 +19,10 @@ test.describe("on a desktop", () => {
     const bar = page.getByTestId("project-top-bar");
     await expect(bar).toBeVisible();
     await expect(page.getByRole("checkbox").first()).toBeVisible();
-    await expect(page.locator("aside"), "no sidebar under a project").toHaveCount(0);
+    await expect(
+      page.locator('aside[aria-label="Studio"]'),
+      "no sidebar under a project",
+    ).toHaveCount(0);
 
     const before = await bar.boundingBox();
     const scrolled = await page.evaluate(() => {
@@ -104,7 +107,8 @@ test.describe("on a phone", () => {
     await page.goto(`/studio/projects/${project.id}`);
     const bar = page.getByTestId("project-top-bar");
     await expect(bar).toBeVisible();
-    await expect(page.locator("aside")).toHaveCount(0);
+    // The Studio sidebar, not any aside: the assistant panel is one too.
+    await expect(page.locator('aside[aria-label="Studio"]')).toHaveCount(0);
     await expect(bar.getByRole("link", { name: "Projects" })).toBeInViewport({ ratio: 1 });
 
     const menu = bar.getByRole("button", { name: "Phone menu project" });
