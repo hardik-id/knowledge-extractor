@@ -94,11 +94,15 @@ export function resolveTypeId(
  */
 export function resolveRecordId(
   currentRecordId: string | null,
-  records: readonly Pick<ExtractionRecord, "id" | "recordTypeId">[],
+  records: readonly (Pick<ExtractionRecord, "id" | "recordTypeId"> & {
+    review?: ExtractionRecord["review"];
+  })[],
   typeId: string | null,
 ): string | null {
   if (currentRecordId && records.some((r) => r.id === currentRecordId)) return currentRecordId;
-  return records.find((r) => r.recordTypeId === typeId)?.id ?? null;
+  // The first of the strip's own order (rejected records last), so the screen opens on "Record 1".
+  const own = records.filter((r) => r.recordTypeId === typeId);
+  return (own.find((r) => r.review !== "rejected") ?? own[0])?.id ?? null;
 }
 
 export interface WorkspaceState extends WorkspaceSelection {
