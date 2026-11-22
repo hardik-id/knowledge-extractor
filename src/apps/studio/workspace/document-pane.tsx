@@ -106,6 +106,16 @@ export function DocumentPane({
       scrollToElement(findHighlight(documentRef.current, scrollTargetValueId));
   }, [scrollTargetValueId, documentRef]);
 
+  // Esc puts the open value away (the menu closes first: it handles its own Esc and stops it).
+  useEffect(() => {
+    if (!openValue) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) setOpenValue(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openValue, setOpenValue]);
+
   // The margin line: from the top of the current record's first highlight to the bottom of its last.
   const articleRef = useRef<HTMLDivElement>(null);
   const [line, setLine] = useState<MarginLine | null>(null);

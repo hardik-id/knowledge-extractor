@@ -102,6 +102,28 @@ test("highlights show with no chips and no legend, and hovering one names its fi
   await expect(document.getByTestId("record-margin-line")).toBeVisible();
 });
 
+test("a click on a highlight of another record moves the margin line to that record", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  noExtractionYet(expectApiError);
+  await openWithResults(page, api, person, request);
+  const document = documentPane(page);
+  const line = document.getByTestId("record-margin-line");
+  await expect(line).toBeVisible();
+  const firstId = await document.locator("mark").first().getAttribute("data-record-id");
+  const other = document.locator(`mark:not([data-record-id="${firstId}"])`).first();
+  await expect(other).toBeVisible();
+  const before = await line.evaluate((el) => (el as HTMLElement).style.top);
+  await other.click();
+  await expect.poll(() => line.evaluate((el) => (el as HTMLElement).style.top)).not.toBe(before);
+  // Esc puts the open highlight away.
+  await page.keyboard.press("Escape");
+});
+
 test("Output shows the output of the document, in the format chosen", async ({
   api,
   expectApiError,

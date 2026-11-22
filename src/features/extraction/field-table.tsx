@@ -236,15 +236,15 @@ function FieldRow({
   // Where each cell sits: below 25rem stacked, from 25rem the text under the name, from 40rem
   // in its own column. Written out in full so Tailwind can see every class.
   const nameCell =
-    "@max-[24rem]:col-span-3 @min-[25rem]:col-start-1 @min-[25rem]:row-start-1 @min-[25rem]:pb-0 @min-[40rem]:pb-1";
+    "@max-[25rem]:col-span-3 @min-[25rem]:col-start-1 @min-[25rem]:row-start-1 @min-[25rem]:pb-0 @min-[40rem]:pb-1";
   const descCell =
-    "col-span-2 @max-[24rem]:col-span-4 @min-[25rem]:col-span-4 @min-[25rem]:col-start-1 @min-[25rem]:row-start-2 @min-[25rem]:pt-0 @min-[40rem]:col-span-1 @min-[40rem]:col-start-2 @min-[40rem]:row-start-1 @min-[40rem]:pt-1";
+    "col-span-2 @max-[25rem]:col-span-4 @min-[25rem]:col-span-4 @min-[25rem]:col-start-1 @min-[25rem]:row-start-2 @min-[25rem]:pt-0 @min-[40rem]:col-span-1 @min-[40rem]:col-start-2 @min-[40rem]:row-start-1 @min-[40rem]:pt-1";
   const typeCell =
-    "@max-[24rem]:col-span-4 @min-[25rem]:col-start-2 @min-[25rem]:row-start-1 @min-[40rem]:col-start-3";
+    "@max-[25rem]:col-span-4 @min-[25rem]:col-start-2 @min-[25rem]:row-start-1 @min-[40rem]:col-start-3";
   const quoteCell =
-    "@max-[24rem]:col-span-2 @min-[25rem]:col-start-3 @min-[25rem]:row-start-1 @min-[40rem]:col-start-4";
+    "@max-[25rem]:col-span-2 @min-[25rem]:col-start-3 @min-[25rem]:row-start-1 @min-[40rem]:col-start-4";
   const multipleCell =
-    "@max-[24rem]:col-span-2 @min-[25rem]:col-start-4 @min-[25rem]:row-start-1 @min-[40rem]:col-start-5";
+    "@max-[25rem]:col-span-2 @min-[25rem]:col-start-4 @min-[25rem]:row-start-1 @min-[40rem]:col-start-5";
   // The allowed values of a Choice field get their own line across the whole row.
   const choicesCell =
     "col-span-full @min-[25rem]:col-start-1 @min-[25rem]:row-start-3 @min-[40rem]:row-start-2 @min-[25rem]:pt-0";
@@ -289,6 +289,13 @@ function FieldRow({
             aria-invalid={!!errors?.name}
             aria-describedby={errors?.name ? id("name-err") : undefined}
             onChange={(e) => onChange({ name: e.target.value })}
+            onKeyDown={(e) => {
+              // The keyboard way to select the row: Enter in its name.
+              if (e.key === "Enter" && onSelect) {
+                e.preventDefault();
+                onSelect();
+              }
+            }}
           />
         </div>
         {errors?.name && <Problem id={id("name-err")}>{errors.name}</Problem>}

@@ -150,6 +150,11 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
         <Sheet open={fieldsOpen} onOpenChange={setFieldsOpen}>
           <SheetContent
             aria-label="Fields"
+            onOpenAutoFocus={(event) => {
+              // Opening focuses the sheet itself, not the first field's name (no keyboard, no accidental overwrite).
+              event.preventDefault();
+              if (event.target instanceof HTMLElement) event.target.focus();
+            }}
             onCloseAutoFocus={(event) => {
               // Closing returns focus to the button that opened it.
               event.preventDefault();
