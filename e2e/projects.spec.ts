@@ -66,6 +66,49 @@ test("a project is deleted after the person confirms", async ({ api, page }) => 
   expect((await api.listProjects()).map((p) => p.name)).toEqual(["Keep me"]);
 });
 
+test("a project is renamed from its top bar at once, and deleted from there", async ({
+  api,
+  page,
+}) => {
+  const project = await api.createProject({ name: "Top bar name", description: "Was this" });
+  await api.createProject({ name: "Stays" });
+  await openDocuments(page, project);
+  const bar = page.getByTestId("project-top-bar");
+
+  const menu = bar.getByRole("button", { name: "Top bar name" });
+  // A menu holds the focus itself, which `clickUntilOpen` does not accept: click until it shows.
+  await expect(async () => {
+    if (!(await page.getByRole("menu").isVisible())) await menu.click({ timeout: 2_000 });
+    await expect(page.getByRole("menuitem", { name: "Rename" })).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+  await page.getByRole("menuitem", { name: "Rename" }).click();
+  const dialog = page.getByRole("dialog", { name: "Rename project" });
+  await dialog.getByLabel("Name").fill("Renamed here");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(bar.getByRole("button", { name: "Renamed here" })).toBeVisible();
+  expect((await api.listProjects()).map((p) => p.name).sort()).toEqual(["Renamed here", "Stays"]);
+
+  await bar.getByRole("button", { name: "Renamed here" }).click();
+  await page.getByRole("menuitem", { name: "Edit description" }).click();
+  const describing = page.getByRole("dialog", { name: "Edit description" });
+  await expect(describing.getByLabel("Description (optional)")).toHaveValue("Was this");
+  await describing.getByLabel("Description (optional)").fill("Now this");
+  await describing.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(describing).toBeHidden();
+  const saved = (await api.listProjects()).find((p) => p.id === project.id);
+  expect(saved?.description).toBe("Now this");
+
+  await bar.getByRole("button", { name: "Renamed here" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  const confirm = page.getByRole("dialog", { name: "Delete “Renamed here”?" });
+  await confirm.getByRole("button", { name: "Delete project" }).click();
+  await expect(page).toHaveURL(/\/studio$/);
+  await expect(page.getByRole("heading", { name: "Stays" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Renamed here" })).toHaveCount(0);
+  expect((await api.listProjects()).map((p) => p.name)).toEqual(["Stays"]);
+});
+
 test("the project worked on last comes first", async ({ api, page }) => {
   await api.createProject({ name: "First made" });
   await api.createProject({ name: "Second made" });
@@ -112,7 +155,7 @@ test("documents are picked and saved, then one is added and one removed", async 
   await expect(row(page, "Documents project").getByText("2 documents")).toBeVisible();
   await page.getByRole("link", { name: "Documents project" }).click();
   await expect(page).toHaveURL(/\/extract$/);
-  await page.getByRole("link", { name: "Change documents" }).click();
+  await page.getByRole("link", { name: "Documents", exact: true }).click();
   await expect(page.getByRole("checkbox", { name: DOCS.roadmap })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: DOCS.decisions })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: DOCS.runbook })).not.toBeChecked();

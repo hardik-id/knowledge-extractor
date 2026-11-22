@@ -1,13 +1,12 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
 import {
-  DOCS,
   editPrompt,
-  openExtraction,
+  ExtractionPage,
+  projectWithDocuments,
   saveConfiguration,
-  scrollsSideways,
-} from "./pages/studio";
+} from "./pages/extraction";
+import { DOCS, openExtraction, scrollsSideways } from "./pages/studio";
 import { expectAccessible } from "./support/accessibility";
 import { clickUntilOpen } from "./support/first-click";
 

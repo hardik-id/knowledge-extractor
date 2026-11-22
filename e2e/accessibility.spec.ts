@@ -85,7 +85,7 @@ for (const scheme of ["light", "dark"] as const) {
       await openExtraction(page, project, [DOCS.roadmap]);
       const dialog = await clickUntilOpen(
         page,
-        page.getByRole("button", { name: "Templates" }),
+        page.getByRole("button", { name: "Templates", exact: true }),
         page.getByRole("dialog", { name: "Templates" }),
       );
       await dialog.getByRole("radio").nth(1).check();

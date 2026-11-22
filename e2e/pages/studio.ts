@@ -40,20 +40,8 @@ export async function openExtraction(page: Page, project: ApiProject, names: rea
   await pickDocuments(page, names);
   await page.getByRole("button", { name: "Open in extraction" }).click();
   await expect(page).toHaveURL(/\/extract$/);
-  await expect(page.getByRole("heading", { name: "Knowledge extraction", level: 1 })).toBeVisible();
+  await expect(page.getByTestId("project-top-bar").locator("visible=true")).toBeVisible();
   await expect(page.getByTestId("version-line")).toBeVisible();
-}
-
-/** Changes the "What to extract" text, which leaves the configuration with unsaved changes. */
-export async function editPrompt(page: Page, text: string) {
-  await page.getByLabel("What to extract").fill(text);
-}
-
-export async function saveConfiguration(page: Page, note?: string) {
-  await page.getByRole("button", { name: "Save configuration" }).click();
-  const form = page.getByRole("form", { name: "Save configuration" });
-  if (note) await form.getByLabel("Note (optional)").fill(note);
-  await form.getByRole("button", { name: "Save", exact: true }).click();
 }
 
 /** Opens the "New project" dialog (the first click after a navigation, see `clickUntilOpen`). */

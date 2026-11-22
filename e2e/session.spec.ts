@@ -1,7 +1,8 @@
 import type { Page } from "@playwright/test";
 import { expectAccessible } from "./support/accessibility";
 import { expect, test, type Person } from "./fixtures";
-import { DOCS, editPrompt, extractPath, openExtraction } from "./pages/studio";
+import { editPrompt } from "./pages/extraction";
+import { DOCS, extractPath, openExtraction } from "./pages/studio";
 
 /**
  * A refused token (401) ends the session once, for the whole app, and the person pastes a new
@@ -104,7 +105,7 @@ test("a refused token on a reload of the project page: the dialog, then the page
   restore();
   await paste(page);
   await expect(dialog(page)).toBeHidden();
-  await expect(page.getByRole("heading", { name: "Knowledge extraction", level: 1 })).toBeVisible();
+  await expect(page.getByTestId("project-top-bar").locator("visible=true")).toBeVisible();
   await expect(page.getByTestId("version-line")).toBeVisible();
   expect(new URL(page.url()).pathname).toBe(extractPath(project.id));
 });

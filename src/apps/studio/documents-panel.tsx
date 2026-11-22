@@ -28,7 +28,7 @@ import {
   removedWithReviewedRecords,
 } from "./documents-change";
 import { extractionHref } from "./nav-steps";
-import { StudioPanel } from "./studio-panel";
+import { ProjectTopBar } from "./project-top-bar";
 
 /**
  * Pick the project's documents. Nothing is sent while choosing: "Save
@@ -115,13 +115,14 @@ export function DocumentsPanel() {
   const working = saving || checking;
 
   return (
-    <StudioPanel
-      id="studio-documents"
-      title="Documents"
-      description="Choose enriched documents from your storage container."
-      status={<SelectionSummary itemNoun="document" />}
-      actions={
-        <>
+    <section aria-labelledby="studio-documents-title" className="flex flex-1 flex-col md:min-h-0">
+      <ProjectTopBar />
+      <h1 id="studio-documents-title" className="sr-only">
+        Documents
+      </h1>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle px-4 py-2 sm:px-6">
+        <SelectionSummary itemNoun="document" />
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {count === 0 && (
             <p id="open-hint" className="text-small text-ink-muted sm:text-right">
               Select at least one document.
@@ -129,7 +130,6 @@ export function DocumentsPanel() {
           )}
           <Button
             variant="secondary"
-            size="lg"
             onClick={() => void submit(false)}
             disabled={count === 0 || !changed || working}
           >
@@ -139,7 +139,6 @@ export function DocumentsPanel() {
             {working && !opening ? "Saving…" : "Save documents"}
           </Button>
           <Button
-            size="lg"
             onClick={() => void submit(true)}
             disabled={count === 0 || working}
             aria-describedby={count === 0 ? "open-hint" : undefined}
@@ -156,22 +155,23 @@ export function DocumentsPanel() {
               </>
             )}
           </Button>
-        </>
-      }
-    >
-      {busy && (
-        <Alert variant="warning" role="alert" className="mb-4">
-          <Info aria-hidden />
-          <AlertDescription>
-            {WAIT_FOR_RUN}. Your selection is kept: save it once the extraction is done.
-          </AlertDescription>
-        </Alert>
-      )}
-      <FileBrowser
-        sources={["storage"]}
-        itemNoun="document"
-        searchHint="Search by name or folder"
-      />
+        </div>
+      </div>
+      <div className="relative min-w-0 flex-1 px-4 py-4 sm:px-6 md:min-h-0 md:overflow-y-auto">
+        {busy && (
+          <Alert variant="warning" role="alert" className="mb-4">
+            <Info aria-hidden />
+            <AlertDescription>
+              {WAIT_FOR_RUN}. Your selection is kept: save it once the extraction is done.
+            </AlertDescription>
+          </Alert>
+        )}
+        <FileBrowser
+          sources={["storage"]}
+          itemNoun="document"
+          searchHint="Search by name or folder"
+        />
+      </div>
 
       <Dialog open={asking !== null} onOpenChange={(open) => !open && setAsking(null)}>
         <DialogContent>
@@ -200,6 +200,6 @@ export function DocumentsPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </StudioPanel>
+    </section>
   );
 }

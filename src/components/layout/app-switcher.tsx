@@ -23,16 +23,25 @@ function Mark() {
 
 /**
  * The product mark and the current app's name; opens a menu of every app.
- * `compact` is for the mobile header: the mark only below 600px.
+ * `compact` is for the mobile header: the mark only below 600px. `markOnly` is the mark at every width.
  */
-export function AppSwitcher({ compact = false }: { compact?: boolean }) {
+export function AppSwitcher({
+  compact = false,
+  markOnly = false,
+}: {
+  compact?: boolean;
+  /** The mark alone at every width (a bar with no room for the name). */
+  markOnly?: boolean;
+}) {
   const current = appForPath(usePathname()) ?? APPS[0];
   // One app on offer: nothing to switch to, so only the product mark and name.
   if (APPS.length < 2) {
     return (
       <div className="flex min-w-0 items-center gap-2 px-2 text-body font-semibold text-ink-heading">
         <Mark />
-        <span className={compact ? "hidden truncate sm:inline" : "truncate"}>{current.name}</span>
+        <span className={markOnly ? "sr-only" : compact ? "hidden truncate sm:inline" : "truncate"}>
+          {current.name}
+        </span>
       </div>
     );
   }
@@ -44,7 +53,9 @@ export function AppSwitcher({ compact = false }: { compact?: boolean }) {
         className="flex h-control min-w-0 items-center gap-2 rounded-control px-2 text-left text-body font-semibold text-ink-heading hover:bg-surface-tint coarse:min-h-touch"
       >
         <Mark />
-        <span className={compact ? "hidden truncate sm:inline" : "truncate"}>{current.name}</span>
+        <span className={markOnly ? "sr-only" : compact ? "hidden truncate sm:inline" : "truncate"}>
+          {current.name}
+        </span>
         <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[min(22rem,calc(100vw-2rem))]">
