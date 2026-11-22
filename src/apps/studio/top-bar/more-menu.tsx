@@ -33,7 +33,9 @@ export function MoreMenu({ extraction }: { extraction: ExtractionRun }) {
         </DropdownMenuContent>
       </DropdownMenu>
       {templates && (
-        <TemplateDialog definition={extraction.definition} onClose={() => {
+        <TemplateDialog
+          definition={extraction.definition}
+          onClose={() => {
             setTemplates(false);
             requestAnimationFrame(() => trigger.current?.focus());
           }}

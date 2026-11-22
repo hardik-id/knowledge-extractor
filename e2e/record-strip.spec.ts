@@ -1,6 +1,6 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { projectWithDocuments, saveConfiguration } from "./pages/extraction";
+import { ExtractionPage, projectWithDocuments, saveConfiguration } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
 import { scrollsSideways } from "./pages/studio";
 import { documentPane, fieldColumn, openOneScreen } from "./pages/workspace";
@@ -87,12 +87,13 @@ test("accept a record, reject a value through its highlight, accept all suggeste
   await expect(list.getByRole("button", { name: new RegExp(SECOND) })).toBeVisible();
   await expect(list.getByRole("button", { name: new RegExp(THIRD) })).toBeVisible();
   // By keyboard: with the Rejected group showing, the list reaches the dev build's badge, which
-  // would take a pointer click.
+  // would take a pointer click (the badge is not in a production build).
   await list.getByRole("button", { name: "Accept all suggested" }).focus();
   await page.keyboard.press("Enter");
   await expect(list.getByText("Suggested", { exact: true })).toHaveCount(0);
   await expect(list.getByRole("button", { name: "Accept all suggested" })).toHaveCount(0);
-  await list.getByRole("button", { name: new RegExp(FIRST) }).click();
+  await list.getByRole("button", { name: new RegExp(FIRST) }).focus();
+  await page.keyboard.press("Enter");
   await expect(strip.position).toHaveText("Record 1 of 3");
   // The rejected value is still rejected.
   await expect(approver).toHaveCount(0);
@@ -124,7 +125,9 @@ test("a rejected quote value stays in the strip and is brought back from there",
   await expect(approver).toHaveCount(0);
   const rejected = strip.group("Rejected");
   await expect(rejected.getByText("Approved by", { exact: true })).toBeVisible();
-  await expect(rejected.getByText("Rejected", { exact: true }).last()).toBeVisible();
+  const rejectedLine = rejected.locator("[data-record-value]").filter({ hasText: "Approved by" });
+  await expect(rejectedLine.getByText("Rejected", { exact: true })).toBeVisible();
+  await expect(rejectedLine.locator(".line-through")).toBeVisible();
 
   // Undo from the strip, by keyboard only.
   const undo = rejected.getByRole("button", { name: "Undo Approved by value" });
@@ -132,6 +135,19 @@ test("a rejected quote value stays in the strip and is brought back from there",
   await page.keyboard.press("Enter");
   await expect(approver.first()).toBeVisible();
   await expect(strip.strip.getByRole("heading", { name: "Rejected" })).toHaveCount(0);
+  // The button is gone with its group: focus stays in the strip or on the restored highlight, never at the page start.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const active = document.activeElement;
+        return (
+          !!active &&
+          active !== document.body &&
+          (active.matches('section[aria-label="Found in this record"]') || active.matches("mark"))
+        );
+      }),
+    )
+    .toBe(true);
 });
 
 test("a worked-out value is corrected on its line", async ({
@@ -377,3 +393,42 @@ for (const scheme of ["light", "dark"] as const) {
     });
   });
 }
+
+test("a quote that is not in the document is listed under Not placed, with its actions", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  noExtractionYet(expectApiError);
+  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+  await openOneScreen(page, project);
+  // The backend here finds every quote; make the answer flag one value as not found in the text.
+  await page.route(/\/files\/[^/]+\/extraction$/, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    // A page route answers before the context's sign-in route does: send the token here.
+    const response = await route.fetch({
+      headers: { authorization: `Bearer ${person.token}` },
+    });
+    if (!response.ok()) return route.fulfill({ response });
+    const body = await response.json();
+    for (const record of body.records ?? []) {
+      const value = record.fields.find((v: { spans: unknown[] }) => v.spans.length > 0);
+      if (value) value.anchored = false;
+    }
+    return route.fulfill({ response, json: body });
+  });
+  const strip = new RecordStripPage(page);
+  const extraction = new ExtractionPage(page);
+  await extraction.run();
+  await extraction.finished();
+  const group = strip.group("Not placed in the document");
+  await expect(group).toBeVisible();
+  await expect(group).toContainText("the words are not in the document as written");
+  const line = group.locator("[data-record-value]").first();
+  await line.getByRole("button", { name: /^Reject .* value$/ }).click();
+  await expect(strip.group("Not placed in the document")).toHaveCount(0);
+  await expect(strip.group("Rejected")).toBeVisible();
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});

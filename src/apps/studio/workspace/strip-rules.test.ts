@@ -125,6 +125,14 @@ describe("unplacedQuoteFields and rejectedQuoteFields", () => {
     assert.deepEqual(rejectedQuoteFields(type, r), []);
   });
 
+  it("with the text known, also lists an anchored quote whose words cannot be found", () => {
+    const found = { ...placed("1", "T"), spans: [{ start: 0, end: 5, quote: "Hello" }] };
+    const lost = { ...placed("2", "U"), spans: [{ start: 0, end: 5, quote: "Gone!" }] };
+    const r = record([found, lost]);
+    assert.deepEqual(unplacedQuoteFields(type, r), []);
+    assert.deepEqual(ids(unplacedQuoteFields(type, r, "Hello world")), ["2"]);
+  });
+
   it("puts an unplaced rejected quote under Rejected only", () => {
     const r = record([loose("1", "T", "rejected")]);
     assert.deepEqual(unplacedQuoteFields(type, r), []);

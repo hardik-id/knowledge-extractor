@@ -138,11 +138,16 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
           </div>
         </PopoverContent>
       </Popover>
-      {history && <HistoryDialog definition={definition} onClose={() => {
+      {history && (
+        <HistoryDialog
+          definition={definition}
+          onClose={() => {
             setHistory(false);
             // The dialog has no trigger of its own: hand focus back to the version text.
             requestAnimationFrame(() => trigger.current?.focus());
-          }} />}
+          }}
+        />
+      )}
     </>
   );
 }

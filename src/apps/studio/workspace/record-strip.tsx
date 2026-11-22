@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronLeft, ChevronRight, Check, Ellipsis } from "lucide-react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +14,7 @@ import { scrollToElement } from "@/features/extraction/review-scroll";
 import { useAcceptAll } from "@/features/extraction/use-accept-all";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { useExtractionActions, useFileExtraction } from "@/features/run/use-extraction";
+import { useExtractionInput } from "@/features/run/use-extraction-input";
 import { cn } from "@/lib/utils";
 import type { ExtractionRecord, FieldValue } from "@/services/contracts";
 import { indexOfRecord, neighbourId, recordsOfType } from "./records-of-type";
@@ -155,6 +156,25 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
   const { fileId, selectedTypeId, currentRecordId, setCurrentRecordId, setOpenValue } =
     useWorkspace();
   const extraction = useFileExtraction(fileId);
+  const documentText = useExtractionInput(fileId).data?.text;
+  const [listOpen, setListOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const focusInside = useRef(false);
+  // A button that leaves the strip when it is used (Undo of the last Rejected line, Reject that moves a
+  // value into the strip) would drop focus to the page start: keep it in the strip instead.
+  useEffect(() => {
+    const section = sectionRef.current;
+    // Not while one of the strip's popovers is open: its own buttons manage focus there.
+    if (
+      focusInside.current &&
+      !listOpen &&
+      !optionsOpen &&
+      section &&
+      document.activeElement === document.body
+    )
+      section.focus();
+  });
   // While the records are loaded again (after a change) `extraction.data` can belong to an older key,
   // even to the empty answer from before the run: keep the last settled records, so a change is never
   // sent with the revision of those.
@@ -163,8 +183,6 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
   if (live && live !== settled) setSettled(live);
   const data = live ?? settled;
   const actions = useExtractionActions(data);
-  const [listOpen, setListOpen] = useState(false);
-  const [optionsOpen, setOptionsOpen] = useState(false);
 
   const saved = definition.saved;
   const labels = useMemo(() => fieldLabels(saved ?? { recordTypes: [] }), [saved]);
@@ -200,7 +218,7 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
   };
 
   const workedOut = record && type ? workedOutFields(type, record) : [];
-  const unplaced = record && type ? unplacedQuoteFields(type, record) : [];
+  const unplaced = record && type ? unplacedQuoteFields(type, record, documentText) : [];
   const rejectedQuotes = record && type ? rejectedQuoteFields(type, record) : [];
   const notFound = record && type ? notFoundFields(type, record) : [];
   const suggested = suggestedRecordIds(list).length;
@@ -230,8 +248,18 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
   return (
     <TooltipProvider>
       <section
+        ref={sectionRef}
+        tabIndex={-1}
         aria-label="Found in this record"
-        className="flex max-h-[45dvh] flex-col gap-2.5 overflow-y-auto border-t border-border-subtle bg-surface-tint px-4 pt-2.5 pb-3.5"
+        onFocus={() => {
+          focusInside.current = true;
+        }}
+        onBlur={(event) => {
+          const next = event.relatedTarget;
+          if (next instanceof Node && !event.currentTarget.contains(next))
+            focusInside.current = false;
+        }}
+        className="flex max-h-[45dvh] flex-col gap-2.5 overflow-y-auto border-t border-border-subtle bg-surface-tint px-4 pt-2.5 pb-3.5 outline-none"
       >
         {!record ? (
           <p className={QUIET}>No records of this type were found in this document.</p>
@@ -327,8 +355,12 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
             </div>
 
             {workedOut.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <h2 className="text-small font-semibold text-ink-heading">
+              <div
+                role="group"
+                aria-labelledby="strip-worked-out"
+                className="flex flex-col gap-1.5"
+              >
+                <h2 id="strip-worked-out" className="text-small font-semibold text-ink-heading">
                   Worked out by the model{" "}
                   <span className="font-normal text-ink-muted">
                     These values are not written in the document as such.
@@ -338,8 +370,8 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
               </div>
             )}
             {unplaced.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <h2 className="text-small font-semibold text-ink-heading">
+              <div role="group" aria-labelledby="strip-unplaced" className="flex flex-col gap-1.5">
+                <h2 id="strip-unplaced" className="text-small font-semibold text-ink-heading">
                   Not placed in the document{" "}
                   <span className="font-normal text-ink-muted">
                     The model gave these as quotes, but the words are not in the document as
@@ -350,8 +382,10 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
               </div>
             )}
             {rejectedQuotes.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <h2 className="text-small font-semibold text-ink-heading">Rejected</h2>
+              <div role="group" aria-labelledby="strip-rejected" className="flex flex-col gap-1.5">
+                <h2 id="strip-rejected" className="text-small font-semibold text-ink-heading">
+                  Rejected
+                </h2>
                 {lines(rejectedQuotes)}
               </div>
             )}
