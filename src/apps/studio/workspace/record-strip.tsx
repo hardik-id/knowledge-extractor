@@ -11,7 +11,6 @@ import { HumanMarker, ReviewStateLabel } from "@/features/extraction/record-revi
 import { saveValueEdit, ValueActions, ValueEditor } from "@/features/extraction/record-value";
 import { suggestedRecordIds } from "@/features/extraction/record-rules";
 import { scrollToElement } from "@/features/extraction/review-scroll";
-import { recordHeading } from "@/features/extraction/review-selection";
 import { useAcceptAll } from "@/features/extraction/use-accept-all";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { useExtractionActions, useFileExtraction } from "@/features/run/use-extraction";
@@ -157,7 +156,6 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
   if (live && live !== settled) setSettled(live);
   const data = live ?? settled;
   const actions = useExtractionActions(data);
-  const { acceptAll, accepting } = useAcceptAll(data?.records ?? [], actions);
   const [listOpen, setListOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
 
@@ -168,6 +166,16 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
     () => recordsOfType(data?.records ?? [], selectedTypeId),
     [data, selectedTypeId],
   );
+  // "Accept all suggested" acts on the records the list shows: this type's, not the whole document's.
+  const { acceptAll, accepting } = useAcceptAll(list, actions);
+  // The list's headings, worked out once: the first field's value, or "<Type> <n>".
+  const headings = useMemo(() => {
+    const firstId = type?.fields[0]?.id;
+    return list.map((item, position) => {
+      const first = firstId ? item.fields.find((v) => v.fieldId === firstId) : null;
+      return first?.value?.trim() || `${type?.name ?? "Record"} ${position + 1}`;
+    });
+  }, [list, type]);
 
   // Before a first run there is nothing to show (the screen then knows an empty extraction).
   if (!data || (data.revision === 0 && data.definitionVersion === 0 && data.records.length === 0))
@@ -243,7 +251,7 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
                           )}
                         >
                           <span className="min-w-0 flex-1 truncate">
-                            {recordHeading(item, type, list) || `Record ${position + 1}`}
+                            {headings[position]}
                           </span>
                           <ReviewStateLabel state={item.review} />
                         </button>

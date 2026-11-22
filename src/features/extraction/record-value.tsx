@@ -265,7 +265,7 @@ export function ValueActions({
       )}
       {canEditValue(field, value) && (
         <ToolButton
-          label={`Edit ${name}`}
+          label={labelled ? `Correct ${name}` : `Edit ${name}`}
           text={word("Correct")}
           icon={Pencil}
           disabled={pending}

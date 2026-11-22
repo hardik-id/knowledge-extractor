@@ -88,6 +88,13 @@ describe("resolveRecordId", () => {
   test("defaults to the first record of the type", () => {
     assert.equal(resolveRecordId(null, records, "t2"), "r2");
   });
+  test("defaults to the first record that is not rejected, as the strip orders them", () => {
+    const rejectedFirst = [
+      { id: "a", recordTypeId: "t1", review: "rejected" as const },
+      { id: "b", recordTypeId: "t1", review: "suggested" as const },
+    ];
+    assert.equal(resolveRecordId(null, rejectedFirst, "t1"), "b");
+  });
   test("keeps the chosen record while it exists, even of another type", () => {
     assert.equal(resolveRecordId("r3", records, "t1"), "r3");
   });
