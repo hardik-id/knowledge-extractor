@@ -99,7 +99,7 @@ function VersionList({
   }
   if (!versions || loading) {
     return (
-      <div aria-busy="true" aria-label="Loading versions" className="space-y-2">
+      <div role="status" aria-busy="true" aria-label="Loading versions" className="space-y-2">
         <Skeleton className="h-14 w-full" />
         <Skeleton className="h-14 w-full" />
       </div>
@@ -173,7 +173,12 @@ function VersionView({
           </Button>
         </div>
       ) : !data || isLoading ? (
-        <Skeleton aria-busy="true" aria-label="Loading version" className="h-40 w-full" />
+        <Skeleton
+          role="status"
+          aria-busy="true"
+          aria-label="Loading version"
+          className="h-40 w-full"
+        />
       ) : (
         <ReadOnlyVersion version={data} />
       )}

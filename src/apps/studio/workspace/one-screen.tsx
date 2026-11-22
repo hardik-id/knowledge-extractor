@@ -62,7 +62,12 @@ export function OneScreen({ extraction }: { extraction: ExtractionRun }) {
   }
   if (definition.isLoading || !saved || !draft) {
     return (
-      <div aria-busy="true" aria-label="Loading configuration" className="space-y-3 px-4 py-6">
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label="Loading configuration"
+        className="space-y-3 px-4 py-6"
+      >
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-40 w-full" />
       </div>
@@ -123,9 +128,12 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
             <DocumentPane fileId={fileId} definition={definition} />
           )}
         </div>
-        <div className="sticky bottom-0 shrink-0 md:static">
-          <RecordStrip definition={definition} />
-        </div>
+        {/* The strip belongs to the document: the Output view shows every record already. */}
+        {shown === "document" && (
+          <div className="sticky bottom-0 shrink-0 md:static">
+            <RecordStrip definition={definition} />
+          </div>
+        )}
       </main>
       {wide ? (
         <aside

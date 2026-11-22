@@ -95,7 +95,7 @@ export function TemplateDialog({
             </Button>
           </div>
         ) : !templates ? (
-          <div aria-busy="true" aria-label="Loading templates" className="space-y-3">
+          <div role="status" aria-busy="true" aria-label="Loading templates" className="space-y-3">
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
           </div>

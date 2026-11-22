@@ -323,7 +323,7 @@ function ReviewWorkspace({
 
 function Loading({ label }: { label: string }) {
   return (
-    <div aria-busy="true" aria-label={label} className="space-y-3">
+    <div role="status" aria-busy="true" aria-label={label} className="space-y-3">
       <Skeleton className="h-6 w-2/3" />
       <Skeleton className="h-4 w-full" />
       <Skeleton className="h-4 w-full" />
