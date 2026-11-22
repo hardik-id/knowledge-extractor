@@ -105,6 +105,43 @@ test.describe("the assistant in the column", () => {
     await expect(dock.newFieldRows.first()).toContainText("Approver");
   });
 
+  test("with no record type yet, a proposal shows the new record type with its fields", async ({
+    api,
+    expectApiError,
+    page,
+    person,
+    request,
+  }) => {
+    noExtractionYet(expectApiError);
+    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const dock = new AssistantDock(page);
+    await openOneScreen(page, project);
+    const column = fieldColumn(page);
+    // The first click after the page opened can be thrown away by a rebuild in dev: try until the menu is there.
+    const remove = page.getByRole("menuitem", { name: "Remove record type" });
+    await expect(async () => {
+      if (!(await remove.isVisible()))
+        await column.getByRole("button", { name: "Record type options" }).click({ timeout: 2_000 });
+      await expect(remove).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
+    await remove.click();
+    await expect(column.getByText("No fields yet.")).toBeVisible();
+
+    await dock.ask("extract the ADRs");
+    // The record type and the template that goes with it.
+    await expect(dock.bar).toContainText("2 suggested changes");
+    // The record type is drawn as a table of its own, not as a line of text in the bar.
+    await expect(dock.bar.getByRole("listitem")).toHaveText(["Template changed"]);
+    await expect(column.getByText("New record type")).toBeVisible();
+    await expect(dock.newFieldRows).toHaveCount(6);
+    await expect(dock.newFieldRows.first()).toContainText("Title");
+
+    await dock.bar.getByRole("button", { name: "Keep all" }).click();
+    await expect(dock.newFieldRows).toHaveCount(0);
+    await expect(column.getByText("New record type")).toHaveCount(0);
+    await expect(column.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(6);
+  });
+
   test("Discard all leaves the table as it was", async ({
     api,
     expectApiError,

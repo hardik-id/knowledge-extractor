@@ -7,7 +7,7 @@ import { moveField, removeField, updateField } from "@/features/extraction/defin
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { AssistantDock } from "./assistant-dock";
 import { PromptLine } from "./prompt-line";
-import { ProposalBar, ProposalLines, ProposedFieldRows } from "./proposal-table";
+import { ProposalBar, ProposalLines, ProposedFieldRows, ProposedTypes } from "./proposal-table";
 import { RecordTypeBar } from "./record-type-bar";
 import { useFieldSelection } from "./use-field-selection";
 import { useWorkspace } from "./workspace-state";
@@ -76,6 +76,8 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
             extraRows={<ProposedFieldRows typeId={type.id} />}
           />
         )}
+        {/* A record type the proposal adds, also while there is no record type yet. */}
+        <ProposedTypes />
       </div>
       <p role="status" className="sr-only">
         {decision}

@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "node:test";
-import { currentOutcomes, resetOutcomes, setOutcome } from "./use-proposal";
+import {
+  currentOffer,
+  currentOutcomes,
+  offerProposal,
+  resetOutcomes,
+  setOutcome,
+  type ProposalOffer,
+} from "./use-proposal";
 
 describe("the outcomes of proposals", () => {
   afterEach(() => resetOutcomes());
@@ -22,5 +29,46 @@ describe("the outcomes of proposals", () => {
     setOutcome("m1", "applied");
     resetOutcomes();
     assert.deepEqual(currentOutcomes(), {});
+  });
+});
+
+describe("an offered proposal", () => {
+  afterEach(() => offerProposal(null));
+
+  const offer = (id: string): ProposalOffer => ({
+    id,
+    proposal: {
+      definition: { prompt: "", recordTypes: [], output: { format: "markdown", template: "" } },
+      reasons: [],
+    },
+  });
+
+  test("there is none to begin with", () => {
+    assert.equal(currentOffer(), null);
+  });
+
+  test("the newest offer replaces the one before", () => {
+    const first = offer("template:adr");
+    const second = offer("template:policy");
+    offerProposal(first);
+    assert.equal(currentOffer(), first);
+    offerProposal(second);
+    assert.equal(currentOffer(), second);
+  });
+
+  test("it can be taken back, and that leaves the outcomes of messages alone", () => {
+    setOutcome("m1", "applied");
+    offerProposal(offer("template:adr"));
+    offerProposal(null);
+    assert.equal(currentOffer(), null);
+    assert.deepEqual(currentOutcomes(), { m1: "applied" });
+    resetOutcomes();
+  });
+
+  test("clearing the conversation keeps the offer", () => {
+    const one = offer("template:adr");
+    offerProposal(one);
+    resetOutcomes();
+    assert.equal(currentOffer(), one);
   });
 });

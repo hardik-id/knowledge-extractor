@@ -19,6 +19,20 @@ export interface ProposalInfo {
   changes: ProposalChange[];
   /** The draft the changes are relative to. */
   current: Draft;
+  /** For an offer: run by "Keep all" in place of putting the definition into the draft. */
+  onKeepAll?: () => void;
+}
+
+/**
+ * A proposal that does not come from the assistant: a template chosen on the start screen. It is
+ * shown in the table like the assistant's, until it is kept, discarded or taken back.
+ */
+export interface ProposalOffer {
+  /** Stands where a message id stands; make it unlike one ("template:adr"). */
+  id: string;
+  proposal: AssistantProposal;
+  /** Run by "Keep all" in place of putting the definition into the draft (a template also sets the save note). */
+  onKeepAll?: () => void;
 }
 
 // What became of each proposal is only remembered on the page. It lives outside the column so
@@ -40,6 +54,31 @@ export function currentOutcomes() {
 export function resetOutcomes() {
   outcomes = {};
   listeners.forEach((l) => l());
+}
+
+let offer: ProposalOffer | null = null;
+
+/** Shows `next` in the table as suggestions; null takes the offer back. One offer at a time. */
+export function offerProposal(next: ProposalOffer | null) {
+  if (offer === next) return;
+  offer = next;
+  listeners.forEach((l) => l());
+}
+
+/** The offer now. */
+export function currentOffer() {
+  return offer;
+}
+
+function useOffer(): ProposalOffer | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    () => offer,
+    () => offer,
+  );
 }
 
 function useOutcomes(): Record<string, ProposalOutcome> {
@@ -68,7 +107,20 @@ export function useProposalSync(
     put.current = setProposal;
   });
   const decided = useOutcomes();
+  const offered = useOffer();
   const latestId = [...messages].reverse().find((m) => m.proposal)?.id;
+
+  // An offer stands until the assistant proposes something newer: the newest suggestion is the one shown.
+  const latestAtOffer = useRef<string | undefined>(undefined);
+  const seenOffer = useRef<ProposalOffer | null>(null);
+  useEffect(() => {
+    if (offered !== seenOffer.current) {
+      seenOffer.current = offered;
+      latestAtOffer.current = latestId;
+    } else if (offered && latestId !== latestAtOffer.current) {
+      offerProposal(null);
+    }
+  }, [offered, latestId]);
 
   // Worked out once per change of messages, draft or decisions, not on every keystroke in the input.
   const shown = useMemo(() => {
@@ -89,13 +141,24 @@ export function useProposalSync(
     shown.get(message.id) ?? decided[message.id] ?? "replaced";
 
   const info = useMemo<ProposalInfo | null>(() => {
+    if (offered && draft) {
+      const changes = proposalChanges(draft, offered.proposal.definition);
+      if (changes.length > 0)
+        return {
+          messageId: offered.id,
+          proposal: offered.proposal,
+          changes,
+          current: draft,
+          onKeepAll: offered.onKeepAll,
+        };
+    }
     const message = messages.find((m) => m.id === latestId);
     if (!message?.proposal || !draft || (decided[message.id] ?? "open") !== "open") return null;
     const changes = proposalChanges(draft, message.proposal.definition);
     return changes.length === 0
       ? null
       : { messageId: message.id, proposal: message.proposal, changes, current: draft };
-  }, [messages, latestId, draft, decided]);
+  }, [messages, latestId, draft, decided, offered]);
 
   useEffect(() => {
     put.current(info);
@@ -103,6 +166,12 @@ export function useProposalSync(
   useEffect(() => () => put.current(null), []);
 
   return outcomeOf;
+}
+
+/** What became of the proposal shown: an offer is over, a message's proposal remembers its outcome. */
+function decide(id: string, outcome: ProposalOutcome) {
+  if (offer?.id === id) offerProposal(null);
+  else setOutcome(id, outcome);
 }
 
 /** Puts the cursor in the assistant's input: where focus goes when a control that had it disappears. */
@@ -125,8 +194,9 @@ export function useProposal(
     info,
     keepAll: () => {
       if (!info) return;
-      definition.setDraft(info.proposal.definition);
-      setOutcome(info.messageId, "applied");
+      if (info.onKeepAll) info.onKeepAll();
+      else definition.setDraft(info.proposal.definition);
+      decide(info.messageId, "applied");
       onDecided?.(
         `Kept ${info.changes.length} ${info.changes.length === 1 ? "change" : "changes"}`,
       );
@@ -134,7 +204,7 @@ export function useProposal(
     },
     discardAll: () => {
       if (!info) return;
-      setOutcome(info.messageId, "dismissed");
+      decide(info.messageId, "dismissed");
       onDecided?.(
         `Discarded ${info.changes.length} ${info.changes.length === 1 ? "change" : "changes"}`,
       );
