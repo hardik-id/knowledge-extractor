@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { extractionHref, projectHref, projectIdFromPath } from "./nav-steps";
+import { projectHref, projectIdFromPath } from "./nav-steps";
 
 describe("studio addresses", () => {
-  test("a project's two steps live under its id", () => {
+  test("a project has one address, under its id", () => {
     assert.equal(projectHref("p1"), "/studio/projects/p1");
-    assert.equal(extractionHref("p1"), "/studio/projects/p1/extract");
     assert.equal(projectHref("a b/c"), "/studio/projects/a%20b%2Fc");
   });
 

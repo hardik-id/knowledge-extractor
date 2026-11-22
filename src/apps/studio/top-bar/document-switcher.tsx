@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { usePipelineStore } from "@/store/pipeline-store";
 import type { DocumentState, DocumentStateKind } from "./document-states";
+import { DocumentsSheet } from "../documents-sheet";
 import { useDocumentStates } from "./use-document-states";
 
 const TONE: Record<DocumentStateKind, string> = {
@@ -57,6 +58,8 @@ export function DocumentSwitcher() {
   const activeDocId = usePipelineStore((s) => s.activeDocId);
   const setActiveDoc = usePipelineStore((s) => s.setActiveDoc);
   const states = useDocumentStates();
+  const [picking, setPicking] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   const found = runFiles.findIndex((f) => f.id === activeDocId);
   // An id that is not among the run's files (removed, or restored from an old tab): use the first.
   useEffect(() => {
@@ -78,6 +81,7 @@ export function DocumentSwitcher() {
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
+            ref={trigger}
             variant="outline"
             title={active.name}
             aria-label={`Document: ${active.name}, ${index + 1} of ${runFiles.length}`}
@@ -109,8 +113,10 @@ export function DocumentSwitcher() {
             );
           })}
           <DropdownMenuSeparator />
-          {/* Item 5 wires this up to the document picker. */}
-          <DropdownMenuItem disabled className="gap-2 px-2.5 py-2 font-medium text-link">
+          <DropdownMenuItem
+            className="gap-2 px-2.5 py-2 font-medium text-link"
+            onSelect={() => setPicking(true)}
+          >
             <Plus aria-hidden />
             Add or remove documents
           </DropdownMenuItem>
@@ -134,6 +140,7 @@ export function DocumentSwitcher() {
       >
         <ChevronRight aria-hidden />
       </Button>
+      <DocumentsSheet open={picking} onOpenChange={setPicking} returnFocusTo={trigger} />
     </div>
   );
 }

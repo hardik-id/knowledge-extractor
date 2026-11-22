@@ -1,10 +1,13 @@
 import { expect, test } from "./fixtures";
 import {
   DOCS,
+  addDocument,
   openDocuments,
+  openDocumentsSheet,
   openNewProjectDialog,
   pickDocuments,
   saveDocuments,
+  submitDocumentsButton,
 } from "./pages/studio";
 import { clickUntilOpen } from "./support/first-click";
 
@@ -129,7 +132,7 @@ test("the project worked on last comes first", async ({ api, page }) => {
   await expect(headings).toHaveText(["First made", "Second made"]);
 });
 
-test("documents are picked and saved, then one is added and one removed", async ({
+test("documents are picked and used, then one is added and one removed", async ({
   api,
   expectApiError,
   page,
@@ -140,34 +143,48 @@ test("documents are picked and saved, then one is added and one removed", async 
   await openDocuments(page, project);
   await pickDocuments(page, [DOCS.roadmap, DOCS.runbook]);
   await expect(page.getByText("2 documents selected")).toBeVisible();
-  await saveDocuments(page);
+  await expect(submitDocumentsButton(page)).toHaveText("Use 2 documents");
+  await submitDocumentsButton(page).click();
+  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/studio/projects/${project.id}$`));
 
   await page.reload();
-  await expect(page.getByText("2 documents selected")).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: DOCS.roadmap })).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: DOCS.runbook })).toBeChecked();
+  const sheet = await openDocumentsSheet(page);
+  await expect(sheet.getByText("2 documents selected")).toBeVisible();
+  await expect(sheet.getByRole("checkbox", { name: DOCS.roadmap })).toBeChecked();
+  await expect(sheet.getByRole("checkbox", { name: DOCS.runbook })).toBeChecked();
 
-  await page.getByRole("checkbox", { name: DOCS.decisions }).check();
-  await page.getByRole("checkbox", { name: DOCS.runbook }).uncheck();
+  await sheet.getByRole("checkbox", { name: DOCS.decisions }).check();
+  await sheet.getByRole("checkbox", { name: DOCS.runbook }).uncheck();
   await saveDocuments(page);
 
   await page.goto("/studio");
   await expect(row(page, "Documents project").getByText("2 documents")).toBeVisible();
   await page.getByRole("link", { name: "Documents project" }).click();
-  await expect(page).toHaveURL(/\/extract$/);
-  await page.getByRole("link", { name: "Documents", exact: true }).click();
-  await expect(page.getByRole("checkbox", { name: DOCS.roadmap })).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: DOCS.decisions })).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: DOCS.runbook })).not.toBeChecked();
+  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  const again = await openDocumentsSheet(page);
+  await expect(again.getByRole("checkbox", { name: DOCS.roadmap })).toBeChecked();
+  await expect(again.getByRole("checkbox", { name: DOCS.decisions })).toBeChecked();
+  await expect(again.getByRole("checkbox", { name: DOCS.runbook })).not.toBeChecked();
 });
 
-test("Open in extraction is disabled until there is a document", async ({ api, page }) => {
+test("Use documents is disabled until there is a document", async ({ api, page }) => {
   const project = await api.createProject({ name: "Empty project" });
   await openDocuments(page, project);
-  const open = page.getByRole("button", { name: "Open in extraction" });
-  await expect(open).toBeDisabled();
+  const use = submitDocumentsButton(page);
+  await expect(use).toBeDisabled();
+  await expect(use).toHaveText("Use documents");
   await expect(page.getByText("Select at least one document.")).toBeVisible();
 
   await pickDocuments(page, [DOCS.roadmap]);
-  await expect(open).toBeEnabled();
+  await expect(use).toBeEnabled();
+  await expect(use).toHaveText("Use 1 document");
+});
+
+test("an old extraction address lands on the project", async ({ api, page, person }) => {
+  const project = await api.createProject({ name: "Old address" });
+  await addDocument(person, project.run_id);
+  await page.goto(`/studio/projects/${project.id}/extract`);
+  await expect(page).toHaveURL(new RegExp(`/studio/projects/${project.id}$`));
+  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
 });

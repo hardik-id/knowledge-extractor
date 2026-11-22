@@ -1,4 +1,10 @@
-import { addDocument, extractPath, scrollsSideways, tab } from "./pages/studio";
+import {
+  addDocument,
+  extractPath,
+  scrollsSideways,
+  tab,
+  submitDocumentsButton,
+} from "./pages/studio";
 import { expect, test } from "./fixtures";
 
 test.use({ viewport: { width: 390, height: 844 } });
@@ -40,9 +46,14 @@ test("a project and the extraction page fit a phone, and the assistant opens and
   await expect(
     page.getByTestId("project-top-bar").getByRole("link", { name: "Projects" }),
   ).toBeInViewport({ ratio: 1 });
-  await expect(page.getByRole("button", { name: "Open in extraction" })).toBeVisible();
+  await expect(tab(page, "Define")).toBeVisible();
   expect(await scrollsSideways(page), "the project page scrolls sideways").toBe(false);
-  await expect(page.getByRole("button", { name: "Save documents" })).toBeVisible();
+
+  // A project without documents: the picker is the whole screen.
+  const empty = await api.createProject({ name: "Phone empty project" });
+  await page.goto(extractPath(empty.id));
+  await expect(submitDocumentsButton(page)).toBeVisible();
+  expect(await scrollsSideways(page), "the picker scrolls sideways").toBe(false);
 
   await page.goto(extractPath(project.id));
   await expect(tab(page, "Define")).toBeVisible();

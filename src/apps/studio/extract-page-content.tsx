@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { CloudOff, FileSearch } from "lucide-react";
+import { CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
@@ -18,11 +17,11 @@ import { plural } from "@/lib/format";
 import { isUnauthorized } from "@/lib/api/api-error";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
-import { projectHref } from "./nav-steps";
+import { DocumentsScreen } from "./documents-screen";
 import { ProjectTopBar } from "./project-top-bar";
 import { StartPanel } from "./start/start-panel";
 
-/** Inside an open project (see ProjectScope): the workspace once its run has documents. */
+/** Inside an open project (see ProjectScope): the workspace once its run has documents, the picker before. */
 export function ExtractPageContent() {
   const projectId = usePipelineStore((s) => s.projectId);
   const hasDocuments = usePipelineStore((s) => s.runFiles.length > 0);
@@ -39,26 +38,6 @@ export function ExtractPageContent() {
   const waitingForSignIn = runLoad === "error" && isUnauthorized(error) && sessionEnded;
   if (!projectId || runLoad === "idle" || runLoad === "loading" || waitingForSignIn) {
     return <ExtractSkeleton />;
-  }
-
-  if (!hasDocuments) {
-    return (
-      <>
-        <ProjectTopBar />
-        <div className="px-5 py-10 sm:px-8">
-          <EmptyState
-            icon={FileSearch}
-            title="No documents opened yet"
-            description="Choose the documents you want to extract from first."
-            action={
-              <Button asChild>
-                <Link href={projectHref(projectId)}>Go to documents</Link>
-              </Button>
-            }
-          />
-        </div>
-      </>
-    );
   }
 
   if (runLoad === "error") {
@@ -80,6 +59,9 @@ export function ExtractPageContent() {
       </>
     );
   }
+
+  // Only a run that loaded and is empty shows the picker: a failed load must never offer it.
+  if (!hasDocuments) return <DocumentsScreen />;
 
   return <ExtractPanel />;
 }

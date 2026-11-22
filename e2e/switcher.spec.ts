@@ -27,7 +27,7 @@ test("the switcher steps through the documents and shows their state before and 
   await expect(switcher.item(SECOND)).toContainText("Not run yet");
   await expect(
     switcher.menu.getByRole("menuitem", { name: "Add or remove documents" }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await page.keyboard.press("Escape");
   await expect(switcher.menu).toHaveCount(0);
 

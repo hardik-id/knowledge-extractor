@@ -6,8 +6,7 @@ import { AppSwitcher } from "@/components/layout/app-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/features/auth/user-menu";
 import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
-import { usePipelineStore } from "@/store/pipeline-store";
-import { projectHref, STUDIO_HOME } from "./nav-steps";
+import { STUDIO_HOME } from "./nav-steps";
 import { ProjectMenu } from "./project-menu";
 import { DocumentSwitcher } from "./top-bar/document-switcher";
 import { MoreMenu } from "./top-bar/more-menu";
@@ -21,7 +20,6 @@ import { VersionMenu } from "./top-bar/version-menu";
  * here, so what it holds changes in this file only.
  */
 export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
-  const projectId = usePipelineStore((s) => s.projectId);
   return (
     <>
       <nav
@@ -51,14 +49,6 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
             <ThemeToggle />
             <UserMenu compact />
           </div>
-          {extraction && projectId && (
-            <Link
-              href={projectHref(projectId)}
-              className="rounded-control px-1 text-small text-link underline-offset-4 hover:underline"
-            >
-              Documents
-            </Link>
-          )}
 
           <div className="contents md:ml-auto md:flex md:flex-wrap md:items-center md:justify-end md:gap-x-2 md:gap-y-1">
             {extraction && (
