@@ -70,7 +70,13 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
     <div className="flex min-h-0 flex-1 flex-col">
       {!starting && <RecordTypeBar definition={definition} />}
       {!starting && <PromptLine definition={definition} />}
-      <div ref={scroller} tabIndex={-1} role="region" aria-label="Field list" className="min-h-0 flex-1 overflow-y-auto outline-none">
+      <div
+        ref={scroller}
+        tabIndex={-1}
+        role="region"
+        aria-label="Field list"
+        className="min-h-0 flex-1 overflow-y-auto outline-none"
+      >
         {starting && (
           <div className="px-4 py-4">
             <StartPanelWithAssistant definition={definition} />

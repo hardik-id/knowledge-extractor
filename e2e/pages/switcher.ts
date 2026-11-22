@@ -41,6 +41,8 @@ export class Switcher {
   async switchDocument(name: string) {
     await this.open();
     await this.item(name).click();
+    // The list closes with an animation: a second switch must not take the closing list for an open one.
+    await expect(this.menu).toBeHidden();
     await expect(this.trigger).toContainText(name);
   }
 }

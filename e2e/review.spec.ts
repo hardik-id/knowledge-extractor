@@ -34,7 +34,10 @@ test("the output follows the review: accepted values, a rejected one left out, C
   await menu.getByRole("button", { name: "Reject Approved by value" }).click();
   await expect(menu).toHaveCount(0);
   const list = await strip.openList();
-  await list.getByRole("button", { name: "Accept all suggested" }).click();
+  // By keyboard: with the Rejected group showing, the list reaches the dev build's badge, which
+  // would take a pointer click (the badge is not in a production build).
+  await list.getByRole("button", { name: "Accept all suggested" }).focus();
+  await page.keyboard.press("Enter");
   await expect(list.getByRole("button", { name: "Accept all suggested" })).toHaveCount(0);
   await page.keyboard.press("Escape");
 
