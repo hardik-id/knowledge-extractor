@@ -144,6 +144,9 @@ export interface ScreenControls {
   assistantRequested: boolean;
   requestAssistant: () => void;
   answerAssistantRequest: () => void;
+  /** The record strip is folded to its first line. Held here so it holds across documents. */
+  stripCollapsed: boolean;
+  setStripCollapsed: (collapsed: boolean) => void;
 }
 
 export const ScreenControlsContext = createContext<ScreenControls | null>(null);

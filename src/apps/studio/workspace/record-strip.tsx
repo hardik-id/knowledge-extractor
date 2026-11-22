@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight, Check, Ellipsis } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Ellipsis } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,28 +11,38 @@ import { ExampleToggle, RecordActions } from "@/features/extraction/record-card"
 import { HumanMarker, ReviewStateLabel } from "@/features/extraction/record-review-state";
 import { saveValueEdit, ValueActions, ValueEditor } from "@/features/extraction/record-value";
 import { suggestedRecordIds } from "@/features/extraction/record-rules";
-import { scrollToElement } from "@/features/extraction/review-scroll";
+import { findHighlight, scrollToElement } from "@/features/extraction/review-scroll";
 import { useAcceptAll } from "@/features/extraction/use-accept-all";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { useExtractionActions, useFileExtraction } from "@/features/run/use-extraction";
 import { useExtractionInput } from "@/features/run/use-extraction-input";
 import { cn } from "@/lib/utils";
-import type { ExtractionRecord, FieldValue } from "@/services/contracts";
+import type { ExtractionRecord, FieldDef, FieldValue } from "@/services/contracts";
 import { indexOfRecord, neighbourId, recordsOfType } from "./records-of-type";
 import {
   fieldsChangedSinceRun,
-  notFoundFields,
-  type FieldWithValues,
-  rejectedQuoteFields,
-  unplacedQuoteFields,
-  workedOutFields,
+  stripFields,
+  type StripField,
+  type StripValue,
 } from "./strip-rules";
-import { useWorkspace } from "./workspace-state";
+import { useFieldSelection } from "./use-field-selection";
+import { useScreenControls, useWorkspace } from "./workspace-state";
 
 const QUIET = "text-small text-ink-muted";
 
 /** Text cut to two lines, with "Show all" when there is more than fits. */
-function ClampedText({ text, struck }: { text: string; struck: boolean }) {
+function ClampedText({
+  text,
+  struck,
+  showLabel,
+  onShow,
+}: {
+  text: string;
+  struck: boolean;
+  /** A placed quote: the text is a button that leads to its highlight in the document. */
+  showLabel?: string;
+  onShow?: () => void;
+}) {
   const box = useRef<HTMLSpanElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [clipped, setClipped] = useState(false);
@@ -44,18 +55,32 @@ function ClampedText({ text, struck }: { text: string; struck: boolean }) {
     observer.observe(el);
     return () => observer.disconnect();
   }, [text, expanded]);
+  const body = (
+    <span
+      ref={box}
+      className={cn(
+        "block text-body break-words text-ink",
+        !expanded && "line-clamp-2",
+        struck && "text-ink-muted line-through",
+      )}
+    >
+      {text}
+    </span>
+  );
   return (
     <span className="block min-w-0">
-      <span
-        ref={box}
-        className={cn(
-          "block text-body break-words text-ink",
-          !expanded && "line-clamp-2",
-          struck && "text-ink-muted line-through",
-        )}
-      >
-        {text}
-      </span>
+      {onShow ? (
+        <button
+          type="button"
+          aria-label={showLabel}
+          onClick={onShow}
+          className="block w-full rounded-control text-left hover:underline hover:underline-offset-2"
+        >
+          {body}
+        </button>
+      ) : (
+        body
+      )}
       {(clipped || expanded) && (
         <button
           type="button"
@@ -70,42 +95,79 @@ function ClampedText({ text, struck }: { text: string; struck: boolean }) {
   );
 }
 
-/** One worked-out value on its line: the field's dot and name (on the first), the value and its actions. */
-function ValueLine({
+/** Leads to a value's highlight in the document and puts the focus on it. */
+function showInDocument(valueId: string) {
+  const mark = findHighlight(document, valueId);
+  if (!(mark instanceof HTMLElement)) return;
+  scrollToElement(mark);
+  mark.focus({ preventScroll: true });
+}
+
+const WORKED_OUT_TITLE = "The model worked this out; it is not written in the document as such.";
+
+/**
+ * One line of the strip: the field's dot and name (on the first line of the field), the value and
+ * its actions, or "Not found" when the field has none.
+ */
+function StripLine({
   record,
-  value,
-  siblings,
+  field,
   label,
+  workedOut,
+  entry,
+  siblings,
   first,
+  selected,
+  onToggleField,
   actions,
 }: {
   record: ExtractionRecord;
-  value: FieldValue;
-  siblings: FieldValue[];
+  field: FieldDef;
   label: FieldLabel;
+  workedOut: boolean;
+  entry: StripValue | null;
+  siblings: FieldValue[];
   first: boolean;
+  selected: boolean;
+  onToggleField: () => void;
   actions: ReturnType<typeof useExtractionActions>;
 }) {
   const [editing, setEditing] = useState(false);
-  const { field } = label;
-  const rejected = value.review === "rejected";
+  const value = entry?.value ?? null;
   return (
-    <div data-record-value={value.id} className="flex items-start gap-3">
-      <div className="flex w-[120px] shrink-0 items-center gap-2 pt-0.5 font-medium text-ink">
+    <div
+      data-strip-line={field.id}
+      data-record-value={value?.id}
+      className={cn("flex items-start gap-3 rounded-control px-1", selected && "bg-surface-hover")}
+    >
+      <div className="flex h-8 w-[8rem] shrink-0 flex-col justify-center sm:w-[15.5rem] sm:flex-row sm:items-center sm:justify-start sm:gap-1.5">
         {first && (
           <>
-            <span
-              aria-hidden
-              className={cn("size-2 shrink-0 rounded-pill bg-current", label.style.text)}
-            />
-            <span className="min-w-0 truncate" title={field.name}>
-              {field.name}
-            </span>
+            <button
+              type="button"
+              aria-pressed={selected}
+              onClick={onToggleField}
+              title={field.name}
+              className="flex max-w-[150px] min-w-0 items-center gap-2 rounded-control text-left font-medium text-ink"
+            >
+              <span
+                aria-hidden
+                className={cn("size-2 shrink-0 rounded-pill bg-current", label.style.text)}
+              />
+              <span className="min-w-0 truncate">{field.name}</span>
+            </button>
+            {workedOut && (
+              <Badge variant="secondary" title={WORKED_OUT_TITLE} className="shrink-0">
+                worked out
+              </Badge>
+            )}
           </>
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        {editing ? (
+      <div className="min-w-0 flex-1 pt-1.5">
+        {!value || !entry ? (
+          <span className={QUIET}>Not found</span>
+        ) : editing ? (
           <ValueEditor
             field={field}
             initial={value.value ?? ""}
@@ -118,15 +180,23 @@ function ValueLine({
           />
         ) : (
           <>
-            <ClampedText text={value.value ?? ""} struck={rejected} />
+            <ClampedText
+              text={value.value ?? ""}
+              struck={entry.rejected}
+              showLabel={`Show in the document: ${field.name}, ${value.value ?? ""}`}
+              onShow={entry.placed ? () => showInDocument(value.id) : undefined}
+            />
             <span className="flex flex-wrap items-center gap-x-2">
-              {rejected && <ReviewStateLabel state="rejected" />}
+              {entry.rejected && <ReviewStateLabel state="rejected" />}
+              {entry.notInText && (
+                <span className="text-caption text-ink-muted">not in the document as written</span>
+              )}
               {value.origin === "human" && <HumanMarker text="Edited by you" />}
             </span>
           </>
         )}
       </div>
-      {!editing && (
+      {value && !editing && (
         <ValueActions
           record={record}
           value={value}
@@ -157,6 +227,11 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
     useWorkspace();
   const extraction = useFileExtraction(fileId);
   const documentText = useExtractionInput(fileId).data?.text;
+  const controls = useScreenControls();
+  const [localCollapsed, setLocalCollapsed] = useState(false);
+  const collapsed = controls ? controls.stripCollapsed : localCollapsed;
+  const setCollapsed = controls ? controls.setStripCollapsed : setLocalCollapsed;
+  const { selectedFieldId, toggle } = useFieldSelection();
   const [listOpen, setListOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -217,33 +292,35 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
     showRecord(id);
   };
 
-  const workedOut = record && type ? workedOutFields(type, record) : [];
-  const unplaced = record && type ? unplacedQuoteFields(type, record, documentText) : [];
-  const rejectedQuotes = record && type ? rejectedQuoteFields(type, record) : [];
-  const notFound = record && type ? notFoundFields(type, record) : [];
+  const fields = record && type ? stripFields(type, record, documentText) : [];
   const suggested = suggestedRecordIds(list).length;
 
-  const lines = (fields: FieldWithValues[]) =>
-    fields.map(({ field, values }) =>
-      values.map((value, position) => {
-        const label = labels.get(field.id);
-        // The field's other values too: a change to one is saved with the rest.
-        const siblings = record
-          ? record.fields.filter((v) => v.fieldId === field.id && v.value !== null)
-          : values;
-        return label && record ? (
-          <ValueLine
-            key={value.id}
-            record={record}
-            value={value}
-            siblings={siblings}
-            label={label}
-            first={position === 0}
-            actions={actions}
-          />
-        ) : null;
-      }),
-    );
+  const lines = (entry: StripField) => {
+    const label = labels.get(entry.field.id);
+    if (!label || !record) return null;
+    const common = {
+      record,
+      field: entry.field,
+      label,
+      workedOut: entry.workedOut,
+      selected: selectedFieldId === entry.field.id,
+      onToggleField: () => toggle(entry.field.id),
+      actions,
+    };
+    if (entry.values.length === 0)
+      return <StripLine key={entry.field.id} {...common} entry={null} siblings={[]} first />;
+    // The field's other values too: a change to one is saved with the rest.
+    const siblings = record.fields.filter((v) => v.fieldId === entry.field.id && v.value !== null);
+    return entry.values.map((item, position) => (
+      <StripLine
+        key={item.value.id}
+        {...common}
+        entry={item}
+        siblings={siblings}
+        first={position === 0}
+      />
+    ));
+  };
 
   return (
     <TooltipProvider>
@@ -352,45 +429,20 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
                   </PopoverContent>
                 </Popover>
               )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-expanded={!collapsed}
+                aria-label={collapsed ? "Show the record's values" : "Hide the record's values"}
+                onClick={() => setCollapsed(!collapsed)}
+              >
+                {collapsed ? <ChevronUp aria-hidden /> : <ChevronDown aria-hidden />}
+              </Button>
             </div>
 
-            {workedOut.length > 0 && (
-              <div
-                role="group"
-                aria-labelledby="strip-worked-out"
-                className="flex flex-col gap-1.5"
-              >
-                <h2 id="strip-worked-out" className="text-small font-semibold text-ink-heading">
-                  Worked out by the model{" "}
-                  <span className="font-normal text-ink-muted">
-                    These values are not written in the document as such.
-                  </span>
-                </h2>
-                {lines(workedOut)}
-              </div>
-            )}
-            {unplaced.length > 0 && (
-              <div role="group" aria-labelledby="strip-unplaced" className="flex flex-col gap-1.5">
-                <h2 id="strip-unplaced" className="text-small font-semibold text-ink-heading">
-                  Not placed in the document{" "}
-                  <span className="font-normal text-ink-muted">
-                    The model gave these as quotes, but the words are not in the document as
-                    written.
-                  </span>
-                </h2>
-                {lines(unplaced)}
-              </div>
-            )}
-            {rejectedQuotes.length > 0 && (
-              <div role="group" aria-labelledby="strip-rejected" className="flex flex-col gap-1.5">
-                <h2 id="strip-rejected" className="text-small font-semibold text-ink-heading">
-                  Rejected
-                </h2>
-                {lines(rejectedQuotes)}
-              </div>
-            )}
-            {notFound.length > 0 && (
-              <p className={QUIET}>Not found: {notFound.map((f) => f.name).join(", ")}</p>
+            {!collapsed && (
+              <div className="flex flex-col gap-0.5">{fields.map((entry) => lines(entry))}</div>
             )}
           </>
         )}

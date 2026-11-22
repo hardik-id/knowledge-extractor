@@ -54,16 +54,38 @@ export class RecordStripPage {
     );
   }
 
-  /** The line of a worked-out value, found by the field's name. */
-  line(fieldName: string) {
-    return this.strip
-      .locator("[data-record-value]")
-      .filter({ has: this.page.getByText(fieldName, { exact: true }) });
+  /** Every line of the strip, in order. */
+  get lines() {
+    return this.strip.locator("[data-strip-line]");
   }
 
-  /** A group of the strip by its heading, such as "Rejected" or "Not placed in the document". */
-  group(heading: string | RegExp) {
-    return this.strip.getByRole("group", { name: heading });
+  /** The first line of a field, found by the field's name. */
+  line(fieldName: string) {
+    return this.lines
+      .filter({ has: this.page.getByRole("button", { name: fieldName, exact: true }) })
+      .first();
+  }
+
+  /** The field's name on its first line: a click selects the field, like its row in the table. */
+  fieldButton(fieldName: string) {
+    return this.strip.getByRole("button", { name: fieldName, exact: true });
+  }
+
+  /** The names of the fields in the strip, in order (one per field, not per value). */
+  async fieldNames() {
+    return this.lines.locator("button[aria-pressed]").allInnerTexts();
+  }
+
+  /** A quote value that leads to its highlight, found by its field. */
+  showInDocument(fieldName: string) {
+    return this.strip.getByRole("button", {
+      name: new RegExp(`^Show in the document: ${fieldName}, `),
+    });
+  }
+
+  /** The chevron at the end of the first line that folds the strip. */
+  get collapse() {
+    return this.strip.getByRole("button", { name: /^(Hide|Show) the record's values$/ });
   }
 
   /** The record's own Accept and Reject sit in the first line, not in a value's group. */
