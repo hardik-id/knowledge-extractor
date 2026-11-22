@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ExtractionRecord, FieldDef, FieldValue, RecordType } from "@/services/contracts";
-import {
-  fieldsChangedSinceRun,
-  notFoundFields,
-  rejectedQuoteFields,
-  unplacedQuoteFields,
-  workedOutFields,
-} from "./strip-rules";
+import { fieldsChangedSinceRun, stripFields } from "./strip-rules";
 
 const field = (id: string, mode: FieldDef["mode"]): FieldDef => ({
   id,
@@ -49,53 +43,6 @@ const record = (fields: FieldValue[]): ExtractionRecord => ({
   useAsExample: false,
 });
 
-describe("workedOutFields", () => {
-  it("lists the inferred fields that have a value, in the type's order", () => {
-    const list = workedOutFields(
-      type,
-      record([value("1", "summary", "S"), value("2", "title", "T"), value("3", "status", "open")]),
-    );
-    assert.deepEqual(
-      list.map((l) => l.field.id),
-      ["status", "summary"],
-    );
-  });
-
-  it("leaves out exact quotes, empty fields and placeholders", () => {
-    const list = workedOutFields(
-      type,
-      record([value("1", "title", "T"), value("2", "status", null)]),
-    );
-    assert.deepEqual(list, []);
-  });
-
-  it("keeps a rejected value: it is shown as rejected", () => {
-    const list = workedOutFields(type, record([value("1", "status", "open", "rejected")]));
-    assert.equal(list[0].values[0].review, "rejected");
-  });
-});
-
-describe("notFoundFields", () => {
-  it("names the fields with no value", () => {
-    const list = notFoundFields(
-      type,
-      record([value("1", "title", "T"), value("2", "status", null)]),
-    );
-    assert.deepEqual(
-      list.map((f) => f.id),
-      ["status", "summary"],
-    );
-  });
-
-  it("does not name a field whose value was rejected", () => {
-    const list = notFoundFields(type, record([value("1", "title", "T", "rejected")]));
-    assert.deepEqual(
-      list.map((f) => f.id),
-      ["status", "summary"],
-    );
-  });
-});
-
 const placed = (id: string, text: string, review: FieldValue["review"] = "suggested") => ({
   ...value(id, "title", text, review),
   spans: [{ start: 0, end: 1 }] as FieldValue["spans"],
@@ -104,49 +51,95 @@ const loose = (id: string, text: string, review: FieldValue["review"] = "suggest
   ...placed(id, text, review),
   anchored: false,
 });
-const ids = (list: { values: FieldValue[] }[]) => list.flatMap((l) => l.values.map((v) => v.id));
+const of = (list: ReturnType<typeof stripFields>, id: string) =>
+  list.find((l) => l.field.id === id)!;
 
-describe("unplacedQuoteFields and rejectedQuoteFields", () => {
-  it("leaves a placed quote in neither group", () => {
-    const r = record([placed("1", "T")]);
-    assert.deepEqual(unplacedQuoteFields(type, r), []);
-    assert.deepEqual(rejectedQuoteFields(type, r), []);
+describe("stripFields", () => {
+  it("lists every field of the type in the type's order, with or without values", () => {
+    const list = stripFields(type, record([value("1", "summary", "S"), placed("2", "T")]));
+    assert.deepEqual(
+      list.map((l) => l.field.id),
+      ["title", "status", "summary"],
+    );
+    assert.equal(of(list, "status").values.length, 0);
   });
 
-  it("puts a rejected placed quote under Rejected only", () => {
-    const r = record([placed("1", "T", "rejected")]);
-    assert.deepEqual(unplacedQuoteFields(type, r), []);
-    assert.deepEqual(ids(rejectedQuoteFields(type, r)), ["1"]);
+  it("marks the fields that are not exact quotes as worked out", () => {
+    const list = stripFields(type, record([]));
+    assert.deepEqual(
+      list.map((l) => l.workedOut),
+      [false, true, true],
+    );
   });
 
-  it("puts an unplaced quote under Not placed only: flagged, or without a span", () => {
-    const r = record([loose("1", "T"), value("2", "title", "U")]);
-    assert.deepEqual(ids(unplacedQuoteFields(type, r)), ["1", "2"]);
-    assert.deepEqual(rejectedQuoteFields(type, r), []);
+  it("gives a field with several values one entry per value, in the record's order", () => {
+    const list = stripFields(
+      type,
+      record([value("1", "summary", "A"), value("2", "title", "T"), value("3", "summary", "B")]),
+    );
+    assert.deepEqual(
+      of(list, "summary").values.map((v) => v.value.id),
+      ["1", "3"],
+    );
   });
 
-  it("with the text known, also lists an anchored quote whose words cannot be found", () => {
+  it("leaves out placeholders without a value: the field then has no value", () => {
+    const list = stripFields(type, record([value("1", "status", null)]));
+    assert.deepEqual(of(list, "status").values, []);
+  });
+
+  it("a placed quote is placed and carries no note", () => {
+    const [v] = of(stripFields(type, record([placed("1", "T")])), "title").values;
+    assert.deepEqual([v.placed, v.notInText, v.rejected], [true, false, false]);
+  });
+
+  it("a rejected quote is rejected, whether it was placed or not, and is neither placed nor lost", () => {
+    for (const quote of [placed("1", "T", "rejected"), loose("2", "T", "rejected")]) {
+      const [v] = of(stripFields(type, record([quote])), "title").values;
+      assert.deepEqual([v.placed, v.notInText, v.rejected], [false, false, true]);
+    }
+  });
+
+  it("a quote that is flagged, or has no span, is not in the document", () => {
+    const list = stripFields(type, record([loose("1", "T"), value("2", "title", "U")]));
+    assert.deepEqual(
+      of(list, "title").values.map((v) => [v.placed, v.notInText]),
+      [
+        [false, true],
+        [false, true],
+      ],
+    );
+  });
+
+  it("with the text known, a quote whose words cannot be found is not in the document", () => {
     const found = { ...placed("1", "T"), spans: [{ start: 0, end: 5, quote: "Hello" }] };
     const lost = { ...placed("2", "U"), spans: [{ start: 0, end: 5, quote: "Gone!" }] };
-    const r = record([found, lost]);
-    assert.deepEqual(unplacedQuoteFields(type, r), []);
-    assert.deepEqual(ids(unplacedQuoteFields(type, r, "Hello world")), ["2"]);
+    const list = stripFields(type, record([found, lost]), "Hello world");
+    assert.deepEqual(
+      of(list, "title").values.map((v) => [v.value.id, v.placed, v.notInText]),
+      [
+        ["1", true, false],
+        ["2", false, true],
+      ],
+    );
   });
 
-  it("puts an unplaced rejected quote under Rejected only", () => {
-    const r = record([loose("1", "T", "rejected")]);
-    assert.deepEqual(unplacedQuoteFields(type, r), []);
-    assert.deepEqual(ids(rejectedQuoteFields(type, r)), ["1"]);
-  });
-
-  it("leaves worked-out fields and placeholders in neither group", () => {
-    const r = record([
-      { ...value("1", "status", "open", "rejected"), anchored: false },
-      value("2", "summary", "S"),
-      { ...loose("3", "x"), value: null },
-    ]);
-    assert.deepEqual(unplacedQuoteFields(type, r), []);
-    assert.deepEqual(rejectedQuoteFields(type, r), []);
+  it("a worked-out value is never placed or lost; a rejected one is rejected", () => {
+    const list = stripFields(
+      type,
+      record([
+        { ...value("1", "status", "open", "rejected"), anchored: false },
+        { ...value("2", "summary", "S"), anchored: false },
+      ]),
+    );
+    assert.deepEqual(
+      of(list, "status").values.map((v) => [v.placed, v.notInText, v.rejected]),
+      [[false, false, true]],
+    );
+    assert.deepEqual(
+      of(list, "summary").values.map((v) => [v.placed, v.notInText, v.rejected]),
+      [[false, false, false]],
+    );
   });
 });
 

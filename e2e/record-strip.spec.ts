@@ -1,8 +1,10 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
+import { FieldSelectionPage } from "./pages/field-selection";
 import { ExtractionPage, projectWithDocuments, saveConfiguration } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
 import { scrollsSideways } from "./pages/studio";
+import { Switcher } from "./pages/switcher";
 import { documentPane, fieldColumn, openOneScreen } from "./pages/workspace";
 import { expectAccessible } from "./support/accessibility";
 
@@ -86,8 +88,8 @@ test("accept a record, reject a value through its highlight, accept all suggeste
   const list = await strip.openList();
   await expect(list.getByRole("button", { name: new RegExp(SECOND) })).toBeVisible();
   await expect(list.getByRole("button", { name: new RegExp(THIRD) })).toBeVisible();
-  // By keyboard: with the Rejected group showing, the list reaches the dev build's badge, which
-  // would take a pointer click (the badge is not in a production build).
+  // By keyboard: the list can reach the dev build's badge, which would take a pointer click (the
+  // badge is not in a production build).
   await list.getByRole("button", { name: "Accept all suggested" }).focus();
   await page.keyboard.press("Enter");
   await expect(list.getByText("Suggested", { exact: true })).toHaveCount(0);
@@ -99,7 +101,7 @@ test("accept a record, reject a value through its highlight, accept all suggeste
   await expect(approver).toHaveCount(0);
 });
 
-test("a rejected quote value stays in the strip and is brought back from there", async ({
+test("rejecting a quote from its highlight strikes its line through, and Undo on the line brings the highlight back", async ({
   api,
   expectApiError,
   page,
@@ -119,23 +121,25 @@ test("a rejected quote value stays in the strip and is brought back from there",
     `mark[data-record-id="${recordId}"][aria-label^="Approved by: "]`,
   );
   await expect(approver).toBeVisible();
+  const line = strip.line("Approved by");
+  await expect(line.locator(".line-through")).toHaveCount(0);
   const menu = await strip.openMenu("Approved by", approver);
   await menu.getByRole("button", { name: "Reject Approved by value" }).click();
   await expect(menu).toHaveCount(0);
   await expect(approver).toHaveCount(0);
-  const rejected = strip.group("Rejected");
-  await expect(rejected.getByText("Approved by", { exact: true })).toBeVisible();
-  const rejectedLine = rejected.locator("[data-record-value]").filter({ hasText: "Approved by" });
-  await expect(rejectedLine.getByText("Rejected", { exact: true })).toBeVisible();
-  await expect(rejectedLine.locator(".line-through")).toBeVisible();
+  // The line stays where the field is, struck through, with its state.
+  await expect(line.getByText("Rejected", { exact: true })).toBeVisible();
+  await expect(line.locator(".line-through")).toBeVisible();
+  expect(await strip.fieldNames()).toContain("Approved by");
 
-  // Undo from the strip, by keyboard only.
-  const undo = rejected.getByRole("button", { name: "Undo Approved by value" });
+  // Undo from the line, by keyboard only.
+  const undo = line.getByRole("button", { name: "Undo Approved by value" });
   await undo.focus();
   await page.keyboard.press("Enter");
   await expect(approver.first()).toBeVisible();
-  await expect(strip.strip.getByRole("heading", { name: "Rejected" })).toHaveCount(0);
-  // The button is gone with its group: focus stays in the strip or on the restored highlight, never at the page start.
+  await expect(line.locator(".line-through")).toHaveCount(0);
+  await expect(line.getByText("Rejected", { exact: true })).toHaveCount(0);
+  // The button leaves with the state: focus stays in the strip or on the restored highlight, never at the page start.
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -143,11 +147,156 @@ test("a rejected quote value stays in the strip and is brought back from there",
         return (
           !!active &&
           active !== document.body &&
-          (active.matches('section[aria-label="Found in this record"]') || active.matches("mark"))
+          (active.closest('section[aria-label="Found in this record"]') !== null ||
+            active.matches("mark"))
         );
       }),
     )
     .toBe(true);
+});
+
+test("every field of the record is listed in the table's order, worked-out ones tagged, empty ones say Not found", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  const { strip } = await RecordStripPage.openWithResults(
+    page,
+    api,
+    person,
+    request,
+    DOCUMENTS,
+    expectApiError,
+  );
+  const tableNames = await fieldColumn(page)
+    .getByRole("textbox", { name: /^Name of field \d+$/ })
+    .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value));
+  expect(tableNames.length).toBeGreaterThan(3);
+  // The lines are drawn when the records arrive: wait for them, do not read once.
+  await expect.poll(() => strip.fieldNames()).toEqual(tableNames);
+
+  await expect(strip.line("Title")).toContainText(FIRST);
+  await expect(strip.line("Status").getByText("worked out", { exact: true })).toBeVisible();
+  await expect(strip.line("Decided on").getByText("worked out", { exact: true })).toBeVisible();
+  await expect(strip.line("Title").getByText("worked out")).toHaveCount(0);
+  await expect(strip.line("Approved by").getByText("worked out")).toHaveCount(0);
+  await expect(strip.line("Status").getByText("worked out")).toHaveAttribute(
+    "title",
+    /worked this out/,
+  );
+  // The old groups are gone.
+  await expect(strip.strip.getByRole("heading")).toHaveCount(0);
+
+  // A field with no value in this record says so and has no actions.
+  // (one of the three records has a field the model found nothing for)
+  const empty = strip.lines.filter({ hasText: "Not found" }).first();
+  for (let step = 0; step < 2 && !(await empty.isVisible()); step++) await strip.next.click();
+  await expect(empty).toBeVisible();
+  await expect(empty.getByRole("button", { name: /^(Accept|Reject|Edit|Delete)/ })).toHaveCount(0);
+});
+
+test("a click on a quote value puts the focus on its highlight in the document", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  const { strip } = await RecordStripPage.openWithResults(
+    page,
+    api,
+    person,
+    request,
+    DOCUMENTS,
+    expectApiError,
+  );
+  const quote = strip.showInDocument("Title");
+  await expect(quote).toHaveAccessibleName(`Show in the document: Title, ${FIRST}`);
+  await quote.click();
+  await expect(strip.highlights("Title").first()).toBeFocused();
+  // By keyboard too.
+  await strip.next.click();
+  await strip.showInDocument("Title").focus();
+  await page.keyboard.press("Enter");
+  await expect(strip.highlights("Title").nth(1)).toBeFocused();
+  // A worked-out value has no highlight: it is no link.
+  await expect(
+    strip.line("Status").getByRole("button", { name: /^Show in the document/ }),
+  ).toHaveCount(0);
+});
+
+test("a click on a field's name selects it and fades the other highlights; the table row follows", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  const { strip } = await RecordStripPage.openWithResults(
+    page,
+    api,
+    person,
+    request,
+    DOCUMENTS,
+    expectApiError,
+  );
+  const screen = new FieldSelectionPage(page);
+  await screen.expectNothingFaded();
+  await strip.fieldButton("Title").click();
+  await expect(strip.fieldButton("Title")).toHaveAttribute("aria-pressed", "true");
+  await screen.expectSelected(screen.column, "Title");
+  await screen.expectFaded("Title");
+  await expect(strip.fieldButton("Status")).toHaveAttribute("aria-pressed", "false");
+  // A selection made in the table shades the strip's line.
+  await screen.select(screen.column, "Approved by");
+  await expect(strip.fieldButton("Approved by")).toHaveAttribute("aria-pressed", "true");
+  await expect(strip.fieldButton("Title")).toHaveAttribute("aria-pressed", "false");
+  // A second click on the name clears it.
+  await strip.fieldButton("Approved by").click();
+  await screen.expectNothingSelected(screen.column);
+  await screen.expectNothingFaded();
+});
+
+test("the strip folds to its first line, and stays folded in another document", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  const { strip, extraction } = await RecordStripPage.openWithResults(
+    page,
+    api,
+    person,
+    request,
+    ["platform-adrs.md", "incident-runbook.md"],
+    expectApiError,
+  );
+  const switcher = new Switcher(page);
+  await extraction.run("Run on all 2 documents");
+  await extraction.finished();
+  await expect(strip.collapse).toHaveAccessibleName("Hide the record's values");
+  await expect(strip.collapse).toHaveAttribute("aria-expanded", "true");
+  await expect(strip.line("Title")).toBeVisible();
+  await strip.collapse.click();
+  await expect(strip.collapse).toHaveAccessibleName("Show the record's values");
+  await expect(strip.collapse).toHaveAttribute("aria-expanded", "false");
+  await expect(strip.lines).toHaveCount(0);
+  await expect(strip.position).toBeVisible();
+
+  // Another document: still folded. Then open it again.
+  await switcher.next.click();
+  await expect(switcher.trigger).toContainText("incident-runbook.md");
+  await expect(strip.lines).toHaveCount(0);
+  await switcher.previous.click();
+  await expect(switcher.trigger).toContainText("platform-adrs.md");
+  await expect(strip.position).toBeVisible();
+  await expect(strip.lines).toHaveCount(0);
+  await expect(strip.collapse).toHaveAttribute("aria-expanded", "false");
+  await strip.collapse.click();
+  await expect(strip.line("Title")).toBeVisible();
 });
 
 test("a worked-out value is corrected on its line", async ({
@@ -178,7 +327,7 @@ test("a worked-out value is corrected on its line", async ({
   // Rejecting it on the line keeps it, shown as rejected (not as "not found").
   await line.getByRole("button", { name: "Reject Decided on value" }).click();
   await expect(line.getByText("Rejected", { exact: true })).toBeVisible();
-  await expect(strip.strip.getByText(/^Not found:.*Decided on/)).toHaveCount(0);
+  await expect(line.getByText("Not found")).toHaveCount(0);
 });
 
 test("text selected in the document is added to a field of the current record", async ({
@@ -339,7 +488,7 @@ for (const size of [
       expect(await scrollsSideways(page)).toBe(false);
       const approver = await strip.openMenu("Approved by");
       await approver.getByRole("button", { name: "Reject Approved by value" }).click();
-      await expect(strip.strip.getByRole("heading", { name: "Rejected" })).toBeVisible();
+      await expect(strip.line("Approved by").getByText("Rejected", { exact: true })).toBeVisible();
       expect(await scrollsSideways(page)).toBe(false);
       const box = await strip.strip.boundingBox();
       expect(box).not.toBeNull();
@@ -348,8 +497,20 @@ for (const size of [
       if (size.width >= 1100) {
         // Pinned inside the window, leaving at least half of it to the document.
         expect(box!.y + box!.height).toBeLessThanOrEqual(size.height + 1);
-        expect(box!.height).toBeLessThanOrEqual(size.height / 2);
+        // The pane holds the strip: the document keeps clearly more than half of its height.
+        const paneBox = await documentPane(page).boundingBox();
+        expect(paneBox).not.toBeNull();
+        expect((box!.y - paneBox!.y) / paneBox!.height).toBeGreaterThan(0.55);
       }
+      // No line lies over the next one (a tag beside a name, a wrapped value).
+      const tops = await strip.strip.locator("[data-strip-line]").evaluateAll((lines) =>
+        lines.map((el) => {
+          const r = el.getBoundingClientRect();
+          return [r.top, r.bottom];
+        }),
+      );
+      for (let i = 1; i < tops.length; i++)
+        expect(tops[i]![0]).toBeGreaterThanOrEqual(tops[i - 1]![1] - 1);
       const mark = documentPane(page).locator("mark").first();
       await mark.scrollIntoViewIfNeeded();
       const markBox = await mark.boundingBox();
@@ -383,10 +544,10 @@ for (const scheme of ["light", "dark"] as const) {
       );
       await expect(strip.line("Decided on")).toBeVisible();
       await expectAccessible(page, `record strip (${scheme})`);
-      // And with the Rejected group showing.
+      // And with a rejected value showing.
       const menuOfValue = await strip.openMenu("Approved by");
       await menuOfValue.getByRole("button", { name: "Reject Approved by value" }).click();
-      await expect(strip.strip.getByRole("heading", { name: "Rejected" })).toBeVisible();
+      await expect(strip.line("Approved by").getByText("Rejected", { exact: true })).toBeVisible();
       await expectAccessible(page, `record strip with rejected values (${scheme})`);
       await strip.openMenu("Title");
       await expectAccessible(page, `value menu (${scheme})`);
@@ -394,7 +555,7 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
-test("a quote that is not in the document is listed under Not placed, with its actions", async ({
+test("a quote that is not in the document carries its note on its line, with its actions", async ({
   api,
   expectApiError,
   page,
@@ -423,13 +584,18 @@ test("a quote that is not in the document is listed under Not placed, with its a
   const extraction = new ExtractionPage(page);
   await extraction.run();
   await extraction.finished();
-  const group = strip.group("Not placed in the document");
-  await expect(group).toBeVisible();
-  await expect(group).toContainText("the words are not in the document as written");
-  const line = group.locator("[data-record-value]").first();
+  const noteText = "not in the document as written";
+  const note = strip.strip.getByText(noteText);
+  await expect(note.first()).toBeVisible();
+  // It is not a link to a highlight: the document has none for it.
+  const noted = strip.lines.filter({ has: page.getByText(noteText) }).first();
+  // The line is found again by its field once the note is gone.
+  const fieldId = await noted.getAttribute("data-strip-line");
+  const line = strip.strip.locator(`[data-strip-line="${fieldId}"]`).first();
+  await expect(line.getByRole("button", { name: /^Show in the document/ })).toHaveCount(0);
   await line.getByRole("button", { name: /^Reject .* value$/ }).click();
-  await expect(strip.group("Not placed in the document")).toHaveCount(0);
-  await expect(strip.group("Rejected")).toBeVisible();
+  await expect(line.getByText("Rejected", { exact: true })).toBeVisible();
+  await expect(line.getByText("not in the document as written")).toHaveCount(0);
   // Let a request that is still inside the route finish: one let go half way would leave without the
   // sign-in token and be refused.
   await page.unrouteAll({ behavior: "wait" });

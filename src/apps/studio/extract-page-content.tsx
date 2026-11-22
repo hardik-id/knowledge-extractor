@@ -74,6 +74,7 @@ function ExtractPanel() {
   const [view, setView] = useState<ScreenView>("document");
   const [fieldsOpen, setFieldsOpen] = useState(false);
   const [assistantRequested, setAssistantRequested] = useState(false);
+  const [stripCollapsed, setStripCollapsed] = useState(false);
   const controls = useMemo<ScreenControls>(
     () => ({
       view,
@@ -87,8 +88,10 @@ function ExtractPanel() {
         setAssistantRequested(true);
       },
       answerAssistantRequest: () => setAssistantRequested(false),
+      stripCollapsed,
+      setStripCollapsed,
     }),
-    [view, fieldsOpen, assistantRequested],
+    [view, fieldsOpen, assistantRequested, stripCollapsed],
   );
   return (
     <ScreenControlsContext.Provider value={controls}>
