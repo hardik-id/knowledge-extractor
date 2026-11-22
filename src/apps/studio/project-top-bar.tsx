@@ -62,9 +62,14 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
             {extraction && (
               <>
                 <div className="contents text-small text-ink-muted md:flex md:flex-wrap md:items-center md:gap-x-2 md:gap-y-1">
-                  <ExtractionFacts extraction={extraction} />
+                  <ExtractionFacts extraction={extraction} emptyIsUnsaved />
                 </div>
-                <ExtractionActions extraction={extraction} showPublish={false} showSave />
+                <ExtractionActions
+                  extraction={extraction}
+                  showPublish={false}
+                  showSave
+                  requireFields
+                />
               </>
             )}
           </div>

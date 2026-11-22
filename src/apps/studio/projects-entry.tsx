@@ -163,7 +163,7 @@ function ProjectList() {
         submitLabel="Create project"
         busyLabel="Creating…"
         initial={{ name: "", description: "" }}
-        chooseTemplate
+        creating
         onSubmit={async (values) => {
           const project = await services.projects.create(values);
           router.push(projectHref(project.id));

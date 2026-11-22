@@ -24,14 +24,25 @@ import type { ExtractionDefinitionState } from "./use-extraction-definition";
  * The version of the configuration, "Unsaved changes" when the draft differs, and Version
  * history: inline, for the facts line of the page header.
  */
-export function VersionBar({ definition }: { definition: ExtractionDefinitionState }) {
+export function VersionBar({
+  definition,
+  emptyIsUnsaved = false,
+}: {
+  definition: ExtractionDefinitionState;
+  /** A configuration with no record type reads "Nothing saved yet" (the Studio). */
+  emptyIsUnsaved?: boolean;
+}) {
   const { saved, dirty } = definition;
   const [open, setOpen] = useState(false);
   if (!saved) return null;
   return (
     <>
       <p>
-        <span data-testid="version-line">{versionLine(saved.version, saved.createdAt)}</span>
+        <span data-testid="version-line">
+          {emptyIsUnsaved && saved.recordTypes.length === 0
+            ? "Nothing saved yet"
+            : versionLine(saved.version, saved.createdAt)}
+        </span>
         {dirty && (
           <>
             {" · "}

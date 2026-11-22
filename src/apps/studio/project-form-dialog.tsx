@@ -15,9 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { isSessionEnd } from "@/features/auth/report-failure";
-import { useAsyncData } from "@/lib/use-async-data";
-import { TemplatePicker } from "@/features/extraction/template-picker";
-import { services } from "@/services";
 import { describeApiError } from "@/services/errors";
 
 export interface ProjectFormValues {
@@ -26,7 +23,7 @@ export interface ProjectFormValues {
 }
 
 export interface NewProjectValues extends ProjectFormValues {
-  /** Absent when the templates could not be loaded: the backend then uses its default. */
+  /** Always "blank": a project starts empty (see the start panel). Absent when changing one. */
   templateId?: string;
 }
 
@@ -39,8 +36,8 @@ interface ProjectFormDialogProps {
   busyLabel: string;
   /** Starting values each time it opens. */
   initial: ProjectFormValues;
-  /** Shows "Start from" with the templates (making a project, not changing one). */
-  chooseTemplate?: boolean;
+  /** Making a project, not changing one: it is created from the blank template. */
+  creating?: boolean;
   /** Rejects with the failure to show; resolves to close the dialog. */
   onSubmit: (values: NewProjectValues) => Promise<void>;
 }
@@ -64,7 +61,7 @@ function ProjectForm({
   submitLabel,
   busyLabel,
   initial,
-  chooseTemplate = false,
+  creating = false,
   onSubmit,
 }: Omit<ProjectFormDialogProps, "open">) {
   const nameId = useId();
@@ -74,14 +71,6 @@ function ProjectForm({
   const [text, setText] = useState(initial.description);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // The dialog is usable while the templates load; the first one (the default) is chosen until the person picks.
-  const templates = useAsyncData(chooseTemplate ? "templates" : null, (signal) =>
-    services.templates.list(signal),
-  );
-  const [picked, setPicked] = useState<string | null>(null);
-  const available = templates.data ?? [];
-  const templateId = picked ?? available[0]?.id;
-
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (busy) return;
@@ -92,7 +81,11 @@ function ProjectForm({
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({ name: name.trim(), description: text.trim(), templateId });
+      await onSubmit({
+        name: name.trim(),
+        description: text.trim(),
+        ...(creating ? { templateId: "blank" } : {}),
+      });
       onOpenChange(false);
     } catch (failure) {
       // A refused token is reported by the sign-in surface, not here.
@@ -130,19 +123,6 @@ function ProjectForm({
             onChange={(event) => setText(event.target.value)}
           />
         </div>
-        {chooseTemplate && available.length > 0 && (
-          <TemplatePicker
-            templates={available}
-            value={templateId ?? null}
-            onChange={setPicked}
-            disabled={busy}
-          />
-        )}
-        {chooseTemplate && templates.error !== undefined && (
-          <p role="status" className="text-small text-ink-muted">
-            The templates could not be loaded. The project starts from the default one.
-          </p>
-        )}
         {error && (
           <p id={errorId} role="alert" className="text-small text-danger">
             {error}
