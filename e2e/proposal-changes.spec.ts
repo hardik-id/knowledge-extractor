@@ -175,7 +175,7 @@ test.describe("keeping or discarding one change at a time", () => {
     await remove.click();
 
     await dock.ask("extract the ADRs");
-    const heading = dock.column.locator("caption").filter({ hasText: "New record type" });
+    const heading = dock.column.getByRole("table", { name: /New record type/ });
     await expect(heading).toBeVisible();
     // The type with its fields is one change: the fields have no buttons of their own.
     await expect(dock.newFieldRows.first().getByRole("button")).toHaveCount(0);
@@ -202,7 +202,7 @@ test.describe("keeping or discarding one change at a time", () => {
     await expect(dock.bar).toContainText("1 suggested change");
     await dock.bar.getByRole("listitem").first().getByRole("button", { name: "Discard" }).click();
     await expect(dock.bar).toHaveCount(0);
-    await expect(dock.conversation.getByText("2 discarded")).toBeVisible();
+    await expect(dock.conversation.getByText("Discarded", { exact: true })).toBeVisible();
     await expect(page.getByTestId("version-line")).not.toContainText("unsaved changes");
   });
 

@@ -113,7 +113,7 @@ describe("decisions one change at a time", () => {
     fieldId: "f1",
     text,
   });
-  const key = (text: string) => ["changed-field", "t1", "f1", text].join("\u0000");
+  const key = (text: string) => ["changed-field", "t1", "f1", "", text].join("\u0000");
 
   test("counts what was kept and remembers what was discarded", () => {
     recordDecision("m1", { kept: 1 });
@@ -157,7 +157,7 @@ describe("decisions one change at a time", () => {
     assert.equal(outcomeLine("dismissed", undefined, 0), "Discarded");
     assert.equal(outcomeLine("replaced", undefined, 0), "Replaced");
     assert.equal(outcomeLine("included", undefined, 0), "Already in what you have");
-    assert.equal(outcomeLine("applied", { kept: 1, discarded: [], whole: false }, 0), "1 kept");
+    assert.equal(outcomeLine("applied", { kept: 1, discarded: [], whole: false }, 0), "Kept");
     assert.equal(
       outcomeLine("applied", { kept: 2, discarded: ["x"], whole: false }, 0),
       "2 kept, 1 discarded",
@@ -167,5 +167,9 @@ describe("decisions one change at a time", () => {
       "1 kept, 1 waiting",
     );
     assert.equal(outcomeLine("applied", { kept: 3, discarded: [], whole: true }, 0), "Kept");
+    assert.equal(
+      outcomeLine("dismissed", { kept: 0, discarded: ["a", "b"], whole: false }, 0),
+      "Discarded",
+    );
   });
 });

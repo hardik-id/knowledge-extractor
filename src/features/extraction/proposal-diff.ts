@@ -60,6 +60,8 @@ export interface ProposalChange {
   typeId: string | null;
   /** The field it concerns; null when it is not about one field ("changed-type" is about the record type itself). */
   fieldId: string | null;
+  /** For "changed-type": which part of the record type it sets. Never read from the text, which carries model-chosen names. */
+  part?: "name" | "description";
   text: string;
 }
 
@@ -147,6 +149,7 @@ export function proposalChanges(
         kind: "changed-type",
         typeId: b.id,
         fieldId: null,
+        part: "name",
         text: `Record type renamed: ${typeName(a)} to ${typeName(b)}`,
       });
     }
@@ -156,6 +159,7 @@ export function proposalChanges(
         kind: "changed-type",
         typeId: b.id,
         fieldId: null,
+        part: "description",
         text: `${owner}: description changed`,
       });
     }
@@ -276,7 +280,7 @@ export function applyChange(
   });
 
   if (change.kind === "changed-type") {
-    return change.text.startsWith("Record type renamed")
+    return change.part === "name"
       ? withType((t) => ({ ...t, name: b.name }))
       : withType((t) => ({ ...t, description: b.description }));
   }
@@ -306,7 +310,94 @@ export function applyChange(
   return draft;
 }
 
+/**
+ * `draft` with all of `changes` put in, one pass: record types and fields are paired once, so it
+ * stays fast for a proposal with thousands of fields (applying them one by one is cubic).
+ */
+export function applyChanges(
+  draft: ExtractionDefinitionDraft,
+  proposal: ExtractionDefinitionDraft,
+  changes: readonly ProposalChange[],
+): ExtractionDefinitionDraft {
+  let out = draft;
+  for (const c of changes) {
+    if (c.kind === "prompt") out = { ...out, prompt: proposal.prompt };
+    else if (c.kind === "output") out = applyChange(out, proposal, c);
+  }
+  const typeChanges = changes.filter((c) => c.typeId !== null);
+  if (typeChanges.length === 0) return out;
+
+  const types = pair(draft.recordTypes, proposal.recordTypes, (t) => t.name);
+  const addedTypes = new Set(
+    typeChanges.filter((c) => c.kind === "added-type").map((c) => c.typeId),
+  );
+  const removedTypes = new Set(
+    typeChanges.filter((c) => c.kind === "removed-type").map((c) => c.typeId),
+  );
+  const byType = new Map<string, ProposalChange[]>();
+  for (const c of typeChanges) {
+    if (c.kind === "added-type" || c.kind === "removed-type") continue;
+    byType.set(c.typeId!, [...(byType.get(c.typeId!) ?? []), c]);
+  }
+
+  const patched = new Map<string, RecordType>();
+  for (const [a, b] of types.pairs) {
+    const mine = byType.get(b.id);
+    if (!mine) continue;
+    let t = { ...a };
+    for (const c of mine) {
+      if (c.kind !== "changed-type") continue;
+      if (c.part === "name") t = { ...t, name: b.name };
+      else t = { ...t, description: b.description };
+    }
+    const fieldChanges = mine.filter((c) => c.fieldId !== null);
+    if (fieldChanges.length > 0) {
+      const fields = pairFields(a.fields, b.fields);
+      const add = new Set(
+        fieldChanges.filter((c) => c.kind === "added-field").map((c) => c.fieldId),
+      );
+      const remove = new Set(
+        fieldChanges.filter((c) => c.kind === "removed-field").map((c) => c.fieldId),
+      );
+      const patches = new Map<string, FieldPatch>();
+      for (const [x, y] of fields.pairs) {
+        const wanted = fieldChanges.filter((c) => c.kind === "changed-field" && c.fieldId === y.id);
+        if (wanted.length === 0) continue;
+        for (const e of fieldChangeEntries(b.id, typeName(b), x, y)) {
+          if (wanted.some((c) => c.text === e.change.text)) {
+            patches.set(x.id, { ...patches.get(x.id), ...e.patch });
+          }
+        }
+      }
+      const removable = new Set(fields.removed.filter((f) => remove.has(f.id)).map((f) => f.id));
+      let list = t.fields
+        .filter((f) => !removable.has(f.id))
+        .map((f) => (patches.has(f.id) ? { ...f, ...patches.get(f.id) } : f));
+      for (const f of fields.added) {
+        if (add.has(f.id)) list = insertLike(list, { ...f }, b.fields);
+      }
+      t = { ...t, fields: list };
+    }
+    patched.set(a.id, t);
+  }
+
+  let recordTypes = out.recordTypes
+    .filter((t) => !removedTypes.has(t.id) || !types.removed.some((r) => r.id === t.id))
+    .map((t) => patched.get(t.id) ?? t);
+  for (const t of types.added) {
+    if (addedTypes.has(t.id))
+      recordTypes = insertLike(recordTypes, structuredClone(t), proposal.recordTypes);
+  }
+  return { ...out, recordTypes };
+}
+
 /** Identifies a change by what it is, so it can be told apart after the draft it was worked out against has changed. */
 export function changeKey(change: ProposalChange): string {
-  return [change.kind, change.typeId ?? "", change.fieldId ?? "", change.text].join("\u0000");
+  return [
+    change.kind,
+    change.typeId ?? "",
+    change.fieldId ?? "",
+    change.part ?? "",
+    change.text,
+  ].join("\u0000");
 }

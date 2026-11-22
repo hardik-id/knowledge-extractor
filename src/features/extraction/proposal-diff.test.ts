@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { ExtractionDefinitionDraft, FieldDef } from "@/services/contracts";
 import {
   applyChange,
+  applyChanges,
   changeKey,
   diffProposal,
   proposalChanges,
@@ -158,9 +159,16 @@ describe("proposalChanges", () => {
         kind: "changed-type",
         typeId: "t1",
         fieldId: null,
+        part: "name",
         text: "Record type renamed: ADR to Decision",
       },
-      { kind: "changed-type", typeId: "t1", fieldId: null, text: "Decision: description changed" },
+      {
+        kind: "changed-type",
+        typeId: "t1",
+        fieldId: null,
+        part: "description",
+        text: "Decision: description changed",
+      },
     ]);
   });
 
@@ -326,5 +334,41 @@ describe("changeKey", () => {
     const keys = new Set(before.map(changeKey));
     assert.ok(after.every((c) => keys.has(changeKey(c))));
     assert.equal(new Set(before.map(changeKey)).size, before.length);
+  });
+});
+
+describe("applyChanges", () => {
+  it("applies many added fields at once, fast", () => {
+    const proposal = base();
+    for (let i = 0; i < 1000; i++)
+      proposal.recordTypes[0]!.fields.push(field(`n${i}`, `k${i}`, `New ${i}`));
+    const changes = proposalChanges(base(), proposal);
+    const started = Date.now();
+    const result = applyChanges(base(), proposal, changes);
+    assert.ok(Date.now() - started < 2000);
+    assert.equal(result.recordTypes[0]!.fields.length, 1002);
+  });
+
+  it("leaves out the changes not passed", () => {
+    const proposal = base();
+    proposal.prompt = "New prompt";
+    proposal.recordTypes[0]!.fields.push(field("n1", "k1", "Extra"));
+    const [prompt, added] = proposalChanges(base(), proposal);
+    const only = applyChanges(base(), proposal, [added!]);
+    assert.equal(only.prompt, "Find decisions");
+    assert.equal(only.recordTypes[0]!.fields.length, 3);
+    assert.equal(applyChanges(base(), proposal, [prompt!]).prompt, "New prompt");
+  });
+
+  it("does not read a description change as a rename from the type's name", () => {
+    const current = base();
+    current.recordTypes[0]!.description = "old";
+    const proposal = structuredClone(current);
+    proposal.recordTypes[0]!.name = "Record type renamed X";
+    proposal.recordTypes[0]!.description = "new";
+    const description = proposalChanges(current, proposal).find((c) => c.part === "description")!;
+    const result = applyChange(current, proposal, description);
+    assert.equal(result.recordTypes[0]!.name, "ADR");
+    assert.equal(result.recordTypes[0]!.description, "new");
   });
 });

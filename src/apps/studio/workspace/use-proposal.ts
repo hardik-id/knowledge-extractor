@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Draft } from "@/features/extraction/definition-draft";
 import {
   applyChange,
+  applyChanges,
   changeKey,
   proposalChanges,
   shownOutcome,
@@ -124,6 +125,8 @@ export function outcomeLine(
   const d = decision ?? NONE;
   const counted = (d.kept > 0 || d.discarded.length > 0) && !d.whole;
   if (!counted || outcome === "included" || outcome === "replaced") return OUTCOME_LINE[outcome];
+  if (outcome === "dismissed" && d.kept === 0) return OUTCOME_LINE.dismissed;
+  if (outcome === "applied" && d.discarded.length === 0) return OUTCOME_LINE.applied;
   const parts = [];
   if (d.kept > 0) parts.push(`${d.kept} kept`);
   if (d.discarded.length > 0) parts.push(`${d.discarded.length} discarded`);
@@ -389,9 +392,12 @@ export function useProposal(
       if (!info) return;
       if (info.onKeepAll && nothingDecided) info.onKeepAll();
       else {
-        let draft = info.current;
-        for (const c of info.changes) draft = applyChange(draft, info.proposal.definition, c);
-        definition.setDraft(draft);
+        const open = info.changes.filter((c) => !decided.discarded.includes(changeKey(c)));
+        definition.setDraft(
+          decided.discarded.length === 0
+            ? info.proposal.definition
+            : applyChanges(info.current, info.proposal.definition, open),
+        );
       }
       recordDecision(info.messageId, {
         kept: info.changes.length,
