@@ -10,6 +10,7 @@ import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { projectHref, STUDIO_HOME } from "./nav-steps";
 import { ProjectMenu } from "./project-menu";
+import { DocumentSwitcher } from "./top-bar/document-switcher";
 
 /**
  * The one bar of a project screen (it replaces the sidebar and the page header): the logo, the
@@ -43,6 +44,7 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
             </span>
             <ProjectMenu />
           </span>
+          {extraction && <DocumentSwitcher />}
           <div className="ml-auto flex items-center gap-x-2 md:order-last md:ml-0">
             <ThemeToggle />
             <UserMenu compact />

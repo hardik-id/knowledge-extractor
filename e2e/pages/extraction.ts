@@ -140,7 +140,7 @@ export class ExtractionPage {
 
   /** A document in the list of the Review (or Output) tab. */
   document(name: string) {
-    return this.page.getByRole("button", { name });
+    return this.page.getByRole("button", { name, exact: true });
   }
 
   /** The record cards of the open document. */
