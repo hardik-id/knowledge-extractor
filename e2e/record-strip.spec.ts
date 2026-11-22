@@ -174,7 +174,8 @@ test("every field of the record is listed in the table's order, worked-out ones 
     .getByRole("textbox", { name: /^Name of field \d+$/ })
     .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value));
   expect(tableNames.length).toBeGreaterThan(3);
-  expect(await strip.fieldNames()).toEqual(tableNames);
+  // The lines are drawn when the records arrive: wait for them, do not read once.
+  await expect.poll(() => strip.fieldNames()).toEqual(tableNames);
 
   await expect(strip.line("Title")).toContainText(FIRST);
   await expect(strip.line("Status").getByText("worked out", { exact: true })).toBeVisible();
