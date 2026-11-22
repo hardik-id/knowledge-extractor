@@ -1,5 +1,6 @@
 "use client";
 
+import type * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +21,12 @@ import { DocumentsPicker } from "./documents-picker";
 export function DocumentsSheet({
   open,
   onOpenChange,
+  returnFocusTo,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Where the focus goes when the sheet closes (the sheet has no trigger of its own). */
+  returnFocusTo?: React.RefObject<HTMLElement | null>;
 }) {
   const runFiles = usePipelineStore((s) => s.runFiles);
   const selectedFiles = usePipelineStore((s) => s.selectedFiles);
@@ -39,7 +43,14 @@ export function DocumentsSheet({
 
   return (
     <Sheet open={open} onOpenChange={change}>
-      <SheetContent className="w-full gap-0 data-[side=right]:sm:max-w-3xl">
+      <SheetContent
+        className="w-full gap-0 data-[side=right]:sm:max-w-3xl"
+        onCloseAutoFocus={(event) => {
+          if (!returnFocusTo?.current) return;
+          event.preventDefault();
+          returnFocusTo.current.focus();
+        }}
+      >
         <SheetHeader className="border-b border-border-subtle pr-12">
           <SheetTitle>Add or remove documents</SheetTitle>
           <SheetDescription>

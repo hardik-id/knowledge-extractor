@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +59,7 @@ export function DocumentSwitcher() {
   const setActiveDoc = usePipelineStore((s) => s.setActiveDoc);
   const states = useDocumentStates();
   const [picking, setPicking] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   const found = runFiles.findIndex((f) => f.id === activeDocId);
   // An id that is not among the run's files (removed, or restored from an old tab): use the first.
   useEffect(() => {
@@ -80,6 +81,7 @@ export function DocumentSwitcher() {
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
+            ref={trigger}
             variant="outline"
             title={active.name}
             aria-label={`Document: ${active.name}, ${index + 1} of ${runFiles.length}`}
@@ -138,7 +140,7 @@ export function DocumentSwitcher() {
       >
         <ChevronRight aria-hidden />
       </Button>
-      <DocumentsSheet open={picking} onOpenChange={setPicking} />
+      <DocumentsSheet open={picking} onOpenChange={setPicking} returnFocusTo={trigger} />
     </div>
   );
 }

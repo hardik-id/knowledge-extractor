@@ -40,8 +40,6 @@ export function ExtractPageContent() {
     return <ExtractSkeleton />;
   }
 
-  if (!hasDocuments) return <DocumentsScreen />;
-
   if (runLoad === "error") {
     return (
       <>
@@ -61,6 +59,9 @@ export function ExtractPageContent() {
       </>
     );
   }
+
+  // Only a run that loaded and is empty shows the picker: a failed load must never offer it.
+  if (!hasDocuments) return <DocumentsScreen />;
 
   return <ExtractPanel />;
 }

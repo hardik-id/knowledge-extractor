@@ -88,17 +88,43 @@ test("removing a document with reviewed records asks first", async ({
   await expect(documentsSheet(page)).toBeHidden();
 });
 
-test("the sheet is accessible and does not scroll the page sideways", async ({
-  api,
-  page,
-  person,
-}) => {
-  const project = await api.createProject({ name: "Sheet scan" });
+for (const size of [
+  { name: "1440 x 900", width: 1440, height: 900 },
+  { name: "1280 x 720", width: 1280, height: 720 },
+  { name: "390 x 844", width: 390, height: 844 },
+]) {
+  test.describe(`at ${size.name}`, () => {
+    test.use({ viewport: { width: size.width, height: size.height } });
+
+    test("the sheet is accessible and does not scroll the page sideways", async ({
+      api,
+      page,
+      person,
+    }) => {
+      const project = await api.createProject({ name: "Sheet scan" });
+      await addDocument(person, project.run_id);
+      await page.goto(`/studio/projects/${project.id}`);
+      await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+      const sheet = await openDocumentsSheet(page);
+      await expect(sheet.getByRole("checkbox", { name: DOCS.roadmap })).toBeVisible();
+      await expect(sheet.getByRole("button", { name: "Save documents" })).toBeInViewport();
+      await expect(sheet.getByRole("button", { name: "Cancel" })).toBeInViewport();
+      await expectAccessible(page, "Documents sheet");
+      expect(await scrollsSideways(page), "the page scrolls sideways").toBe(false);
+    });
+  });
+}
+
+test("Escape closes the sheet and focus returns to the switcher", async ({ api, page, person }) => {
+  const project = await api.createProject({ name: "Sheet focus" });
   await addDocument(person, project.run_id);
   await page.goto(`/studio/projects/${project.id}`);
   await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  const switcher = page
+    .getByRole("group", { name: "Document" })
+    .getByRole("button", { name: /^Document: / });
   const sheet = await openDocumentsSheet(page);
-  await expect(sheet.getByRole("checkbox", { name: DOCS.roadmap })).toBeVisible();
-  await expectAccessible(page, "Documents sheet");
-  expect(await scrollsSideways(page), "the page scrolls sideways").toBe(false);
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(switcher).toBeFocused();
 });

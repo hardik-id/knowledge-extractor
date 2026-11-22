@@ -40,21 +40,15 @@ export function documentsSheet(page: Page) {
 
 /** Opens the document picker's sheet from the switcher in the top bar of a project with documents. */
 export async function openDocumentsSheet(page: Page) {
+  const switcher = page
+    .getByRole("group", { name: "Document" })
+    .getByRole("button", { name: /^Document: / });
+  const item = page.getByRole("menuitem", { name: "Add or remove documents" });
+  // Radix focuses the menu itself, so the wrapper around it is what holds the focus.
+  await clickUntilOpen(page, switcher, page.getByRole("menu").locator("xpath=.."));
+  await item.click();
   const sheet = documentsSheet(page);
-  // The first click after a navigation can be lost while the page settles: try again.
-  await expect(async () => {
-    if (!(await sheet.isVisible())) {
-      const item = page.getByRole("menuitem", { name: "Add or remove documents" });
-      if (!(await item.isVisible())) {
-        await page
-          .getByRole("group", { name: "Document" })
-          .getByRole("button", { name: /^Document: / })
-          .click({ timeout: 2_000 });
-      }
-      await item.click({ timeout: 2_000 });
-    }
-    await expect(sheet).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 20_000 });
+  await expect(sheet).toBeVisible();
   return sheet;
 }
 
