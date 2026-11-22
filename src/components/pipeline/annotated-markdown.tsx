@@ -38,7 +38,7 @@ export function AnnotatedMarkdown({
   marks,
   activeValueId,
   onMarkClick,
-  focusRecordId,
+  focusFieldId,
   chips = true,
   className,
 }: AnnotatedMarkdownProps) {
@@ -76,14 +76,14 @@ export function AnnotatedMarkdown({
             label={textOf(props.node)}
             activeValueId={activeValueId}
             onMarkClick={onMarkClick}
-            focusRecordId={focusRecordId}
+            focusFieldId={focusFieldId}
           >
             {props.children}
           </Highlight>
         );
       },
     };
-  }, [marks, activeValueId, onMarkClick, focusRecordId]);
+  }, [marks, activeValueId, onMarkClick, focusFieldId]);
 
   return (
     <div className={cn("space-y-6", className)}>
