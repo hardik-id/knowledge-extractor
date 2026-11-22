@@ -1,3 +1,4 @@
+import { expectWorkingScreen } from "./workspace";
 import {
   type APIRequestContext,
   type Page,
@@ -64,7 +65,7 @@ export async function openExtraction(page: Page, project: ApiProject, names: rea
   await openDocuments(page, project);
   await pickDocuments(page, names);
   await submitDocumentsButton(page).click();
-  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expectWorkingScreen(page);
   await expect(page).toHaveURL(new RegExp(`/studio/projects/${project.id}$`));
   await expect(page.getByTestId("project-top-bar").locator("visible=true")).toBeVisible();
   await expect(page.getByTestId("version-line")).toBeVisible();
@@ -128,13 +129,6 @@ export function extractPath(projectId: string) {
   return `/studio/projects/${projectId}`;
 }
 
-/** The three tabs of the workspace, and the tab panel the page shows for each. */
-export const TABS = ["Define", "Review", "Output"] as const;
-
-export function tab(page: Page, name: (typeof TABS)[number]) {
-  return page.getByRole("tab", { name });
-}
-
 /** True when the page scrolls sideways (the document is wider than the window). */
 export async function scrollsSideways(page: Page): Promise<boolean> {
   return page.evaluate(
@@ -151,4 +145,19 @@ export async function hasInnerScroll(box: import("@playwright/test").Locator): P
         ["auto", "scroll"].includes(getComputedStyle(el).overflowY),
     ),
   );
+}
+
+/** A new project from the dialog, with one document picked, opened on the working screen: the start panel. */
+export async function openStart(page: Page, name = "Start project") {
+  await createProjectFromDialog(page, name);
+  await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
+  await pickDocuments(page, [DOCS.roadmap]);
+  await submitDocumentsButton(page).click();
+  await expectWorkingScreen(page);
+  // Below 1100px the column is an overlay, opened by "Fields": the panel is not on show yet.
+  if ((page.viewportSize()?.width ?? 0) >= 1100) {
+    await expect(
+      page.getByRole("heading", { name: "What do you want from these documents?" }),
+    ).toBeVisible();
+  }
 }

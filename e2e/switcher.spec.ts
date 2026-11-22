@@ -1,6 +1,7 @@
 import { expectAccessible } from "./support/accessibility";
 import { expect, test } from "./fixtures";
 import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import { RecordStripPage } from "./pages/record-strip";
 import { Switcher } from "./pages/switcher";
 
 const FIRST = "platform-adrs.md";
@@ -48,9 +49,11 @@ test("the switcher steps through the documents and shows their state before and 
   await expect(switcher.menu).toHaveCount(0);
 
   // A review edit shows in the list without a new run.
-  await extraction.openTab("Review");
-  await page.getByRole("button", { name: "Accept all suggested" }).click();
-  await expect(extraction.summary()).toHaveText("3 records · 3 accepted");
+  const strip = new RecordStripPage(page);
+  const list = await strip.openList();
+  await list.getByRole("button", { name: "Accept all suggested" }).click();
+  await expect(list.getByRole("button", { name: "Accept all suggested" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await switcher.open();
   await expect(switcher.item(FIRST)).toContainText("3 records reviewed");
   await page.keyboard.press("Escape");

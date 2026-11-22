@@ -1,3 +1,5 @@
+import { RecordStripPage } from "./pages/record-strip";
+import { expectWorkingScreen } from "./pages/workspace";
 import { expectAccessible } from "./support/accessibility";
 import { expect, test } from "./fixtures";
 import {
@@ -16,7 +18,7 @@ test("the sheet adds a document and removes one", async ({ api, expectApiError, 
   const project = await api.createProject({ name: "Sheet project" });
   await addDocument(person, project.run_id);
   await page.goto(`/studio/projects/${project.id}`);
-  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expectWorkingScreen(page);
 
   const sheet = await openDocumentsSheet(page);
   await expect(sheet.getByText("1 document selected")).toBeVisible();
@@ -35,7 +37,7 @@ test("cancelling the sheet keeps the documents as they were", async ({ api, page
   const project = await api.createProject({ name: "Cancelled sheet" });
   await addDocument(person, project.run_id);
   await page.goto(`/studio/projects/${project.id}`);
-  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expectWorkingScreen(page);
 
   const sheet = await openDocumentsSheet(page);
   await sheet.getByRole("checkbox", { name: DOCS.roadmap }).check();
@@ -60,12 +62,15 @@ test("removing a document with reviewed records asks first", async ({
   await addDocument(person, project.run_id);
   await page.goto(`/studio/projects/${project.id}`);
   const extraction = new ExtractionPage(page);
-  await expect(extraction.tab("Define")).toBeVisible();
+  await expectWorkingScreen(page);
   await extraction.run("Run extraction");
   await extraction.finished();
-  await extraction.openTab("Review");
-  await page.getByRole("button", { name: "Accept all suggested" }).click();
-  await expect(page.getByRole("button", { name: "Accept all suggested" })).toHaveCount(0);
+  // Review the records from the list of the strip.
+  const list = await new RecordStripPage(page).openList();
+  await list.getByRole("button", { name: "Accept all suggested" }).click();
+  await expect(list.getByRole("button", { name: "Accept all suggested" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(list).toBeHidden();
 
   const sheet = await openDocumentsSheet(page);
   await sheet.getByRole("checkbox", { name: DOCS.roadmap }).check();
@@ -104,7 +109,7 @@ for (const size of [
       const project = await api.createProject({ name: "Sheet scan" });
       await addDocument(person, project.run_id);
       await page.goto(`/studio/projects/${project.id}`);
-      await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+      await expectWorkingScreen(page);
       const sheet = await openDocumentsSheet(page);
       await expect(sheet.getByRole("checkbox", { name: DOCS.roadmap })).toBeVisible();
       await expect(sheet.getByRole("button", { name: "Save documents" })).toBeInViewport();
@@ -119,7 +124,7 @@ test("Escape closes the sheet and focus returns to the switcher", async ({ api, 
   const project = await api.createProject({ name: "Sheet focus" });
   await addDocument(person, project.run_id);
   await page.goto(`/studio/projects/${project.id}`);
-  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expectWorkingScreen(page);
   const switcher = page
     .getByRole("group", { name: "Document" })
     .getByRole("button", { name: /^Document: / });

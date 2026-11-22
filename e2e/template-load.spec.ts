@@ -2,6 +2,7 @@ import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
   editPrompt,
+  promptLine,
   ExtractionPage,
   openTemplatesDialog,
   openVersionHistory,
@@ -9,6 +10,7 @@ import {
   projectWithDocuments,
   saveConfiguration,
 } from "./pages/extraction";
+import { RecordStripPage } from "./pages/record-strip";
 import { DOCS, openExtraction, scrollsSideways } from "./pages/studio";
 import { expectAccessible } from "./support/accessibility";
 
@@ -87,7 +89,7 @@ test("the dialog shows what the template brings, what would change, and that edi
   await expect(brings.getByText(/You have unsaved changes in the editor/)).toBeVisible();
   await expectAccessible(page, "templates dialog");
   await dialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByLabel("What to extract")).toHaveValue("Something I typed");
+  await expect(promptLine(page)).toContainText("Something I typed");
 });
 
 test("the same template twice changes nothing the second time", async ({ api, page }) => {
@@ -116,20 +118,14 @@ test("with reviewed records, the dialog says what the next run does, and it does
 }) => {
   const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
   const extraction = new ExtractionPage(page);
+  const strip = new RecordStripPage(page);
   await extraction.open(project);
   await extraction.run("Run on this document");
   await extraction.finished();
-  await extraction.openTab("Review");
-  const first = "Use feature flags for risky releases";
-  await expect(extraction.record(first)).toBeVisible();
-  await extraction
-    .record(first)
-    .getByRole("button", { name: "Accept", exact: true })
-    .first()
-    .click();
-  await expect(extraction.summary()).toHaveText("3 records · 1 accepted · 2 suggested");
+  await expect(strip.position).toHaveText("Record 1 of 3");
+  await strip.recordButton("Accept").click();
+  await expect(strip.recordButton("Undo")).toBeVisible();
 
-  await extraction.openTab("Define");
   const dialog = await openTemplates(page, POLICY);
   await expect(
     dialog.getByText(/1 record you reviewed or added belongs to a record type this template/),
@@ -139,10 +135,9 @@ test("with reviewed records, the dialog says what the next run does, and it does
 
   await extraction.run("Run on this document");
   await extraction.finished();
-  await extraction.openTab("Review");
-  await extraction.document("platform-adrs.md").click();
-  // The accepted record stays, without a record type; the two suggestions were replaced.
-  await expect(extraction.summary()).toHaveText("1 record · 1 accepted");
+  // The accepted record stays, without a record type (the strip shows the new type, which has none);
+  // the two suggestions were replaced.
+  await expect(strip.strip.getByText("No records of this type were found")).toBeVisible();
 });
 
 test("the dialog fits a phone without sideways scroll", async ({ api, page }) => {

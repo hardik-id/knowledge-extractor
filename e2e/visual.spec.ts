@@ -1,6 +1,8 @@
 import { type Locator, type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { ExtractionPage, addDocuments, projectWithDocuments } from "./pages/extraction";
+import { ExtractionPage, addDocuments } from "./pages/extraction";
+import { RecordStripPage } from "./pages/record-strip";
+import { documentPane } from "./pages/workspace";
 import {
   DOCS,
   createProjectFromDialog,
@@ -75,38 +77,26 @@ test("the documents picker with two documents picked", async ({ api, page }) => 
   await shot(page, "documents-picked.png");
 });
 
-test("the Define tab", async ({ api, page, person, request }) => {
-  const project = await projectWithDocuments(api, person, request, [
-    "platform-adrs.md",
-    "incident-runbook.md",
-  ]);
-  const extraction = new ExtractionPage(page);
-  await extraction.open(project);
-  await expect(page.getByTestId("version-line")).toBeVisible();
-  await shot(page, "define.png");
-});
-
 test("a new project starts empty", async ({ page }) => {
   await createProjectFromDialog(page, "Leave rules");
   await pickDocuments(page, [DOCS.roadmap]);
   await submitDocumentsButton(page).click();
   const heading = page.getByRole("heading", { name: "What do you want from these documents?" });
   await expect(heading).toBeVisible();
-  await expect(page.getByTestId("start-document")).toContainText(/\w/);
+  await expect(documentPane(page)).toContainText(/\w/);
   await shot(page, "start.png");
 });
 
-test("the Review tab with records", async ({ api, page, person, request }) => {
+test("the working screen with records", async ({ api, page, person, request }) => {
   const project = await api.createProject({ name: "Platform decisions" });
   await addDocuments(request, person, project, ["platform-adrs.md"]);
   const extraction = new ExtractionPage(page);
   await extraction.open(project);
   await extraction.run("Run extraction");
   await extraction.finished();
-  await extraction.openTab("Review");
-  await expect(extraction.record("Use feature flags for risky releases")).toBeVisible();
-  await expect(extraction.summary()).toHaveText("3 records · 3 suggested");
-  await shot(page, "review.png");
+  await expect(new RecordStripPage(page).position).toHaveText("Record 1 of 3");
+  await expect(documentPane(page).locator("mark").first()).toBeVisible();
+  await shot(page, "working-screen.png");
 });
 
 test.describe("at phone width", () => {

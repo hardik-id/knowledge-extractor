@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useMemo, useState } from "react";
 import { CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
-import { ExtractionWorkspace } from "@/features/extraction/extraction-workspace";
-import { useAssistant, type AssistantState } from "@/features/extraction/use-assistant";
-import { useExtractionRun, type ExtractionRun } from "@/features/extraction/use-extraction-run";
-import { useExtractionInput } from "@/features/run/use-extraction-input";
-import { MarkdownViewer } from "@/components/pipeline/markdown-viewer";
+import { useExtractionRun } from "@/features/extraction/use-extraction-run";
 import { useOnSessionResumed, useSessionEnded } from "@/features/auth/use-session";
 import { CellStatusLabel } from "@/components/pipeline/cell-status-label";
 import { useShallow } from "zustand/react/shallow";
@@ -19,9 +15,15 @@ import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { DocumentsScreen } from "./documents-screen";
 import { ProjectTopBar } from "./project-top-bar";
-import { StartPanel } from "./start/start-panel";
+import { OneScreen } from "./workspace/one-screen";
+import {
+  ScreenControlsContext,
+  WIDE_QUERY,
+  type ScreenControls,
+  type ScreenView,
+} from "./workspace/workspace-state";
 
-/** Inside an open project (see ProjectScope): the workspace once its run has documents, the picker before. */
+/** Inside an open project (see ProjectScope): the working screen once its run has documents, the picker before. */
 export function ExtractPageContent() {
   const projectId = usePipelineStore((s) => s.projectId);
   const hasDocuments = usePipelineStore((s) => s.runFiles.length > 0);
@@ -69,86 +71,34 @@ export function ExtractPageContent() {
 function ExtractPanel() {
   const extraction = useExtractionRun("configuration");
   const project = usePipelineStore((s) => s.project);
-  const { saved, draft } = extraction.definition;
-  const assistant = useAssistant(draft);
-  // A new project: nothing saved, nothing drafted, nothing said to the assistant yet.
-  const empty =
-    !!saved && !!draft && saved.recordTypes.length === 0 && draft.recordTypes.length === 0;
-  const starting = empty && assistant.messages.length === 0;
-  // Leaving the start panel removes the focused button: move focus to the new content.
-  const content = useRef<HTMLDivElement>(null);
-  const wasStarting = useRef(false);
-  useEffect(() => {
-    if (wasStarting.current && !starting) {
-      const target = content.current?.querySelector<HTMLElement>(
-        '[role="tab"][aria-selected="true"]',
-      );
-      (target ?? content.current)?.focus();
-    }
-    wasStarting.current = starting;
-  }, [starting]);
+  const [view, setView] = useState<ScreenView>("document");
+  const [fieldsOpen, setFieldsOpen] = useState(false);
+  const [assistantRequested, setAssistantRequested] = useState(false);
+  const controls = useMemo<ScreenControls>(
+    () => ({
+      view,
+      setView,
+      fieldsOpen,
+      setFieldsOpen,
+      assistantRequested,
+      // Below 1100px the column is an overlay: it opens first.
+      requestAssistant: () => {
+        if (!window.matchMedia(WIDE_QUERY).matches) setFieldsOpen(true);
+        setAssistantRequested(true);
+      },
+      answerAssistantRequest: () => setAssistantRequested(false),
+    }),
+    [view, fieldsOpen, assistantRequested],
+  );
   return (
-    <section aria-label="Extraction" className="flex flex-1 flex-col md:min-h-0">
-      <ProjectTopBar extraction={extraction} />
-      <h1 className="sr-only">{project?.name ? `${project.name}: Extraction` : "Extraction"}</h1>
-      <div
-        ref={content}
-        tabIndex={-1}
-        className="relative min-w-0 flex-1 px-4 py-4 outline-none sm:px-6 md:min-h-0 md:overflow-y-auto"
-        style={{ "--review-offset": "6rem" } as React.CSSProperties}
-      >
+    <ScreenControlsContext.Provider value={controls}>
+      <section aria-label="Extraction" className="flex flex-1 flex-col md:min-h-0">
+        <ProjectTopBar extraction={extraction} />
+        <h1 className="sr-only">{project?.name ? `${project.name}: Extraction` : "Extraction"}</h1>
         <FileProblems />
-        {starting && assistant.isLoading ? (
-          <ExtractSkeleton />
-        ) : starting ? (
-          <StartLayout extraction={extraction} assistant={assistant} />
-        ) : (
-          <ExtractionWorkspace
-            extraction={extraction}
-            definitionNote="This extraction configuration applies to this workspace only."
-            versioned
-          />
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** The open document on the left, the ways to begin on the right (stacked on a phone). */
-function StartLayout({
-  extraction,
-  assistant,
-}: {
-  extraction: ExtractionRun;
-  assistant: AssistantState;
-}) {
-  const fileId = usePipelineStore(
-    (s) => s.runFiles.find((f) => f.id === s.activeDocId)?.id ?? s.runFiles[0]?.id ?? null,
-  );
-  const input = useExtractionInput(fileId);
-  return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] lg:items-start lg:gap-0">
-      <div className="min-w-0 lg:pr-8" data-testid="start-document">
-        {input.error !== undefined ? (
-          <p role="alert" className="text-small text-danger">
-            {describeApiError(input.error)}
-          </p>
-        ) : input.data ? (
-          <MarkdownViewer markdown={input.data.text} className="mx-auto max-w-[680px]" />
-        ) : (
-          <div aria-busy="true" aria-label="Loading the document" className="space-y-3">
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-40 w-full" />
-          </div>
-        )}
-      </div>
-      <aside
-        aria-label="Start"
-        className="min-w-0 border-t border-border-subtle pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
-      >
-        <StartPanel definition={extraction.definition} assistant={assistant} />
-      </aside>
-    </div>
+        <OneScreen extraction={extraction} />
+      </section>
+    </ScreenControlsContext.Provider>
   );
 }
 
@@ -166,7 +116,7 @@ function FileProblems() {
   );
   if (failed === 0 && stale === 0) return null;
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border-subtle px-4 py-2">
       {failed > 0 && (
         <CellStatusLabel
           status="failed"

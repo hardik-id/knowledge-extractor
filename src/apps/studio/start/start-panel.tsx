@@ -10,6 +10,8 @@ import type { AssistantState } from "@/features/extraction/use-assistant";
 import { plural } from "@/lib/format";
 import { useAsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
+import { offerProposal } from "../workspace/use-proposal";
+import { useWorkspace } from "../workspace/workspace-state";
 import {
   startFromScratch,
   startTemplates,
@@ -29,6 +31,7 @@ interface StartPanelProps {
  */
 export function StartPanel({ definition, assistant }: StartPanelProps) {
   const askId = useId();
+  const { setConversationOpen } = useWorkspace();
   const [text, setText] = useState("");
   const templates = useAsyncData("templates", (signal) => services.templates.list(signal));
   const rows = startTemplates(templates.data ?? []);
@@ -54,7 +57,11 @@ export function StartPanel({ definition, assistant }: StartPanelProps) {
           <Button
             size="lg"
             disabled={assistant.busy || !definition.draft}
-            onClick={() => void assistant.send(suggestMessage(text))}
+            onClick={() => {
+              // The answer is read in the conversation.
+              setConversationOpen(true);
+              void assistant.send(suggestMessage(text));
+            }}
           >
             {assistant.busy ? (
               <LoaderCircle data-icon="inline-start" className="animate-spin" />
@@ -86,7 +93,13 @@ export function StartPanel({ definition, assistant }: StartPanelProps) {
               <li key={template.id}>
                 <button
                   type="button"
-                  onClick={() => definition.applyTemplate(template)}
+                  onClick={() =>
+                    offerProposal({
+                      id: `template:${template.id}`,
+                      proposal: { definition: template.definition, reasons: [] },
+                      onKeepAll: () => definition.applyTemplate(template),
+                    })
+                  }
                   className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 rounded-panel border border-border-subtle bg-background px-3 py-2.5 text-left text-body text-ink hover:bg-surface-hover sm:flex-nowrap"
                 >
                   <span className="font-medium">{template.name}</span>

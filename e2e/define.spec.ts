@@ -1,5 +1,6 @@
 import { expect, test } from "./fixtures";
 import { ExtractionPage, projectWithDocuments, saveConfiguration } from "./pages/extraction";
+import { openFields } from "./pages/workspace";
 
 const DOCUMENTS = ["platform-adrs.md"];
 
@@ -8,6 +9,7 @@ const names = (page: import("@playwright/test").Page) =>
     .getByRole("textbox", { name: /^Name of field/ })
     .evaluateAll((inputs) => inputs.map((i) => (i as HTMLInputElement).value));
 
+// The same checks as when the fields were their own tab, now on the table in the column.
 test("the fields of a record type are one table, and every change survives a reload", async ({
   api,
   page,
@@ -128,6 +130,7 @@ test("at 390px wide there is no sideways scroll and the controls can be reached"
   await page.setViewportSize({ width: 390, height: 800 });
   const project = await projectWithDocuments(api, person, request, DOCUMENTS);
   await new ExtractionPage(page).open(project);
+  await openFields(page);
   const box = page.getByRole("checkbox", { name: "Several values for Decision" });
   await box.scrollIntoViewIfNeeded();
   await expect(box).toBeVisible();
@@ -165,6 +168,7 @@ test("at 390px wide the column headers are not shown", async ({ api, page, perso
   await page.setViewportSize({ width: 390, height: 800 });
   const project = await projectWithDocuments(api, person, request, DOCUMENTS);
   await new ExtractionPage(page).open(project);
+  await openFields(page);
   const table = page.getByRole("table", { name: "Fields of ADR" });
   // Below a table's width the header is only for screen readers: the head is clipped to a point.
   const head = await table.locator("thead").boundingBox();

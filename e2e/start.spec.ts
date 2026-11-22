@@ -1,25 +1,13 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { ExtractionPage } from "./pages/extraction";
-import {
-  DOCS,
-  createProjectFromDialog,
-  pickDocuments,
-  scrollsSideways,
-  submitDocumentsButton,
-} from "./pages/studio";
+import { AssistantDock } from "./pages/assistant-dock";
+import { openVersionMenu } from "./pages/extraction";
+import { openStart, scrollsSideways } from "./pages/studio";
+import { documentPane, openFields } from "./pages/workspace";
 import { expectAccessible } from "./support/accessibility";
 
-/** A new project from the dialog, with one document picked, opened in extraction: the start panel. */
-async function openStart(page: Page, name = "Start project") {
-  await createProjectFromDialog(page, name);
-  await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
-  await pickDocuments(page, [DOCS.roadmap]);
-  await submitDocumentsButton(page).click();
-  await expect(
-    page.getByRole("heading", { name: "What do you want from these documents?" }),
-  ).toBeVisible();
-}
+/** The start panel in the field column (or its overlay on a narrow screen). */
+const startPanel = (page: Page) => new AssistantDock(page).column;
 
 test("the dialog creates the project from the blank template and the start panel shows", async ({
   page,
@@ -30,48 +18,84 @@ test("the dialog creates the project from the blank template and the start panel
   await openStart(page);
   expect((await created).postDataJSON()).toMatchObject({ template_id: "blank" });
 
-  // The open document on the left, the ways to begin on the right.
-  await expect(page.getByTestId("start-document").getByRole("heading").first()).toBeVisible();
-  const start = page.getByRole("complementary", { name: "Start" });
+  // The open document on the left, the ways to begin in the column on the right.
+  await expect(documentPane(page).getByRole("heading").first()).toBeVisible();
+  const start = startPanel(page);
   await expect(start.getByRole("button", { name: "Suggest fields" })).toBeVisible();
   await expect(start.getByRole("button", { name: /^Policy rules/ })).toContainText("6 fields");
   await expect(start.getByRole("button", { name: /^Blank/ })).toHaveCount(0);
   await expect(start.getByRole("button", { name: "Add a field yourself" })).toBeVisible();
+  // Nothing else of the column yet, and no switch between document and output.
+  await expect(start.getByRole("button", { name: "Add field" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Output", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("tab")).toHaveCount(0);
   await expect(page.getByTestId("version-line")).toHaveText("Nothing saved yet");
   await expect(
     page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
   ).toBeDisabled();
 });
 
-test("a template row loads its fields as an unsaved change", async ({ page }) => {
+test("a template row shows its fields as suggestions; Keep all loads them as an unsaved change", async ({
+  page,
+}) => {
   await openStart(page);
+  const dock = new AssistantDock(page);
   await page.getByRole("button", { name: /^Policy rules/ }).click();
-  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  // The start panel gives way to the suggestions: the record type as a table marked as new.
+  await expect(dock.bar).toContainText("suggested change");
+  await expect(dock.column.getByText("New record type")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "What do you want from these documents?" }),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("version-line")).toHaveText("Nothing saved yet");
+  await expect(
+    page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+  ).toBeDisabled();
+
+  await dock.bar.getByRole("button", { name: "Keep all" }).click();
   await expect(page.getByRole("table", { name: "Fields of Rule" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(6);
   await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
   await expect(
     page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
   ).toBeEnabled();
-  await expect(page.getByTestId("version-line")).toContainText("Nothing saved yet");
-  await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
-  // Focus moved into the new content, not back to the page.
-  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
+  // The save note starts with the template's name.
+  const menu = await openVersionMenu(page);
+  await expect(
+    menu.getByRole("form", { name: "Save configuration" }).getByLabel("Note (optional)"),
+  ).toHaveValue("From template: Policy rules");
 });
 
-test("Suggest fields asks the assistant and the tabs come back with its proposal", async ({
+test("Discard all on a template brings the start panel back", async ({
   page,
 }) => {
   await openStart(page);
-  await page.getByRole("button", { name: "Suggest fields" }).click();
-  const extraction = new ExtractionPage(page);
-  await expect(extraction.tab("Define")).toBeVisible();
-  await expect(extraction.conversation).toContainText("Suggest fields for this document.");
+  const dock = new AssistantDock(page);
+  await page.getByRole("button", { name: /^Policy rules/ }).click();
+  await expect(dock.bar).toBeVisible();
+
+  await dock.bar.getByRole("button", { name: "Discard all" }).click();
+  await expect(dock.bar).toHaveCount(0);
   await expect(
-    extraction.conversation.getByRole("region", { name: "Proposed changes" }),
+    page.getByRole("heading", { name: "What do you want from these documents?" }),
   ).toBeVisible();
+  await expect(page.getByTestId("version-line")).toHaveText("Nothing saved yet");
+});
+
+test("Suggest fields asks the assistant, opens the conversation and shows its proposal as rows", async ({
+  page,
+}) => {
+  await openStart(page);
+  const dock = new AssistantDock(page);
+  await page.getByRole("button", { name: "Suggest fields" }).click();
+  await expect(dock.conversation).toContainText("Suggest fields for this document.");
+  await expect(dock.bar).toContainText("suggested change");
   // A proposal is not saved.
   await expect(page.getByTestId("version-line")).toContainText("Nothing saved yet");
+
+  await dock.bar.getByRole("button", { name: "Keep all" }).click();
+  await expect(page.getByRole("button", { name: /^More actions for / }).first()).toBeVisible();
+  await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
 });
 
 test("what the person wrote is what the assistant is asked", async ({ page }) => {
@@ -80,13 +104,13 @@ test("what the person wrote is what the assistant is asked", async ({ page }) =>
     .getByRole("textbox", { name: "What do you want from these documents?" })
     .fill("one record per rule");
   await page.getByRole("button", { name: "Suggest fields" }).click();
-  await expect(new ExtractionPage(page).conversation).toContainText("one record per rule");
+  await expect(new AssistantDock(page).conversation).toContainText("one record per rule");
 });
 
 test("Add a field yourself makes a record type named Record with one field", async ({ page }) => {
   await openStart(page);
   await page.getByRole("button", { name: "Add a field yourself" }).click();
-  await expect(page.getByRole("textbox", { name: "Record type name" })).toHaveValue("Record");
+  await expect(page.getByRole("heading", { name: "Record", exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(1);
   await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
   await expect(
@@ -124,12 +148,12 @@ for (const size of [
 test.describe("at phone width", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("the start panel stacks under the document with no sideways scroll", async ({ page }) => {
+  test("the start panel is in the Fields overlay, with no sideways scroll", async ({ page }) => {
     await openStart(page);
     expect(await scrollsSideways(page)).toBe(false);
-    const document = await page.getByTestId("start-document").boundingBox();
-    const panel = await page.getByRole("complementary", { name: "Start" }).boundingBox();
-    expect(document && panel && panel.y >= document.y + document.height - 1).toBe(true);
+    await expect(page.getByRole("button", { name: "Suggest fields" })).toHaveCount(0);
+    await openFields(page);
+    await expect(page.getByRole("button", { name: "Suggest fields" })).toBeVisible();
     // A long template name does not squeeze its description into a narrow column.
     const row = await page
       .getByRole("button", { name: /^Architecture decision records/ })

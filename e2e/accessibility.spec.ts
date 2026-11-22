@@ -1,5 +1,6 @@
 import { type AxeException, expectAccessible } from "./support/accessibility";
 import { expect, test } from "./fixtures";
+import { AssistantDock } from "./pages/assistant-dock";
 import {
   ExtractionPage,
   openTemplatesDialog,
@@ -7,7 +8,13 @@ import {
   openVersionMenu,
   projectWithDocuments,
 } from "./pages/extraction";
-import { DOCS, openDocuments, openExtraction, openNewProjectDialog } from "./pages/studio";
+import {
+  DOCS,
+  openDocuments,
+  openExtraction,
+  openNewProjectDialog,
+  openStart,
+} from "./pages/studio";
 
 /**
  * Violations that cannot be fixed in the app, each with the issue that tracks it.
@@ -59,22 +66,33 @@ for (const scheme of ["light", "dark"] as const) {
       await scan(page, "Documents page");
     });
 
-    for (const name of ["Define", "Review", "Output"] as const) {
-      test(`the extraction page, ${name} tab`, async ({ api, page, person, request }) => {
+    for (const name of ["Document", "Output"] as const) {
+      test(`the working screen, ${name} view`, async ({ api, page, person, request }) => {
         const project = await projectWithDocuments(api, person, request, DOCUMENTS);
         const extraction = new ExtractionPage(page);
         await extraction.open(project);
-        if (name !== "Define") {
-          await extraction.runAll();
-          await extraction.finished();
-          await extraction.openTab(name);
-          await extraction.document(DOCS.roadmap).click();
-          if (name === "Review") await expect(extraction.records.first()).toBeVisible();
-          else await expect(page.getByText("Output as Markdown")).toBeVisible();
+        await extraction.runAll();
+        await extraction.finished();
+        if (name === "Document") {
+          await expect(page.getByRole("region", { name: "Found in this record" })).toBeVisible();
+        } else {
+          await page.getByRole("button", { name: "Output", exact: true }).click();
+          await expect(page.getByText("Output as Markdown")).toBeVisible();
         }
-        await scan(page, `extraction page, ${name} tab`);
+        await scan(page, `working screen, ${name} view`);
       });
     }
+
+    test("the working screen before a run", async ({ api, page, person, request }) => {
+      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+      await new ExtractionPage(page).open(project);
+      await scan(page, "working screen before a run");
+    });
+
+    test("the start panel", async ({ page }) => {
+      await openStart(page);
+      await scan(page, "start panel");
+    });
 
     test("the version history", async ({ api, page, person, request }) => {
       const project = await projectWithDocuments(api, person, request, DOCUMENTS);
@@ -111,12 +129,10 @@ for (const scheme of ["light", "dark"] as const) {
 
     test("the assistant with a proposal showing", async ({ api, page, person, request }) => {
       const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-      const extraction = new ExtractionPage(page);
-      await extraction.open(project);
-      await extraction.ask("add a field for the approver");
-      await expect(
-        extraction.conversation.getByRole("region", { name: "Proposed changes" }),
-      ).toBeVisible();
+      const dock = new AssistantDock(page);
+      await new ExtractionPage(page).open(project);
+      await dock.ask("add a field for the approver");
+      await expect(dock.bar).toBeVisible();
       await scan(page, "assistant with a proposal");
     });
   });

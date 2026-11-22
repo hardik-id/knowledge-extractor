@@ -1,3 +1,4 @@
+import { expectWorkingScreen } from "./pages/workspace";
 import { type Page } from "@playwright/test";
 import { addDocument, submitDocumentsButton } from "./pages/studio";
 import { expect, test } from "./fixtures";
@@ -82,7 +83,7 @@ test.describe("on a desktop", () => {
         await page.evaluate(() => {
           const el = document.activeElement;
           if (!el) return "none";
-          if (el.closest("aside")) return "sidebar";
+          if (el.closest('aside[aria-label="Studio"]')) return "sidebar";
           if (el.closest("[data-testid=project-top-bar]")) return "bar";
           return "content";
         }),
@@ -129,7 +130,7 @@ test.describe("on a phone", () => {
     await expect(items).toBeHidden();
 
     // With documents the project shows its workspace, where the bar carries more and wraps: still no sideways scroll.
-    await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+    await expectWorkingScreen(page);
     await expect(
       page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
     ).toBeVisible();

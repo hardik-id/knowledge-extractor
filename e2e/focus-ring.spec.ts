@@ -53,7 +53,7 @@ for (const scheme of ["light", "dark"] as const) {
       expect(await withoutRing(page, 14)).toEqual([]);
     });
 
-    test("the Define tab", async ({ api, page, person, request }) => {
+    test("the working screen", async ({ api, page, person, request }) => {
       const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
       await new ExtractionPage(page).open(project);
       await expect(page.getByTestId("version-line")).toBeVisible();
@@ -68,6 +68,7 @@ for (const scheme of ["light", "dark"] as const) {
     }) => {
       const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
       await new ExtractionPage(page).open(project);
+      await page.getByRole("button", { name: "Output", exact: true }).click();
       const radio = page.getByRole("radio", { name: "Markdown" });
       await radio.focus();
       await page.keyboard.press("Shift+Tab");
