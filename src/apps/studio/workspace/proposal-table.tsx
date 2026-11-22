@@ -233,8 +233,8 @@ export function ProposedTypes() {
     .filter((t): t is RecordType => !!t);
   return (
     <>
-      {types.map((t) => (
-        <table key={t.id} className="block w-full">
+      {types.map((t, i) => (
+        <table key={`${t.id}-${i}`} className="block w-full">
           <caption className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-subtle bg-surface-tint py-2 pr-4 pl-4 text-left">
             <span className="font-semibold text-ink-heading">{t.name.trim() || "Record type"}</span>
             <span className="rounded-pill bg-success-soft px-2 text-caption font-semibold text-success">

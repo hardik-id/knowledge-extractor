@@ -3,7 +3,9 @@ import { afterEach, describe, test } from "node:test";
 import {
   currentOffer,
   currentOutcomes,
+  NOT_SEEN,
   offerProposal,
+  offerStep,
   resetOutcomes,
   setOutcome,
   type ProposalOffer,
@@ -70,5 +72,31 @@ describe("an offered proposal", () => {
     offerProposal(one);
     resetOutcomes();
     assert.equal(currentOffer(), one);
+  });
+});
+
+describe("an offer gives way to a newer proposal of the assistant", () => {
+  test("the first look with the conversation loaded only notes the newest proposal", () => {
+    assert.deepEqual(offerStep(NOT_SEEN, "m5"), { withdraw: false, baseline: "m5" });
+    assert.deepEqual(offerStep(NOT_SEEN, undefined), { withdraw: false, baseline: undefined });
+  });
+
+  test("the same newest proposal leaves the offer standing", () => {
+    assert.deepEqual(offerStep("m5", "m5"), { withdraw: false, baseline: "m5" });
+  });
+
+  test("a proposal that arrives after the offer replaces it", () => {
+    assert.equal(offerStep("m5", "m6").withdraw, true);
+  });
+
+  test("the first proposal of an empty conversation replaces it too", () => {
+    const noted = offerStep(NOT_SEEN, undefined);
+    assert.equal(offerStep(noted.baseline, "m1").withdraw, true);
+  });
+
+  test("clearing the conversation replaces nothing, and the next proposal is new again", () => {
+    const cleared = offerStep("m5", undefined);
+    assert.deepEqual(cleared, { withdraw: false, baseline: undefined });
+    assert.equal(offerStep(cleared.baseline, "m9").withdraw, true);
   });
 });

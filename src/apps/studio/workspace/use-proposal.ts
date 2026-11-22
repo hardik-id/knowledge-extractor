@@ -23,6 +23,25 @@ export interface ProposalInfo {
   onKeepAll?: () => void;
 }
 
+/** The offer has not yet been seen with the conversation loaded. */
+export const NOT_SEEN = null;
+/** The id of the assistant's newest proposal when the offer was first seen (undefined: there was none). */
+export type OfferBaseline = string | undefined | typeof NOT_SEEN;
+
+/**
+ * Whether a standing offer gives way to the assistant, given the assistant's newest proposal now.
+ * The newest suggestion is the one shown: a proposal that arrives after the offer replaces it.
+ * A conversation that is cleared (no proposal left) replaces nothing.
+ */
+export function offerStep(
+  baseline: OfferBaseline,
+  latestId: string | undefined,
+): { withdraw: boolean; baseline: OfferBaseline } {
+  if (baseline === NOT_SEEN || latestId === undefined)
+    return { withdraw: false, baseline: latestId };
+  return { withdraw: latestId !== baseline, baseline };
+}
+
 /**
  * A proposal that does not come from the assistant: a template chosen on the start screen. It is
  * shown in the table like the assistant's, until it is kept, discarded or taken back.
@@ -57,11 +76,15 @@ export function resetOutcomes() {
 }
 
 let offer: ProposalOffer | null = null;
+// The assistant's newest proposal when the offer was first seen with the conversation loaded.
+// It lives beside the offer, not in the column, so it outlasts the column closing and opening.
+let offerBaseline: OfferBaseline = NOT_SEEN;
 
 /** Shows `next` in the table as suggestions; null takes the offer back. One offer at a time. */
 export function offerProposal(next: ProposalOffer | null) {
   if (offer === next) return;
   offer = next;
+  offerBaseline = NOT_SEEN;
   listeners.forEach((l) => l());
 }
 
@@ -99,6 +122,8 @@ function useOutcomes(): Record<string, ProposalOutcome> {
 export function useProposalSync(
   draft: Draft | undefined,
   messages: readonly AssistantMessage[],
+  /** The conversation has loaded: until then an old proposal must not pass for a new one. */
+  loaded: boolean,
 ): (message: AssistantMessage) => ProposalOutcome | "included" {
   const { setProposal } = useWorkspace();
   // The provider makes a new setter with every value; only a new proposal should run the effect.
@@ -110,17 +135,23 @@ export function useProposalSync(
   const offered = useOffer();
   const latestId = [...messages].reverse().find((m) => m.proposal)?.id;
 
-  // An offer stands until the assistant proposes something newer: the newest suggestion is the one shown.
-  const latestAtOffer = useRef<string | undefined>(undefined);
-  const seenOffer = useRef<ProposalOffer | null>(null);
+  // What keeping the offer would change. Nothing: the draft already has it, and the offer is over.
+  const offeredChanges = useMemo(
+    () => (offered && draft ? proposalChanges(draft, offered.proposal.definition) : null),
+    [offered, draft],
+  );
+  // An offer stands until the assistant proposes something newer, or until nothing of it is left.
   useEffect(() => {
-    if (offered !== seenOffer.current) {
-      seenOffer.current = offered;
-      latestAtOffer.current = latestId;
-    } else if (offered && latestId !== latestAtOffer.current) {
+    if (!offered) return;
+    if (offeredChanges && offeredChanges.length === 0) {
       offerProposal(null);
+      return;
     }
-  }, [offered, latestId]);
+    if (!loaded) return;
+    const step = offerStep(offerBaseline, latestId);
+    offerBaseline = step.baseline;
+    if (step.withdraw) offerProposal(null);
+  }, [offered, offeredChanges, latestId, loaded]);
 
   // Worked out once per change of messages, draft or decisions, not on every keystroke in the input.
   const shown = useMemo(() => {
@@ -141,24 +172,22 @@ export function useProposalSync(
     shown.get(message.id) ?? decided[message.id] ?? "replaced";
 
   const info = useMemo<ProposalInfo | null>(() => {
-    if (offered && draft) {
-      const changes = proposalChanges(draft, offered.proposal.definition);
-      if (changes.length > 0)
-        return {
-          messageId: offered.id,
-          proposal: offered.proposal,
-          changes,
-          current: draft,
-          onKeepAll: offered.onKeepAll,
-        };
-    }
+    if (offered && draft && offeredChanges && offeredChanges.length > 0)
+      return {
+        messageId: offered.id,
+        proposal: offered.proposal,
+        changes: offeredChanges,
+        current: draft,
+        onKeepAll: offered.onKeepAll,
+      };
+    // With the offer decided, a proposal of the assistant that still waits shows again.
     const message = messages.find((m) => m.id === latestId);
     if (!message?.proposal || !draft || (decided[message.id] ?? "open") !== "open") return null;
     const changes = proposalChanges(draft, message.proposal.definition);
     return changes.length === 0
       ? null
       : { messageId: message.id, proposal: message.proposal, changes, current: draft };
-  }, [messages, latestId, draft, decided, offered]);
+  }, [messages, latestId, draft, decided, offered, offeredChanges]);
 
   useEffect(() => {
     put.current(info);
