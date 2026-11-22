@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { highlightLook } from "@/features/extraction/highlight-look";
 import { labelStyle } from "@/features/extraction/labels";
 import { TEXT_START } from "@/lib/dom-selection";
 import { segmentText, type Mark } from "@/lib/text-spans";
@@ -76,11 +77,8 @@ export function Highlight({
   children,
 }: HighlightProps) {
   const primary = primaryMark(items);
-  // With a record in focus, a piece is coloured by its marks of that record; with none, it is faint.
-  const focused = focusRecordId == null ? items : items.filter((i) => i.recordId === focusRecordId);
-  const faint = focused.length === 0;
-  const style = labelStyle((faint ? primary : primaryMark(focused)).labelIndex);
-  const active = activeValueId != null && items.some((item) => item.valueId === activeValueId);
+  const { faint, active, labelIndex } = highlightLook(items, focusRecordId, activeValueId);
+  const style = labelStyle(labelIndex);
   const chipSet = chipIds instanceof Set ? chipIds : new Set(chipIds);
   const chips = items.filter((item) => chipSet.has(item.id));
   const names = [...new Set(items.map((item) => item.name))];

@@ -143,6 +143,21 @@ describe("proposalChanges", () => {
     ]);
   });
 
+  it("reports a record type rename and description change as changed-type", () => {
+    const p = base();
+    p.recordTypes[0]!.name = "Decision";
+    p.recordTypes[0]!.description = "A choice made";
+    assert.deepEqual(proposalChanges(base(), p), [
+      {
+        kind: "changed-type",
+        typeId: "t1",
+        fieldId: null,
+        text: "Record type renamed: ADR to Decision",
+      },
+      { kind: "changed-type", typeId: "t1", fieldId: null, text: "Decision: description changed" },
+    ]);
+  });
+
   it("names a removed record type", () => {
     const p = base();
     p.recordTypes = [];

@@ -59,7 +59,8 @@ export function useDocumentReview({
 
   const actions = useExtractionActions(extraction.data);
 
-  const labels = useMemo(() => fieldLabels(definition), [definition]);
+  const { recordTypes } = definition;
+  const labels = useMemo(() => fieldLabels({ recordTypes }), [recordTypes]);
   const sourceText = text.data?.text;
   const records = extraction.data?.records;
   const review = useMemo(

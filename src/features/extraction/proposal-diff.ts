@@ -51,13 +51,14 @@ export interface ProposalChange {
     | "added-field"
     | "removed-field"
     | "changed-field"
+    | "changed-type"
     | "added-type"
     | "removed-type"
     | "prompt"
     | "output";
   /** The record type it concerns (the proposal's id, or the current one's for a removal); null for the prompt and the output. */
   typeId: string | null;
-  /** The field it concerns; null when it is not about one field. */
+  /** The field it concerns; null when it is not about one field ("changed-type" is about the record type itself). */
   fieldId: string | null;
   text: string;
 }
@@ -112,7 +113,7 @@ export function proposalChanges(
   for (const [a, b] of types.pairs) {
     if (a.name.trim() !== b.name.trim()) {
       out.push({
-        kind: "changed-field",
+        kind: "changed-type",
         typeId: b.id,
         fieldId: null,
         text: `Record type renamed: ${typeName(a)} to ${typeName(b)}`,
@@ -121,7 +122,7 @@ export function proposalChanges(
     const owner = typeName(b);
     if (a.description.trim() !== b.description.trim()) {
       out.push({
-        kind: "changed-field",
+        kind: "changed-type",
         typeId: b.id,
         fieldId: null,
         text: `${owner}: description changed`,
