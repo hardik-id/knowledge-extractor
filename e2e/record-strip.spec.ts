@@ -430,5 +430,7 @@ test("a quote that is not in the document is listed under Not placed, with its a
   await line.getByRole("button", { name: /^Reject .* value$/ }).click();
   await expect(strip.group("Not placed in the document")).toHaveCount(0);
   await expect(strip.group("Rejected")).toBeVisible();
-  await page.unrouteAll({ behavior: "ignoreErrors" });
+  // Let a request that is still inside the route finish: one let go half way would leave without the
+  // sign-in token and be refused.
+  await page.unrouteAll({ behavior: "wait" });
 });
