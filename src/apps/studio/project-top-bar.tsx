@@ -20,48 +20,56 @@ import { ProjectMenu } from "./project-menu";
 export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
   const projectId = usePipelineStore((s) => s.projectId);
   return (
-    <header
-      data-testid="project-top-bar"
-      className="sticky top-0 z-30 shrink-0 border-b border-border-subtle bg-background md:static"
-    >
-      <div className="flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1 px-[max(16px,env(safe-area-inset-left))] py-1.5">
-        {/* The switcher reads the address, only known at request time under a dynamic route. */}
-        <Suspense>
-          <AppSwitcher compact markOnly />
-        </Suspense>
-        <Link
-          href={STUDIO_HOME}
-          className="rounded-control px-1 text-body font-medium text-ink hover:underline"
-        >
-          Projects
-        </Link>
-        <span aria-hidden className="text-ink-muted">
-          /
-        </span>
-        <ProjectMenu />
-        {extraction && projectId && (
+    <>
+      <nav
+        aria-label="Project"
+        data-testid="project-top-bar"
+        className="sticky top-0 z-30 shrink-0 border-b border-border-subtle bg-background md:static"
+      >
+        <div className="flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1 px-[max(16px,env(safe-area-inset-left))] py-1.5">
+          {/* The switcher reads the address, only known at request time under a dynamic route. */}
+          <Suspense>
+            <AppSwitcher compact markOnly />
+          </Suspense>
           <Link
-            href={projectHref(projectId)}
-            aria-label="Change documents"
-            className="rounded-control px-1 text-small text-link underline-offset-4 hover:underline"
+            href={STUDIO_HOME}
+            className="rounded-control px-1 text-body font-medium text-ink hover:underline"
           >
-            Documents
+            Projects
           </Link>
-        )}
-
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-          {extraction && (
-            <>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-ink-muted">
-                <ExtractionFacts extraction={extraction} />
-              </div>
-              <ExtractionActions extraction={extraction} showPublish={false} showSave />
-            </>
+          <span className="flex min-w-0 items-center gap-x-2">
+            <span aria-hidden className="text-ink-muted">
+              /
+            </span>
+            <ProjectMenu />
+          </span>
+          <div className="ml-auto flex items-center gap-x-2 md:order-last md:ml-0">
+            <ThemeToggle />
+            <UserMenu compact />
+          </div>
+          {extraction && projectId && (
+            <Link
+              href={projectHref(projectId)}
+              className="rounded-control px-1 text-small text-link underline-offset-4 hover:underline"
+            >
+              Documents
+            </Link>
           )}
-          <ThemeToggle />
-          <UserMenu compact />
+
+          <div className="contents md:ml-auto md:flex md:flex-wrap md:items-center md:justify-end md:gap-x-2 md:gap-y-1">
+            {extraction && (
+              <>
+                <div className="contents text-small text-ink-muted md:flex md:flex-wrap md:items-center md:gap-x-2 md:gap-y-1">
+                  <ExtractionFacts extraction={extraction} />
+                </div>
+                <ExtractionActions extraction={extraction} showPublish={false} showSave />
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </nav>
+      {/* What the skip link jumps to: the first stop after the bar. */}
+      <div id="project-content" tabIndex={-1} className="outline-none" />
+    </>
   );
 }

@@ -16,7 +16,8 @@ interface ReviewPanesProps {
  * Review and Output: the files, the open file and, optionally, its records, as panes
  * separated by hairlines with no frame around them. From 960px each pane scrolls by
  * itself; from 1280px the records are a column on the right, below that they sit under
- * the document. Below 960px everything is stacked.
+ * the document. Below 960px everything is stacked. A screen with less above the panes sets
+ * `--review-offset` (default 15rem) on an ancestor.
  */
 export function ReviewPanes({ list, listLabel, detail, aside, asideLabel }: ReviewPanesProps) {
   return (
@@ -24,8 +25,8 @@ export function ReviewPanes({ list, listLabel, detail, aside, asideLabel }: Revi
       className={cn(
         "grid border-b border-border-subtle",
         aside
-          ? "md:h-[max(40rem,calc(100dvh-15rem))] md:grid-cols-[13rem_minmax(0,1fr)] md:grid-rows-[minmax(0,3fr)_minmax(0,2fr)] lg:h-[max(28rem,calc(100dvh-15rem))] lg:grid-cols-[12rem_minmax(0,1fr)_22rem] lg:grid-rows-1"
-          : "md:h-[max(28rem,calc(100dvh-15rem))] md:grid-cols-[13rem_minmax(0,1fr)]",
+          ? "md:h-[max(40rem,calc(100dvh-var(--review-offset,15rem)))] md:grid-cols-[13rem_minmax(0,1fr)] md:grid-rows-[minmax(0,3fr)_minmax(0,2fr)] lg:h-[max(28rem,calc(100dvh-var(--review-offset,15rem)))] lg:grid-cols-[12rem_minmax(0,1fr)_22rem] lg:grid-rows-1"
+          : "md:h-[max(28rem,calc(100dvh-var(--review-offset,15rem)))] md:grid-cols-[13rem_minmax(0,1fr)]",
       )}
     >
       <nav

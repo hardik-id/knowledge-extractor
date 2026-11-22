@@ -59,7 +59,13 @@ test.describe("on a desktop", () => {
     const skip = page.getByRole("link", { name: "Skip to content" });
     await expect(skip).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/#main$/);
+    await expect(page).toHaveURL(/#project-content$/);
+    // The next Tab is past the bar: the skip really skips it.
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(() => !!document.activeElement?.closest("[data-testid=project-top-bar]")),
+      "focus after the skip is still in the top bar",
+    ).toBe(false);
 
     // From the top, the order is: the top bar, then the content.
     await page.goto(`/studio/projects/${project.id}`);

@@ -10,7 +10,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
       <a
-        href="#main"
+        href="#project-content"
         className="sr-only z-50 rounded-control bg-background px-4 py-2 text-link focus:not-sr-only focus:absolute focus:top-2 focus:left-2"
       >
         Skip to content

@@ -155,7 +155,7 @@ test("documents are picked and saved, then one is added and one removed", async 
   await expect(row(page, "Documents project").getByText("2 documents")).toBeVisible();
   await page.getByRole("link", { name: "Documents project" }).click();
   await expect(page).toHaveURL(/\/extract$/);
-  await page.getByRole("link", { name: "Change documents" }).click();
+  await page.getByRole("link", { name: "Documents", exact: true }).click();
   await expect(page.getByRole("checkbox", { name: DOCS.roadmap })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: DOCS.decisions })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: DOCS.runbook })).not.toBeChecked();

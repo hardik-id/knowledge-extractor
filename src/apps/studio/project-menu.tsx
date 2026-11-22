@@ -41,6 +41,7 @@ export function ProjectMenu() {
           <Button
             ref={trigger}
             variant="ghost"
+            title={project.name}
             className="max-w-[min(24rem,60vw)] px-2 font-semibold text-ink-heading"
           >
             <span className="truncate">{project.name}</span>

@@ -59,8 +59,29 @@ for (const size of [
   });
 }
 
+test.describe("at 1024 x 768", () => {
+  test.use({ viewport: { width: 1024, height: 768 } });
+
+  test("the top bar stays short on the extraction page", async ({ api, page, person }) => {
+    const project = await api.createProject({ name: "Mid width project" });
+    await addDocument(person, project.run_id);
+    await page.goto(extractPath(project.id));
+    await expect(tab(page, "Define")).toBeVisible();
+    expect(await barHeight(page), "the bar at 1024").toBeLessThan(120);
+    expect(await overflow(page), "the page").toBeLessThanOrEqual(0);
+  });
+});
+
 test.describe("at 390 x 844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the top bar stays a fifth of the screen at most", async ({ api, page, person }) => {
+    const project = await api.createProject({ name: "Phone bar project" });
+    await addDocument(person, project.run_id);
+    await page.goto(extractPath(project.id));
+    await expect(tab(page, "Define")).toBeVisible();
+    expect(await barHeight(page), "the bar at 390").toBeLessThan(844 * 0.2);
+  });
 
   test("scrolling to the end shows the end of the content", async ({ api, page, person }) => {
     const project = await api.createProject({ name: "Phone layout project" });

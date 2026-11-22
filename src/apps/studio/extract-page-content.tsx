@@ -81,10 +81,15 @@ export function ExtractPageContent() {
 
 function ExtractPanel() {
   const extraction = useExtractionRun("configuration");
+  const project = usePipelineStore((s) => s.project);
   return (
     <section aria-label="Extraction" className="flex flex-1 flex-col md:min-h-0">
       <ProjectTopBar extraction={extraction} />
-      <div className="relative min-w-0 flex-1 px-4 py-4 sm:px-6 md:min-h-0 md:overflow-y-auto">
+      <h1 className="sr-only">{project?.name ? `${project.name}: Extraction` : "Extraction"}</h1>
+      <div
+        className="relative min-w-0 flex-1 px-4 py-4 sm:px-6 md:min-h-0 md:overflow-y-auto"
+        style={{ "--review-offset": "6rem" } as React.CSSProperties}
+      >
         <FileProblems />
         <ExtractionWorkspace
           extraction={extraction}
