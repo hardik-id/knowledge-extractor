@@ -18,6 +18,8 @@ export interface LabelStyle {
   highlight: string;
   /** The colour of the underline under highlighted text. */
   underline: string;
+  /** A pale fill and underline in the same colour: a highlight that is not the one in focus. */
+  faded: string;
   /** A small tag: soft background, outline and text in the label colour. */
   chip: string;
   /** Text and icon colour. */
@@ -29,6 +31,7 @@ const STYLES: readonly LabelStyle[] = [
     index: 1,
     highlight: "bg-label-1-soft",
     underline: "border-label-1",
+    faded: "bg-label-1-soft/50 border-label-1/40",
     chip: "border-label-1 bg-label-1-soft text-label-1",
     text: "text-label-1",
   },
@@ -36,6 +39,7 @@ const STYLES: readonly LabelStyle[] = [
     index: 2,
     highlight: "bg-label-2-soft",
     underline: "border-label-2",
+    faded: "bg-label-2-soft/50 border-label-2/40",
     chip: "border-label-2 bg-label-2-soft text-label-2",
     text: "text-label-2",
   },
@@ -43,6 +47,7 @@ const STYLES: readonly LabelStyle[] = [
     index: 3,
     highlight: "bg-label-3-soft",
     underline: "border-label-3",
+    faded: "bg-label-3-soft/50 border-label-3/40",
     chip: "border-label-3 bg-label-3-soft text-label-3",
     text: "text-label-3",
   },
@@ -50,6 +55,7 @@ const STYLES: readonly LabelStyle[] = [
     index: 4,
     highlight: "bg-label-4-soft",
     underline: "border-label-4",
+    faded: "bg-label-4-soft/50 border-label-4/40",
     chip: "border-label-4 bg-label-4-soft text-label-4",
     text: "text-label-4",
   },
@@ -57,6 +63,7 @@ const STYLES: readonly LabelStyle[] = [
     index: 5,
     highlight: "bg-label-5-soft",
     underline: "border-label-5",
+    faded: "bg-label-5-soft/50 border-label-5/40",
     chip: "border-label-5 bg-label-5-soft text-label-5",
     text: "text-label-5",
   },
@@ -64,6 +71,7 @@ const STYLES: readonly LabelStyle[] = [
     index: 6,
     highlight: "bg-label-6-soft",
     underline: "border-label-6",
+    faded: "bg-label-6-soft/50 border-label-6/40",
     chip: "border-label-6 bg-label-6-soft text-label-6",
     text: "text-label-6",
   },

@@ -1,6 +1,6 @@
-/** What decides how one painted piece looks: the marks under it, the record in focus and the selected value. */
+/** What decides how one painted piece looks: the marks under it, the field in focus and the selected value. */
 interface LookMark {
-  recordId: string;
+  fieldId: string;
   valueId: string;
   start: number;
   end: number;
@@ -15,18 +15,19 @@ export function primaryOf<T extends LookMark>(items: T[]): T {
 }
 
 /**
- * With a record in focus, a piece is coloured by its marks of that record; a piece
- * with none of them is faint (dashed, no fill), unless its value is the selected one.
+ * With a field in focus, a piece is coloured by its marks of that field at full strength; a piece
+ * with none of them is faded (a pale fill and underline, still in its colour), unless its value is
+ * the selected one. Without a field in focus nothing is faded.
  */
 export function highlightLook<T extends LookMark>(
   items: T[],
-  focusRecordId: string | null | undefined,
+  focusFieldId: string | null | undefined,
   activeValueId: string | null | undefined,
-): { faint: boolean; active: boolean; labelIndex: number } {
-  const focused = focusRecordId == null ? items : items.filter((i) => i.recordId === focusRecordId);
+): { faded: boolean; active: boolean; labelIndex: number } {
+  const focused = focusFieldId == null ? items : items.filter((i) => i.fieldId === focusFieldId);
   const active = activeValueId != null && items.some((item) => item.valueId === activeValueId);
   return {
-    faint: focused.length === 0 && !active,
+    faded: focusFieldId != null && focused.length === 0 && !active,
     active,
     labelIndex: primaryOf(focused.length === 0 ? items : focused).labelIndex,
   };

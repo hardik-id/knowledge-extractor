@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, MoreHorizontal } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { Fragment, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -14,7 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { FIELD_VALUE_TYPES, type FieldDef } from "@/services/contracts";
+import { cn } from "@/lib/utils";
 import { deriveKey, parseChoices } from "./definition-draft";
+import type { LabelStyle } from "./labels";
 
 const TYPE_LABEL = { text: "Text", date: "Date", number: "Number", choice: "Choice" } as const;
 
@@ -61,6 +63,36 @@ interface FieldTableProps {
   onChange: (fieldId: string, patch: Partial<Omit<FieldDef, "id">>) => void;
   onRemove: (fieldId: string) => void;
   onMove: (fieldId: string, delta: -1 | 1) => void;
+  /** A coloured dot before each name, in the field's label colour. */
+  colourDot?: (fieldId: string) => LabelStyle;
+  /** "What to look for" always sits under the name, whatever the width. */
+  descriptionUnderName?: boolean;
+  /** The selected field: its row gets `aria-selected`. */
+  selectedFieldId?: string | null;
+  /** A click on a row outside its controls (the field's id), or Esc on the table (null). */
+  onRowSelect?: (fieldId: string | null) => void;
+  /** Rendered as a full-width row under the field's row (nothing when it returns nothing). */
+  afterRow?: (field: FieldDef) => ReactNode;
+  /** Rendered after the last row: it must be table rows (`tr`). */
+  extraRows?: ReactNode;
+}
+
+/** The classes without the ones for the widest layout, for a table that keeps "What to look for" under the name. */
+const narrowOnly = (classes: string) =>
+  classes
+    .split(" ")
+    .filter((c) => !c.startsWith("@min-[40rem]:"))
+    .join(" ");
+
+/** True for the controls of a row: a click on them is theirs, not a selection of the row. */
+function isControl(target: EventTarget | null, row: HTMLElement): boolean {
+  let node = target instanceof Element ? target : null;
+  while (node && node !== row) {
+    if (node.matches("input, select, textarea, button, a, label, [role='checkbox'], [role='menu']"))
+      return true;
+    node = node.parentElement;
+  }
+  return false;
 }
 
 /**
@@ -78,19 +110,36 @@ export function FieldTable({
   onChange,
   onRemove,
   onMove,
+  colourDot,
+  descriptionUnderName = false,
+  selectedFieldId,
+  onRowSelect,
+  afterRow,
+  extraRows,
 }: FieldTableProps) {
+  const grid = descriptionUnderName ? narrowOnly(GRID) : GRID;
   return (
     <div className="@container">
-      <table className="block w-full text-body">
+      <table
+        className="block w-full text-body"
+        onKeyDown={(event) => {
+          // Esc on the table clears the selection; an Esc that closed a menu (portalled, outside it) does not.
+          if (event.key !== "Escape" || event.defaultPrevented || !onRowSelect) return;
+          if (!event.currentTarget.contains(event.target as Node)) return;
+          if (selectedFieldId != null) onRowSelect(null);
+        }}
+      >
         <caption className="sr-only">Fields of {caption}</caption>
         <thead className="block @max-[25rem]:sr-only">
-          <tr className={`${GRID} border-b border-border-subtle text-left text-small text-ink`}>
+          <tr className={`${grid} border-b border-border-subtle text-left text-small text-ink`}>
             <th scope="col" className="px-1 py-2 font-semibold">
-              Field
+              {descriptionUnderName ? "Field and what to look for" : "Field"}
             </th>
-            <th scope="col" className="hidden px-1 py-2 font-semibold @min-[40rem]:block">
-              What to look for
-            </th>
+            {!descriptionUnderName && (
+              <th scope="col" className="hidden px-1 py-2 font-semibold @min-[40rem]:block">
+                What to look for
+              </th>
+            )}
             <th scope="col" className="px-1 py-2 font-semibold">
               Type
             </th>
@@ -106,19 +155,33 @@ export function FieldTable({
           </tr>
         </thead>
         <tbody className="block">
-          {fields.map((field, index) => (
-            <FieldRow
-              key={field.id}
-              field={field}
-              others={fields.filter((f) => f.id !== field.id).map((f) => f.key)}
-              index={index}
-              count={fields.length}
-              errors={showErrors ? errors[field.id] : undefined}
-              onChange={(patch) => onChange(field.id, patch)}
-              onRemove={() => onRemove(field.id)}
-              onMove={(delta) => onMove(field.id, delta)}
-            />
-          ))}
+          {fields.map((field, index) => {
+            const after = afterRow?.(field);
+            return (
+              <Fragment key={field.id}>
+                <FieldRow
+                  field={field}
+                  others={fields.filter((f) => f.id !== field.id).map((f) => f.key)}
+                  index={index}
+                  count={fields.length}
+                  errors={showErrors ? errors[field.id] : undefined}
+                  onChange={(patch) => onChange(field.id, patch)}
+                  onRemove={() => onRemove(field.id)}
+                  onMove={(delta) => onMove(field.id, delta)}
+                  dot={colourDot?.(field.id)}
+                  underName={descriptionUnderName}
+                  selected={onRowSelect ? selectedFieldId === field.id : undefined}
+                  onSelect={onRowSelect ? () => onRowSelect(field.id) : undefined}
+                />
+                {after != null && after !== false && (
+                  <tr className="block">
+                    <td className="block">{after}</td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+          {extraRows}
         </tbody>
       </table>
     </div>
@@ -135,6 +198,11 @@ interface FieldRowProps {
   onChange: (patch: Partial<Omit<FieldDef, "id">>) => void;
   onRemove: () => void;
   onMove: (delta: -1 | 1) => void;
+  dot?: LabelStyle;
+  underName: boolean;
+  /** Undefined when rows cannot be selected. */
+  selected?: boolean;
+  onSelect?: () => void;
 }
 
 function FieldRow({
@@ -146,6 +214,10 @@ function FieldRow({
   onChange,
   onRemove,
   onMove,
+  dot,
+  underName,
+  selected,
+  onSelect,
 }: FieldRowProps) {
   const uid = useId();
   const id = (part: string) => `${uid}-${part}`;
@@ -179,19 +251,46 @@ function FieldRow({
   const menuCell =
     "col-start-4 row-start-1 @min-[25rem]:col-start-5 @min-[25rem]:row-span-2 @min-[40rem]:row-span-1 @min-[40rem]:col-start-6";
 
+  const place = (classes: string) => (underName ? narrowOnly(classes) : classes);
+  const grid = place(GRID);
+
   return (
-    <tr className={`${GRID} border-b border-border-subtle py-2 last:border-b-0 @min-[25rem]:py-0`}>
-      <td className={`${cell} ${nameCell}`}>
+    <tr
+      aria-selected={selected}
+      onClick={
+        onSelect
+          ? (event) => {
+              if (!isControl(event.target, event.currentTarget)) onSelect();
+            }
+          : undefined
+      }
+      className={cn(
+        `${grid} border-b border-border-subtle py-2 @min-[25rem]:py-0`,
+        !onSelect && "last:border-b-0",
+        onSelect && "cursor-pointer",
+        selected && "bg-surface-hover",
+      )}
+    >
+      <td className={`${cell} ${place(nameCell)}`}>
         <CellLabel>Field</CellLabel>
-        <Input
-          value={field.name}
-          aria-label={`Name of field ${index + 1}`}
-          placeholder="Approved by"
-          className={CELL_INPUT}
-          aria-invalid={!!errors?.name}
-          aria-describedby={errors?.name ? id("name-err") : undefined}
-          onChange={(e) => onChange({ name: e.target.value })}
-        />
+        <div className="flex items-center gap-1">
+          {dot && (
+            <span
+              aria-hidden
+              data-testid="field-dot"
+              className={cn("ml-1 size-2 shrink-0 rounded-pill bg-current", dot.text)}
+            />
+          )}
+          <Input
+            value={field.name}
+            aria-label={`Name of field ${index + 1}`}
+            placeholder="Approved by"
+            className={cn(CELL_INPUT, selected && "font-semibold")}
+            aria-invalid={!!errors?.name}
+            aria-describedby={errors?.name ? id("name-err") : undefined}
+            onChange={(e) => onChange({ name: e.target.value })}
+          />
+        </div>
         {errors?.name && <Problem id={id("name-err")}>{errors.name}</Problem>}
         {showKey && (
           <div className="mt-1">
@@ -208,17 +307,17 @@ function FieldRow({
           </div>
         )}
       </td>
-      <td className={`${cell} ${descCell}`}>
+      <td className={`${cell} ${place(descCell)}`}>
         <CellLabel>What to look for</CellLabel>
         <Input
           value={field.description}
           aria-label={`What to look for in ${label}`}
           placeholder="The person who approved it"
-          className={`${CELL_INPUT} @min-[25rem]:text-ink-muted @min-[40rem]:text-ink`}
+          className={`${CELL_INPUT} ${place("@min-[25rem]:text-ink-muted @min-[40rem]:text-ink")}`}
           onChange={(e) => onChange({ description: e.target.value })}
         />
       </td>
-      <td className={`${cell} ${typeCell}`}>
+      <td className={`${cell} ${place(typeCell)}`}>
         <CellLabel>Type</CellLabel>
         <Select
           className={CELL_INPUT}
@@ -234,7 +333,7 @@ function FieldRow({
         </Select>
       </td>
       {field.valueType === "choice" && (
-        <td className={`${cell} ${choicesCell}`}>
+        <td className={`${cell} ${place(choicesCell)}`}>
           <div className="flex items-center gap-2">
             <span aria-hidden className="shrink-0 text-small text-ink-muted">
               Allowed values
@@ -256,7 +355,7 @@ function FieldRow({
           {errors?.choices && <Problem id={id("choices-err")}>{errors.choices}</Problem>}
         </td>
       )}
-      <td className={`${cell} ${quoteCell}`}>
+      <td className={`${cell} ${place(quoteCell)}`}>
         <label className="flex items-center gap-2 py-1.5">
           <Checkbox
             aria-label={`Exact quote for ${label}`}
@@ -268,7 +367,7 @@ function FieldRow({
           </span>
         </label>
       </td>
-      <td className={`${cell} ${multipleCell}`}>
+      <td className={`${cell} ${place(multipleCell)}`}>
         <label className="flex items-center gap-2 py-1.5">
           <Checkbox
             aria-label={`Several values for ${label}`}
@@ -280,7 +379,7 @@ function FieldRow({
           </span>
         </label>
       </td>
-      <td className={`${cell} ${menuCell} text-right`}>
+      <td className={`${cell} ${place(menuCell)} text-right`}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label={`More actions for ${label}`}>
