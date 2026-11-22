@@ -53,7 +53,7 @@ describe("labelStyle", () => {
   });
   test("has a faded pair in the same colour for each of the six", () => {
     for (let i = 1; i <= 6; i++) {
-      assert.equal(labelStyle(i).faded, `bg-label-${i}-soft/50 border-label-${i}/40`);
+      assert.equal(labelStyle(i).faded, `bg-label-${i}-soft/25 border-label-${i}/25`);
     }
   });
   test("wraps indices outside 1 to 6", () => {

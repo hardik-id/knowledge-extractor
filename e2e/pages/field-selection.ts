@@ -3,8 +3,8 @@ import type { ApiProject, Person } from "../fixtures";
 import { ExtractionPage, projectWithDocuments } from "./extraction";
 import { documentPane, fieldColumn, openOneScreen } from "./workspace";
 
-/** The faded look of a highlight: its fill and underline in the label colour at half strength. */
-const FADED = /-soft\/50/;
+/** The faded look of a highlight: its fill and underline in the label colour at a quarter strength. */
+const FADED = /-soft\/25/;
 
 /** The field column and the document of the working screen, for selecting a field. */
 export class FieldSelectionPage {
