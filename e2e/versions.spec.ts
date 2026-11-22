@@ -1,6 +1,7 @@
 import { expect, test } from "./fixtures";
 import {
   editPrompt,
+  promptLine,
   ExtractionPage,
   openVersionHistory,
   saveConfiguration,
@@ -43,7 +44,7 @@ test("restoring version 1 makes a new version 3", async ({ page }) => {
   await history.getByRole("button", { name: "Restore this version" }).click();
 
   await expect(versionLine(page)).toContainText("Version 3");
-  await expect(page.getByLabel("What to extract")).not.toHaveValue("Find every renewal date");
+  await expect(promptLine(page)).not.toContainText("Find every renewal date");
 
   const versions = (await openVersionHistory(page))
     .getByRole("list", { name: "Versions" })
@@ -85,5 +86,5 @@ test("a change made elsewhere is reported when saving, and nothing is lost", asy
   ).toBeVisible();
   // The latest version, with the other browser's wording, is what is loaded now.
   await expect(versionLine(page)).toContainText("Version 2");
-  await expect(page.getByLabel("What to extract")).toHaveValue("Second browser wording");
+  await expect(promptLine(page)).toContainText("Second browser wording");
 });

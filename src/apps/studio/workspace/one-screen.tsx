@@ -1,7 +1,7 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -11,7 +11,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Segmented } from "@/features/extraction/review-panes";
 import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
@@ -20,12 +19,10 @@ import { FieldColumn } from "./field-column";
 import { OutputPane } from "./output-pane";
 import { RecordStrip } from "./record-strip";
 import { WorkspaceProvider } from "./workspace-provider";
-
-/** From this width the field column sits beside the document; below it, it is an overlay. */
-const WIDE = "(min-width: 1100px)";
+import { useScreenControls, WIDE_QUERY } from "./workspace-state";
 
 function subscribeWide(onChange: () => void) {
-  const query = window.matchMedia(WIDE);
+  const query = window.matchMedia(WIDE_QUERY);
   query.addEventListener("change", onChange);
   return () => query.removeEventListener("change", onChange);
 }
@@ -33,17 +30,15 @@ function subscribeWide(onChange: () => void) {
 function useWide(): boolean {
   return useSyncExternalStore(
     subscribeWide,
-    () => window.matchMedia(WIDE).matches,
+    () => window.matchMedia(WIDE_QUERY).matches,
     () => true,
   );
 }
 
-type View = "document" | "output";
-
 /**
  * The working screen of a project: the document on the left (with the record strip pinned under
  * it), the configuration in a 560px column on the right. Below 1100px the column is a sheet,
- * opened by the "Fields" button in the document's header.
+ * opened by the "Fields" button above the document. The "Document | Output" switch is in the top bar.
  */
 export function OneScreen({ extraction }: { extraction: ExtractionRun }) {
   const { definition } = extraction;
@@ -85,12 +80,19 @@ export function OneScreen({ extraction }: { extraction: ExtractionRun }) {
 function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: string | null }) {
   const { definition } = extraction;
   const wide = useWide();
-  const [view, setView] = useState<View>("document");
-  const [fieldsOpen, setFieldsOpen] = useState(false);
+  const controls = useScreenControls();
+  const view = controls?.view ?? "document";
+  const fieldsOpen = controls?.fieldsOpen ?? false;
+  const setFieldsOpen = controls?.setFieldsOpen ?? (() => {});
   const fieldsButton = useRef<HTMLButtonElement>(null);
   // Nothing to show as output while there is nothing to extract.
   const configured = (definition.draft?.recordTypes.length ?? 0) > 0;
-  const shown: View = configured ? view : "document";
+  const shown = configured ? view : "document";
+  // Do not let a stale Output choice come back when a field is added again.
+  const setView = controls?.setView;
+  useEffect(() => {
+    if (!configured && view !== "document") setView?.("document");
+  }, [configured, view, setView]);
 
   return (
     <div className="flex flex-1 md:min-h-0">
@@ -99,31 +101,17 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
         aria-label="Document"
         className="flex min-w-0 flex-1 flex-col md:min-h-0"
       >
-        {(!wide || configured) && (
+        {!wide && (
           <div className="flex items-center gap-2 border-b border-border-subtle px-4 py-1.5">
-            {!wide && (
-              <Button
-                ref={fieldsButton}
-                variant="outline"
-                size="sm"
-                onClick={() => setFieldsOpen(true)}
-              >
-                <SlidersHorizontal data-icon="inline-start" />
-                Fields
-              </Button>
-            )}
-            <span className="flex-1" />
-            {configured && (
-              <Segmented
-                label="Show"
-                value={shown}
-                onChange={setView}
-                options={[
-                  { value: "document", label: "Document" },
-                  { value: "output", label: "Output" },
-                ]}
-              />
-            )}
+            <Button
+              ref={fieldsButton}
+              variant="outline"
+              size="sm"
+              onClick={() => setFieldsOpen(true)}
+            >
+              <SlidersHorizontal data-icon="inline-start" />
+              Fields
+            </Button>
           </div>
         )}
         <div className="min-h-0 flex-1 md:overflow-y-auto">

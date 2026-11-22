@@ -42,7 +42,19 @@ export function RunButton({ extraction }: { extraction: ExtractionRun }) {
       empty: (draft?.recordTypes.length ?? 0) === 0,
       running: running || saving,
     });
-  }, [runFiles, activeDocId, cells, extractions, error, isLoading, saved, draft, dirty, saving, running]);
+  }, [
+    runFiles,
+    activeDocId,
+    cells,
+    extractions,
+    error,
+    isLoading,
+    saved,
+    draft,
+    dirty,
+    saving,
+    running,
+  ]);
 
   if (!saved) return null;
   const start = (choice: RunChoice) => void run(choice.fileIds ? { fileIds: choice.fileIds } : {});

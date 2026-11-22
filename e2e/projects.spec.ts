@@ -1,3 +1,4 @@
+import { expectWorkingScreen } from "./pages/workspace";
 import { expect, test } from "./fixtures";
 import {
   DOCS,
@@ -145,7 +146,7 @@ test("documents are picked and used, then one is added and one removed", async (
   await expect(page.getByText("2 documents selected")).toBeVisible();
   await expect(submitDocumentsButton(page)).toHaveText("Use 2 documents");
   await submitDocumentsButton(page).click();
-  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expectWorkingScreen(page);
   await expect(page).toHaveURL(new RegExp(`/studio/projects/${project.id}$`));
 
   await page.reload();
@@ -161,7 +162,7 @@ test("documents are picked and used, then one is added and one removed", async (
   await page.goto("/studio");
   await expect(row(page, "Documents project").getByText("2 documents")).toBeVisible();
   await page.getByRole("link", { name: "Documents project" }).click();
-  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expectWorkingScreen(page);
   const again = await openDocumentsSheet(page);
   await expect(again.getByRole("checkbox", { name: DOCS.roadmap })).toBeChecked();
   await expect(again.getByRole("checkbox", { name: DOCS.decisions })).toBeChecked();
@@ -186,5 +187,5 @@ test("an old extraction address lands on the project", async ({ api, page, perso
   await addDocument(person, project.run_id);
   await page.goto(`/studio/projects/${project.id}/extract`);
   await expect(page).toHaveURL(new RegExp(`/studio/projects/${project.id}$`));
-  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expectWorkingScreen(page);
 });

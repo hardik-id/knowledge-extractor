@@ -40,7 +40,7 @@ test("from the project list, a project opens and 'Run on this document' is reach
 
   const run = page.getByRole("button", { name: "Run on this document" });
   await expect(run).toBeVisible();
-  // The top bar comes first: the project menu, then Run, and only then the tabs.
+  // The top bar comes first: the project menu, then Run, and only then the working screen.
   await tabTo(page, "Keyboard project");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
@@ -48,12 +48,11 @@ test("from the project list, a project opens and 'Run on this document' is reach
   await expect(page.getByRole("button", { name: "Keyboard project" })).toBeFocused();
   await tabTo(page, "Run on this document");
   await expect(run).toBeFocused();
-  await expect(page.getByRole("tab", { name: "Define" })).not.toBeFocused();
   await page.keyboard.press("Enter");
 
-  // Enter ran it: the Review tab opens with the records.
-  await expect(page.getByRole("tab", { name: "Review" })).toHaveAttribute("aria-selected", "true");
+  // Enter ran it: the records are in, and the button says so.
   await expect(page.getByRole("button", { name: "Run again" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Found in this record" })).toBeVisible();
 });
 
 test("focus returns to the version text after Version history and to More after Templates close", async ({

@@ -140,7 +140,9 @@ export const test = base.extend<Fixtures & { watched: Watch }>({
     const watched: Watch = {
       problems: [],
       loadFailures: [],
-      expected: [],
+      // The working screen always asks for the open document's extraction, and the backend
+      // answers 404 for one that has not been run yet: the screen shows no records then.
+      expected: [{ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ }],
       expectedUrls: new Set(),
     };
     await run(watched);

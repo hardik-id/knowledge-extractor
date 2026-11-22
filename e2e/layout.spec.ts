@@ -1,6 +1,8 @@
 import { type Page } from "@playwright/test";
-import { addDocument, extractPath, tab, TABS } from "./pages/studio";
+import { addDocument, extractPath } from "./pages/studio";
+import { expectWorkingScreen } from "./pages/workspace";
 import { expect, test } from "./fixtures";
+import { editPrompt } from "./pages/extraction";
 
 /** How much taller the document is than the window (0 when the page cannot scroll). */
 function overflow(page: Page): Promise<number> {
@@ -29,7 +31,7 @@ for (const size of [
       page,
       person,
     }) => {
-      // The Review tab of a file nobody has extracted yet: "extraction_not_found" is how the API says so.
+      // The document of a file nobody has extracted yet: "extraction_not_found" is how the API says so.
       expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
       const project = await api.createProject({ name: "Layout project" });
       await addDocument(person, project.run_id);
@@ -47,16 +49,19 @@ for (const size of [
       );
 
       await page.goto(extractPath(project.id));
-      await expect(tab(page, "Define")).toBeVisible();
-      expect(await barHeight(page), "the top bar on the extraction page").toBeLessThan(90);
+      await expectWorkingScreen(page);
+      expect(await barHeight(page), "the top bar on the working screen").toBeLessThan(90);
       // With unsaved changes the version text is longer: the bar stays one row.
-      await page.getByLabel("What to extract").fill("Something else to extract");
+      await editPrompt(page, "Something else to extract");
       await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
       expect(await barHeight(page), "the top bar with unsaved changes is one row").toBeLessThan(56);
-      for (const name of TABS) {
-        await tab(page, name).click();
-        await expect(tab(page, name)).toHaveAttribute("aria-selected", "true");
-        expect(await overflow(page), `the ${name} tab`).toBeLessThanOrEqual(0);
+      for (const name of ["Output", "Document"]) {
+        await page.getByRole("button", { name, exact: true }).click();
+        await expect(page.getByRole("button", { name, exact: true })).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+        expect(await overflow(page), `the ${name} view`).toBeLessThanOrEqual(0);
       }
     });
   });
@@ -65,11 +70,11 @@ for (const size of [
 test.describe("at 1024 x 768", () => {
   test.use({ viewport: { width: 1024, height: 768 } });
 
-  test("the top bar stays short on the extraction page", async ({ api, page, person }) => {
+  test("the top bar stays short on the working screen", async ({ api, page, person }) => {
     const project = await api.createProject({ name: "Mid width project" });
     await addDocument(person, project.run_id);
     await page.goto(extractPath(project.id));
-    await expect(tab(page, "Define")).toBeVisible();
+    await expectWorkingScreen(page);
     expect(await barHeight(page), "the bar at 1024").toBeLessThan(120);
     expect(await overflow(page), "the page").toBeLessThanOrEqual(0);
   });
@@ -82,7 +87,7 @@ test.describe("at 390 x 844", () => {
     const project = await api.createProject({ name: "Phone bar project" });
     await addDocument(person, project.run_id);
     await page.goto(extractPath(project.id));
-    await expect(tab(page, "Define")).toBeVisible();
+    await expectWorkingScreen(page);
     expect(await barHeight(page), "the bar at 390").toBeLessThan(844 * 0.25);
   });
 
@@ -90,7 +95,7 @@ test.describe("at 390 x 844", () => {
     const project = await api.createProject({ name: "Phone layout project" });
     await addDocument(person, project.run_id);
     await page.goto(extractPath(project.id));
-    await expect(tab(page, "Define")).toBeVisible();
+    await expectWorkingScreen(page);
 
     // The last thing in the page, whatever it is, ends no more than ~48px above the document's end.
     const gap = await page.evaluate(() => {

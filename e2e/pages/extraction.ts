@@ -2,6 +2,7 @@ import { type APIRequestContext, type Page, expect } from "@playwright/test";
 import { API_BASE_URL, API_ORIGIN } from "../support/env";
 import type { Api, ApiProject, Person } from "../fixtures";
 import { clickUntilOpen } from "../support/first-click";
+import { openOneScreen } from "./workspace";
 
 interface ApiDocument {
   id: string;
@@ -69,31 +70,9 @@ export class ExtractionPage {
     });
   }
 
+  /** Opens the project's working screen. */
   async open(project: ApiProject) {
-    await this.page.goto(`/studio/projects/${project.id}/extract`);
-    await expect(this.page.getByRole("tab", { name: "Define" })).toBeVisible();
-  }
-
-  tab(name: "Define" | "Review" | "Output") {
-    return this.page.getByRole("tab", { name });
-  }
-
-  async openTab(name: "Define" | "Review" | "Output") {
-    await this.tab(name).click();
-    await expect(this.tab(name)).toHaveAttribute("aria-selected", "true");
-  }
-
-  get assistant() {
-    return this.page.getByRole("complementary", { name: "Assistant" });
-  }
-
-  get conversation() {
-    return this.assistant.getByRole("log", { name: "Conversation" });
-  }
-
-  async ask(text: string) {
-    await this.assistant.getByLabel("Message to the assistant").fill(text);
-    await this.assistant.getByRole("button", { name: "Send" }).click();
+    await openOneScreen(this.page, project);
   }
 
   /** The one Run button of the top bar: "Run on this document", "Run on all N documents" or "Run again". */
@@ -161,27 +140,6 @@ export class ExtractionPage {
     await expect(this.runButton).toBeEnabled();
   }
 
-  /** A document in the list of the Review (or Output) tab. */
-  document(name: string) {
-    return this.page.getByRole("button", { name, exact: true });
-  }
-
-  /** The record cards of the open document. */
-  get records() {
-    return this.page.getByRole("article");
-  }
-
-  record(heading: string) {
-    return this.records.filter({
-      has: this.page.getByRole("heading", { level: 4, name: heading }),
-    });
-  }
-
-  /** The "3 records · 2 accepted · 1 suggested" line above the records. */
-  summary() {
-    return this.page.getByText(/^\d+ records?/);
-  }
-
   /** The version text of the top bar: the button that opens the version menu. */
   get versionMenu() {
     return this.page.getByRole("button", { name: /^(Version \d|Nothing saved yet)/ });
@@ -193,9 +151,19 @@ export class ExtractionPage {
   }
 }
 
+/** The "What to extract" line of the column: a button until it is clicked, then a text box. */
+export function promptLine(page: Page) {
+  return page.getByRole("button", { name: /^What to extract/ });
+}
+
 /** Changes the "What to extract" text, which leaves the configuration with unsaved changes. */
 export async function editPrompt(page: Page, text: string) {
-  await page.getByLabel("What to extract").fill(text);
+  await promptLine(page).click();
+  const box = page.getByRole("textbox", { name: "What to extract" });
+  await box.fill(text);
+  // Esc closes the box and keeps what was typed in the draft.
+  await box.press("Escape");
+  await expect(box).toHaveCount(0);
 }
 
 /** Opens the version menu in the top bar (the version text). */

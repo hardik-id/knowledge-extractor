@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expectAccessible } from "./support/accessibility";
 import { expect, test, type Person } from "./fixtures";
-import { editPrompt, saveConfiguration } from "./pages/extraction";
+import { editPrompt, promptLine, saveConfiguration } from "./pages/extraction";
 import { DOCS, extractPath, openExtraction } from "./pages/studio";
 
 /**
@@ -54,7 +54,7 @@ test("a refused token while working: one dialog, then the work is still there", 
   const project = await api.createProject({ name: "Refused while working" });
   await openExtraction(page, project, [DOCS.roadmap]);
   await editPrompt(page, "Find every renewal date");
-  const message = page.getByLabel("Message to the assistant");
+  const message = page.getByRole("textbox", { name: "Ask the assistant" });
   await message.fill("also add a field for the owner");
   const address = page.url();
 
@@ -70,7 +70,7 @@ test("a refused token while working: one dialog, then the work is still there", 
   await expect(dialog(page)).toBeHidden();
 
   expect(page.url()).toBe(address);
-  await expect(page.getByLabel("What to extract")).toHaveValue("Find every renewal date");
+  await expect(promptLine(page)).toContainText("Find every renewal date");
   await expect(message).toHaveValue("also add a field for the owner");
 
   // The save the person was making can be done now.

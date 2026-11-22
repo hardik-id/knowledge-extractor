@@ -124,3 +124,31 @@ export function useWorkspace(): WorkspaceState {
   if (!state) throw new Error("useWorkspace is used outside the working screen.");
   return state;
 }
+
+/** From this width the field column sits beside the document; below it, it is an overlay. */
+export const WIDE_QUERY = "(min-width: 1100px)";
+
+export type ScreenView = "document" | "output";
+
+/**
+ * What the top bar and the working screen share: the "Document | Output" switch, the Fields
+ * overlay of a narrow screen, and the "Assistant" button's request to put the cursor in the
+ * assistant's input. Held above both, by the project screen. Null outside it.
+ */
+export interface ScreenControls {
+  view: ScreenView;
+  setView: (view: ScreenView) => void;
+  fieldsOpen: boolean;
+  setFieldsOpen: (open: boolean) => void;
+  /** "Assistant" was pressed and the column has not yet answered it. */
+  assistantRequested: boolean;
+  requestAssistant: () => void;
+  answerAssistantRequest: () => void;
+}
+
+export const ScreenControlsContext = createContext<ScreenControls | null>(null);
+
+/** The top bar's and the screen's shared controls; null when there is no working screen. */
+export function useScreenControls(): ScreenControls | null {
+  return useContext(ScreenControlsContext);
+}

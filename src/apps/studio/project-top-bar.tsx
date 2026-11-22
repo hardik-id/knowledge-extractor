@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 import { Suspense } from "react";
 import { AppSwitcher } from "@/components/layout/app-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { Segmented } from "@/features/extraction/review-panes";
 import { UserMenu } from "@/features/auth/user-menu";
 import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 import { STUDIO_HOME } from "./nav-steps";
@@ -12,6 +15,7 @@ import { DocumentSwitcher } from "./top-bar/document-switcher";
 import { MoreMenu } from "./top-bar/more-menu";
 import { RunButton } from "./top-bar/run-button";
 import { VersionMenu } from "./top-bar/version-menu";
+import { useScreenControls } from "./workspace/workspace-state";
 
 /**
  * The one bar of a project screen (it replaces the sidebar and the page header): the logo, the
@@ -20,6 +24,9 @@ import { VersionMenu } from "./top-bar/version-menu";
  * here, so what it holds changes in this file only.
  */
 export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
+  const controls = useScreenControls();
+  // Nothing to show as output while there is nothing to extract.
+  const configured = (extraction?.definition.draft?.recordTypes.length ?? 0) > 0;
   return (
     <>
       <nav
@@ -45,6 +52,17 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
             <ProjectMenu />
           </span>
           {extraction && <DocumentSwitcher />}
+          {extraction && controls && configured && (
+            <Segmented
+              label="Show"
+              value={controls.view}
+              onChange={controls.setView}
+              options={[
+                { value: "document", label: "Document" },
+                { value: "output", label: "Output" },
+              ]}
+            />
+          )}
           <div className="ml-auto flex items-center gap-x-2 md:order-last md:ml-0">
             <ThemeToggle />
             <UserMenu compact />
@@ -54,6 +72,20 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
             {extraction && (
               <>
                 <VersionMenu extraction={extraction} />
+                {controls && (
+                  <Button
+                    variant="outline"
+                    aria-label="Assistant"
+                    title="Assistant"
+                    onClick={controls.requestAssistant}
+                  >
+                    <Sparkles data-icon="inline-start" />
+                    {/* Below 1360px the word makes the bar wrap: the icon alone, with the name kept. */}
+                    <span aria-hidden className="hidden max-sm:inline min-[1360px]:inline">
+                      Assistant
+                    </span>
+                  </Button>
+                )}
                 <RunButton extraction={extraction} />
                 <MoreMenu extraction={extraction} />
               </>

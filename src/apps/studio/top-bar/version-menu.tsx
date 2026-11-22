@@ -65,11 +65,12 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
           <Button
             ref={trigger}
             variant="ghost"
+            title={versionLabel(saved.version, empty, dirty)}
             className={`min-w-0 ${dirty ? "text-ink" : "text-ink-muted"}`}
           >
             <span
               data-testid="version-line"
-              className={`truncate md:max-w-[11rem] 2xl:max-w-none ${dirty ? "font-medium" : ""}`}
+              className={`truncate md:max-w-[7rem] min-[1440px]:max-w-[11rem] 2xl:max-w-none ${dirty ? "font-medium" : ""}`}
             >
               {versionLabel(saved.version, empty, dirty)}
             </span>
@@ -138,11 +139,16 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
           </div>
         </PopoverContent>
       </Popover>
-      {history && <HistoryDialog definition={definition} onClose={() => {
+      {history && (
+        <HistoryDialog
+          definition={definition}
+          onClose={() => {
             setHistory(false);
             // The dialog has no trigger of its own: hand focus back to the version text.
             requestAnimationFrame(() => trigger.current?.focus());
-          }} />}
+          }}
+        />
+      )}
     </>
   );
 }

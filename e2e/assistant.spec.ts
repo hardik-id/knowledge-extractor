@@ -1,66 +1,78 @@
 import { API_BASE_URL } from "./support/env";
 import { expect, test } from "./fixtures";
+import { AssistantDock } from "./pages/assistant-dock";
 import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import { RecordStripPage } from "./pages/record-strip";
+import { expectWorkingScreen } from "./pages/workspace";
 import { Switcher } from "./pages/switcher";
 
 const DOCUMENTS = ["platform-adrs.md", "incident-runbook.md"];
 
 test.describe("the assistant", () => {
-  test("proposes a field, applying it leaves unsaved changes, clearing keeps the configuration", async ({
+  test("proposes a field, keeping it leaves unsaved changes, clearing keeps the configuration", async ({
     api,
     page,
     person,
     request,
   }) => {
     const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-    const extraction = new ExtractionPage(page);
-    await extraction.open(project);
+    const dock = new AssistantDock(page);
+    await new ExtractionPage(page).open(project);
     await expect(page.getByTestId("version-line")).not.toContainText("unsaved changes");
 
-    await extraction.ask("add a field for the approver");
-    await expect(extraction.conversation.getByText("add a field for the approver")).toBeVisible();
-    const proposal = extraction.conversation.getByRole("region", { name: "Proposed changes" });
-    await expect(proposal).toBeVisible();
-    await expect(proposal.getByText("Approver", { exact: false }).first()).toBeVisible();
+    await dock.ask("add a field for the approver");
+    await expect(dock.newFieldRows.first()).toContainText("Approver");
 
-    // Nothing changes until the person applies it.
+    // Nothing changes until the person keeps it.
     await expect(page.getByRole("button", { name: "More actions for Approver" })).toHaveCount(0);
-    await proposal.getByRole("button", { name: "Apply" }).click();
+    await dock.bar.getByRole("button", { name: "Keep all" }).click();
     await expect(page.getByRole("button", { name: "More actions for Approver" })).toBeVisible();
     await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
 
     // The conversation goes, the configuration (with its unsaved field) stays.
-    await extraction.assistant.getByRole("button", { name: "Clear conversation" }).click();
-    await page
-      .getByRole("dialog", { name: "Clear the conversation?" })
-      .getByRole("button", { name: "Clear conversation" })
-      .click();
-    await expect(extraction.conversation.getByRole("region")).toHaveCount(0);
-    await expect(extraction.conversation.getByText("add a field for the approver")).toHaveCount(0);
+    await dock.clear();
+    await expect(dock.conversation.getByText("add a field for the approver")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "More actions for Approver" })).toBeVisible();
     await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
   });
 
-  test("the conversation is still there after a reload", async ({ api, page, person, request }) => {
+  test("the conversation and the proposal are still there after a reload", async ({
+    api,
+    page,
+    person,
+    request,
+  }) => {
     const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-    const extraction = new ExtractionPage(page);
-    await extraction.open(project);
-    await extraction.ask("add a field for the approver");
-    await expect(
-      extraction.conversation.getByRole("region", { name: "Proposed changes" }),
-    ).toBeVisible();
+    const dock = new AssistantDock(page);
+    await new ExtractionPage(page).open(project);
+    await dock.ask("add a field for the approver");
+    await expect(dock.newFieldRows).toHaveCount(1);
 
     await page.reload();
-    await expect(extraction.tab("Define")).toBeVisible();
-    await expect(extraction.conversation.getByText("add a field for the approver")).toBeVisible();
-    await expect(
-      extraction.conversation.getByRole("region", { name: "Proposed changes" }),
-    ).toBeVisible();
+    await expectWorkingScreen(page);
+    await expect(dock.newFieldRows).toHaveCount(1);
+    await page.getByTestId("project-top-bar").getByRole("button", { name: "Assistant" }).click();
+    await expect(dock.conversation.getByText("add a field for the approver")).toBeVisible();
+  });
+
+  test("Assistant in the top bar opens the conversation and puts the cursor in the input", async ({
+    api,
+    page,
+    person,
+    request,
+  }) => {
+    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const dock = new AssistantDock(page);
+    await new ExtractionPage(page).open(project);
+    await expect(dock.conversation).toHaveCount(0);
+    await page.getByTestId("project-top-bar").getByRole("button", { name: "Assistant" }).click();
+    await expect(dock.conversation).toBeVisible();
+    await expect(dock.input).toBeFocused();
   });
 });
 
 test.describe("running the extraction", () => {
-  test("ends in Ready to proceed with records for each document, live, and runs again", async ({
+  test("ends with records for each document, live, and runs again", async ({
     api,
     page,
     person,
@@ -68,6 +80,7 @@ test.describe("running the extraction", () => {
   }) => {
     const project = await projectWithDocuments(api, person, request, DOCUMENTS);
     const extraction = new ExtractionPage(page);
+    const switcher = new Switcher(page);
     await extraction.open(project);
 
     let navigations = 0;
@@ -80,17 +93,18 @@ test.describe("running the extraction", () => {
     // The progress came over the socket: the page was never reloaded.
     expect(navigations).toBe(0);
 
-    await extraction.openTab("Review");
+    const strip = new RecordStripPage(page);
+    await expect(strip.position).toBeVisible();
     for (const name of DOCUMENTS) {
-      await extraction.document(name).click();
-      await expect(extraction.summary()).toBeVisible();
-      await expect(extraction.records.first()).toBeVisible();
+      await switcher.switchDocument(name);
+      await expect(switcher.trigger).toContainText(name);
+      await expect(strip.strip).toBeVisible();
     }
 
     await extraction.run("Run again");
     await extraction.finished();
     await expect(extraction.runButton).toHaveText("Run again");
-    await expect(extraction.records.first()).toBeVisible();
+    await expect(new RecordStripPage(page).strip).toBeVisible();
     expect(navigations).toBe(0);
   });
 
