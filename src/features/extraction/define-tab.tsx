@@ -30,6 +30,8 @@ interface DefineTabProps {
   showSave?: boolean;
   /** Show "Templates" at the top of the tab. Off where the page header carries it. */
   showTemplates?: boolean;
+  /** Show the "Unsaved changes" strip at the bottom. Off where the top bar's version menu says it. */
+  showUnsavedBar?: boolean;
 }
 
 export function DefineTab({
@@ -37,6 +39,7 @@ export function DefineTab({
   definitionNote,
   showSave = true,
   showTemplates = true,
+  showUnsavedBar = true,
 }: DefineTabProps) {
   const { draft, saved, setDraft, errors, showErrors, dirty, saving, save, discard } = definition;
   const promptId = useId();
@@ -191,7 +194,7 @@ export function DefineTab({
           <AssistantPanel draft={draft} setDraft={setDraft} />
         </div>
       </div>
-      {dirty && (
+      {dirty && showUnsavedBar && (
         <div
           role="status"
           className="sticky bottom-0 z-10 -mx-4 mt-6 -mb-4 flex flex-wrap items-center gap-3 border-t border-border-subtle bg-surface-tint px-4 py-1.5 sm:-mx-6 sm:px-6"

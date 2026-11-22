@@ -1,6 +1,7 @@
 import { type APIRequestContext, type Page, expect } from "@playwright/test";
 import { API_BASE_URL, API_ORIGIN } from "../support/env";
 import type { Api, ApiProject, Person } from "../fixtures";
+import { clickUntilOpen } from "../support/first-click";
 
 interface ApiDocument {
   id: string;
@@ -95,18 +96,40 @@ export class ExtractionPage {
     await this.assistant.getByRole("button", { name: "Send" }).click();
   }
 
+  /** The one Run button of the top bar: "Run on this document", "Run on all N documents" or "Run again". */
+  get runButton() {
+    return this.page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ });
+  }
+
   /**
-   * Starts a run. The progress arrives live: the tests wait for `finished()`, never reload.
-   * It waits for the backend to accept the run (the answer stays true; the "Running" badge
-   * is gone as soon as a fast run ends), not for a badge.
+   * Starts a run with the Run button. The progress arrives live: the tests wait for `finished()`,
+   * never reload. It waits for the backend to accept the run (the answer stays true; the
+   * "Running" badge is gone as soon as a fast run ends), not for a badge. `label` is checked
+   * when given; the button is found by role, whatever it says.
    */
-  async run(label: "Run extraction" | "Run again") {
+  async run(label?: string | RegExp) {
+    const button = this.runButton;
+    if (label instanceof RegExp) await expect(button).toHaveAccessibleName(label);
+    else if (label && /^Run (on|again)/.test(label))
+      await expect(button).toHaveAccessibleName(label);
     const accepted = this.page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
         /\/stages\/extract\/executions$/.test(new URL(response.url()).pathname),
     );
-    await this.page.getByRole("button", { name: label }).click();
+    await button.click();
+    expect((await accepted).ok(), "the backend accepted the run").toBe(true);
+  }
+
+  /** Starts a run on every document, from the menu next to the Run button. */
+  async runAll() {
+    const accepted = this.page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        /\/stages\/extract\/executions$/.test(new URL(response.url()).pathname),
+    );
+    await this.page.getByRole("button", { name: "Other ways to run" }).click();
+    await this.page.getByRole("menuitem", { name: /^Run on all \d+ documents$/ }).click();
     expect((await accepted).ok(), "the backend accepted the run").toBe(true);
   }
 
@@ -135,7 +158,7 @@ export class ExtractionPage {
         { timeout: 30_000, message: "extract cells still queued or running" },
       )
       .toBe(0);
-    await expect(this.page.getByRole("button", { name: /^Run (extraction|again)$/ })).toBeEnabled();
+    await expect(this.runButton).toBeEnabled();
   }
 
   /** A document in the list of the Review (or Output) tab. */
@@ -159,12 +182,14 @@ export class ExtractionPage {
     return this.page.getByText(/^\d+ records?/);
   }
 
+  /** The version text of the top bar: the button that opens the version menu. */
+  get versionMenu() {
+    return this.page.getByRole("button", { name: /^(Version \d|Nothing saved yet)/ });
+  }
+
   async saveConfiguration(note: string) {
-    await this.page.getByRole("button", { name: "Save configuration" }).click();
-    const form = this.page.getByRole("form", { name: "Save configuration" });
-    await form.getByLabel("Note (optional)").fill(note);
-    await form.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(this.page.getByTestId("version-line")).not.toHaveText(/Version 1,/);
+    await saveConfiguration(this.page, note);
+    await expect(this.page.getByTestId("version-line")).not.toContainText("unsaved changes");
   }
 }
 
@@ -173,9 +198,42 @@ export async function editPrompt(page: Page, text: string) {
   await page.getByLabel("What to extract").fill(text);
 }
 
+/** Opens the version menu in the top bar (the version text). */
+export async function openVersionMenu(page: Page) {
+  return clickUntilOpen(
+    page,
+    page.getByRole("button", { name: /^(Version \d|Nothing saved yet)/ }),
+    page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Version history" }) }),
+  );
+}
+
+/** Saves the unsaved changes through the version menu, with a note when given. */
 export async function saveConfiguration(page: Page, note?: string) {
-  await page.getByRole("button", { name: "Save configuration" }).click();
-  const form = page.getByRole("form", { name: "Save configuration" });
+  const menu = await openVersionMenu(page);
+  const form = menu.getByRole("form", { name: "Save configuration" });
   if (note) await form.getByLabel("Note (optional)").fill(note);
   await form.getByRole("button", { name: "Save", exact: true }).click();
+}
+
+/** Opens Version history through the version menu. */
+export async function openVersionHistory(page: Page) {
+  const menu = await openVersionMenu(page);
+  await menu.getByRole("button", { name: "Version history" }).click();
+  return page.getByRole("dialog", { name: "Version history" });
+}
+
+/** Opens the Templates dialog through the More menu. */
+export async function openTemplatesDialog(page: Page) {
+  const item = page.getByRole("menuitem", { name: "Templates" });
+  // The first click after a navigation can be lost while the page settles: click again.
+  await expect(async () => {
+    if (!(await item.isVisible())) {
+      await page.getByRole("button", { name: "More", exact: true }).click({ timeout: 2_000 });
+    }
+    await expect(item).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+  await item.click();
+  const dialog = page.getByRole("dialog", { name: "Templates" });
+  await expect(dialog).toBeVisible();
+  return dialog;
 }

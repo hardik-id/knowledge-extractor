@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, History } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,51 +20,8 @@ import { usePipelineStore } from "@/store/pipeline-store";
 import { formatSavedDate, versionLine } from "./version-format";
 import type { ExtractionDefinitionState } from "./use-extraction-definition";
 
-/**
- * The version of the configuration, "Unsaved changes" when the draft differs, and Version
- * history: inline, for the facts line of the page header.
- */
-export function VersionBar({
-  definition,
-  emptyIsUnsaved = false,
-}: {
-  definition: ExtractionDefinitionState;
-  /** A configuration with no record type reads "Nothing saved yet" (the Studio). */
-  emptyIsUnsaved?: boolean;
-}) {
-  const { saved, dirty } = definition;
-  const [open, setOpen] = useState(false);
-  if (!saved) return null;
-  return (
-    <>
-      <p>
-        <span data-testid="version-line">
-          {emptyIsUnsaved && saved.recordTypes.length === 0
-            ? "Nothing saved yet"
-            : versionLine(saved.version, saved.createdAt)}
-        </span>
-        {dirty && (
-          <>
-            {" · "}
-            <span className="font-semibold text-ink">Unsaved changes</span>
-          </>
-        )}
-      </p>
-      <Button
-        variant="link"
-        size="sm"
-        className="h-auto px-0 no-underline hover:underline"
-        onClick={() => setOpen(true)}
-      >
-        <History data-icon="inline-start" aria-hidden />
-        Version history
-      </Button>
-      {open && <HistoryDialog definition={definition} onClose={() => setOpen(false)} />}
-    </>
-  );
-}
-
-function HistoryDialog({
+/** Every saved version of the configuration, with a read-only view of each and a way to restore one. */
+export function HistoryDialog({
   definition,
   onClose,
 }: {

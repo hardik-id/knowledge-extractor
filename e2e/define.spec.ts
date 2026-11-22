@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import { ExtractionPage, projectWithDocuments, saveConfiguration } from "./pages/extraction";
 
 const DOCUMENTS = ["platform-adrs.md"];
 
@@ -98,7 +98,7 @@ test("a field without a name shows its message in its row", async ({
   await extraction.open(project);
 
   await page.getByRole("button", { name: "Add field" }).click();
-  await page.getByRole("button", { name: "Save configuration" }).click();
+  await saveConfiguration(page);
   const row = page.getByRole("row").filter({ has: page.getByLabel("Name of field 7") });
   await expect(row.getByText("Give this field a name.")).toBeVisible();
   await expect(page.getByLabel("Name of field 7")).toHaveAccessibleDescription(

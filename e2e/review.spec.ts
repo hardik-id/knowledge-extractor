@@ -15,7 +15,7 @@ async function reviewing(
   const project = await projectWithDocuments(...setup);
   const extraction = new ExtractionPage(page);
   await extraction.open(project);
-  await extraction.run("Run extraction");
+  await extraction.run();
   await extraction.finished();
   await extraction.openTab("Review");
   await expect(extraction.record(FIRST)).toBeVisible();
@@ -123,7 +123,7 @@ test("a reviewed record survives a run again with another configuration version"
   await extraction.saveConfiguration("With a reviewer");
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
 
-  await extraction.run("Run again");
+  await extraction.run();
   await extraction.finished();
   await extraction.openTab("Review");
   await expect(extraction.summary()).toHaveText(

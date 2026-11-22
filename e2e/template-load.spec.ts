@@ -3,22 +3,20 @@ import { expect, test } from "./fixtures";
 import {
   editPrompt,
   ExtractionPage,
+  openTemplatesDialog,
+  openVersionHistory,
+  openVersionMenu,
   projectWithDocuments,
   saveConfiguration,
 } from "./pages/extraction";
 import { DOCS, openExtraction, scrollsSideways } from "./pages/studio";
 import { expectAccessible } from "./support/accessibility";
-import { clickUntilOpen } from "./support/first-click";
 
 const POLICY = "Policy rules";
 
-/** Opens the Templates dialog on the Define tab and chooses a template (not yet used). */
+/** Opens the Templates dialog from the More menu and chooses a template (not yet used). */
 async function openTemplates(page: Page, choose?: string) {
-  const dialog = await clickUntilOpen(
-    page,
-    page.getByRole("button", { name: "Templates" }),
-    page.getByRole("dialog", { name: "Templates" }),
-  );
+  const dialog = await openTemplatesDialog(page);
   if (choose) await dialog.getByRole("radio", { name: new RegExp(choose) }).check();
   return dialog;
 }
@@ -46,15 +44,16 @@ test("load a template: unsaved, discard brings the old one back, then save it wi
   await expect(page.getByRole("table", { name: "Fields of Rule" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Fields of ADR" })).toHaveCount(0);
   await expect((await fieldNames(page)).slice(0, 2)).toEqual(["Rule", "Kind"]);
-  await expect(page.getByText("Unsaved changes").first()).toBeVisible();
+  await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
 
-  await page.getByRole("button", { name: "Discard" }).click();
+  const menu0 = await openVersionMenu(page);
+  await menu0.getByRole("button", { name: "Discard changes" }).click();
   await expect(page.getByRole("table", { name: "Fields of ADR" })).toBeVisible();
-  await expect(page.getByText("Unsaved changes")).toHaveCount(0);
+  await expect(page.getByTestId("version-line")).not.toContainText("unsaved changes");
 
   await useTemplate(page, POLICY);
-  await page.getByRole("button", { name: "Save configuration" }).click();
-  const form = page.getByRole("form", { name: "Save configuration" });
+  const menu = await openVersionMenu(page);
+  const form = menu.getByRole("form", { name: "Save configuration" });
   await expect(form.getByLabel("Note (optional)")).toHaveValue(`From template: ${POLICY}`);
   await form.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
@@ -62,9 +61,7 @@ test("load a template: unsaved, discard brings the old one back, then save it wi
   await page.reload();
   await expect(page.getByRole("table", { name: "Fields of Rule" })).toBeVisible();
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
-  await page.getByRole("button", { name: "Version history" }).click();
-  const versions = page
-    .getByRole("dialog", { name: "Version history" })
+  const versions = (await openVersionHistory(page))
     .getByRole("list", { name: "Versions" })
     .getByRole("listitem");
   await expect(versions.nth(0)).toContainText(`From template: ${POLICY}`);
@@ -120,7 +117,7 @@ test("with reviewed records, the dialog says what the next run does, and it does
   const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
   const extraction = new ExtractionPage(page);
   await extraction.open(project);
-  await extraction.run("Run extraction");
+  await extraction.run("Run on this document");
   await extraction.finished();
   await extraction.openTab("Review");
   const first = "Use feature flags for risky releases";
@@ -140,7 +137,7 @@ test("with reviewed records, the dialog says what the next run does, and it does
   await expect(dialog.getByText(/replaces the suggestions nobody has reviewed/)).toBeVisible();
   await dialog.getByRole("button", { name: "Use this template" }).click();
 
-  await extraction.run("Run again");
+  await extraction.run("Run on this document");
   await extraction.finished();
   await extraction.openTab("Review");
   await extraction.document("platform-adrs.md").click();
