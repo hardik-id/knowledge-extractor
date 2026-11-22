@@ -1,7 +1,7 @@
 "use client";
 
 import { LayoutTemplate, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,12 +15,13 @@ import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 /** The "more" menu of the top bar: Templates, which opens its dialog. */
 export function MoreMenu({ extraction }: { extraction: ExtractionRun }) {
   const [templates, setTemplates] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   if (!extraction.definition.saved) return null;
   return (
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="More">
+          <Button ref={trigger} variant="ghost" size="icon" aria-label="More">
             <MoreHorizontal aria-hidden />
           </Button>
         </DropdownMenuTrigger>
@@ -32,7 +33,11 @@ export function MoreMenu({ extraction }: { extraction: ExtractionRun }) {
         </DropdownMenuContent>
       </DropdownMenu>
       {templates && (
-        <TemplateDialog definition={extraction.definition} onClose={() => setTemplates(false)} />
+        <TemplateDialog definition={extraction.definition} onClose={() => {
+            setTemplates(false);
+            requestAnimationFrame(() => trigger.current?.focus());
+          }}
+        />
       )}
     </>
   );

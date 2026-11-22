@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, History } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
   const [history, setHistory] = useState(false);
   const [note, setNote] = useState(definition.suggestedNote);
   const id = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
   // Loading a template changes what the note starts with: a form left open would show the old one.
   const [seenHint, setSeenHint] = useState(definition.suggestedNote);
   if (seenHint !== definition.suggestedNote) {
@@ -61,14 +62,21 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" className={dirty ? "text-ink" : "text-ink-muted"}>
-            <span data-testid="version-line" className={dirty ? "font-medium" : undefined}>
+          <Button
+            ref={trigger}
+            variant="ghost"
+            className={`min-w-0 ${dirty ? "text-ink" : "text-ink-muted"}`}
+          >
+            <span
+              data-testid="version-line"
+              className={`truncate md:max-w-[11rem] 2xl:max-w-none ${dirty ? "font-medium" : ""}`}
+            >
               {versionLabel(saved.version, empty, dirty)}
             </span>
             <ChevronDown aria-hidden className="text-ink-muted" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="space-y-3">
+        <PopoverContent align="end" aria-label="Version" className="space-y-3">
           {!empty && (
             <p className="text-small text-ink-muted">
               {versionLine(saved.version, saved.createdAt)}
@@ -83,7 +91,7 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
                 void submit();
               }}
             >
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor={`${id}-note`}>Note (optional)</Label>
                 <Input
                   id={`${id}-note`}
@@ -130,7 +138,11 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
           </div>
         </PopoverContent>
       </Popover>
-      {history && <HistoryDialog definition={definition} onClose={() => setHistory(false)} />}
+      {history && <HistoryDialog definition={definition} onClose={() => {
+            setHistory(false);
+            // The dialog has no trigger of its own: hand focus back to the version text.
+            requestAnimationFrame(() => trigger.current?.focus());
+          }} />}
     </>
   );
 }

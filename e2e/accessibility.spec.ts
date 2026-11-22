@@ -4,6 +4,7 @@ import {
   ExtractionPage,
   openTemplatesDialog,
   openVersionHistory,
+  openVersionMenu,
   projectWithDocuments,
 } from "./pages/extraction";
 import { DOCS, openDocuments, openExtraction, openNewProjectDialog } from "./pages/studio";
@@ -82,6 +83,19 @@ for (const scheme of ["light", "dark"] as const) {
       const history = await openVersionHistory(page);
       await expect(history.getByRole("list", { name: "Versions" })).toBeVisible();
       await scan(page, "version history");
+    });
+
+    test("the open version menu and the open Run menu", async ({ api, page, person, request }) => {
+      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+      await new ExtractionPage(page).open(project);
+      const menu = await openVersionMenu(page);
+      await expect(page.getByRole("dialog", { name: "Version" })).toBeVisible();
+      await expect(menu).toBeVisible();
+      await scan(page, "version menu");
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "Other ways to run" }).click();
+      await expect(page.getByRole("menuitem", { name: /^Run on all/ })).toBeVisible();
+      await scan(page, "run menu");
     });
 
     test("the templates dialog", async ({ api, page }) => {

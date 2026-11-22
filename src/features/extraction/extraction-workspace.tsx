@@ -64,6 +64,7 @@ export function ExtractionWorkspace({
             definitionNote={definitionNote}
             showSave={!versioned}
             showTemplates={!versioned}
+            showUnsavedBar={!versioned}
           />
         </TabsContent>
         <TabsContent value="review">

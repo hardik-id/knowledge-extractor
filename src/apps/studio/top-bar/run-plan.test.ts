@@ -110,7 +110,20 @@ describe("planRun", () => {
     assert.deepEqual(plan.main.fileIds, ["a"]);
   });
 
-  test("no documents: disabled", () => {
-    assert.equal(planRun(input({ fileIds: [], activeId: null })).disabled, true);
+  test("no documents: disabled, and the label does not count zero", () => {
+    const plan = planRun(input({ fileIds: [], activeId: null }));
+    assert.equal(plan.disabled, true);
+    assert.equal(plan.main.label, "Run");
+  });
+
+  test("versions not known while loading: results are taken as current", () => {
+    const plan = planRun(input({ cells: current }));
+    assert.equal(plan.main.label, "Run again");
+  });
+
+  test("versions that failed to load: results are out of date", () => {
+    const plan = planRun(input({ cells: current, versionsFailed: true }));
+    assert.equal(plan.main.label, "Run on this document");
+    assert.equal(plan.primary, true);
   });
 });

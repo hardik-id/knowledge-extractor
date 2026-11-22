@@ -9,6 +9,8 @@ export interface RunPlanInput {
   cells: Record<string, StageCell | undefined>;
   /** The definition version each document's records come from. A document not listed is not known yet. */
   versions: Record<string, number | undefined>;
+  /** The versions could not be loaded: a document with results then counts as out of date. */
+  versionsFailed?: boolean;
   /** The saved version of the configuration. */
   savedVersion: number;
   /** The configuration has unsaved changes: it will be saved as a new version by the run. */
@@ -40,13 +42,15 @@ function isCurrent(input: RunPlanInput, id: string): boolean {
   const cell = input.cells[id];
   if (!cell?.output || cell.status === "failed" || cell.status === "stale") return false;
   if (input.dirty) return false;
-  // A version that is not known yet (the extraction is loading) is not taken as out of date.
   const version = input.versions[id];
-  return version === undefined || version === input.savedVersion;
+  // Not known yet (still loading): not taken as out of date. Not known after an error: it is,
+  // so the button does not claim the results are current.
+  if (version === undefined) return !input.versionsFailed;
+  return version === input.savedVersion;
 }
 
 const allLabel = (count: number) =>
-  count === 1 ? "Run on this document" : `Run on all ${count} documents`;
+  count === 0 ? "Run" : count === 1 ? "Run on this document" : `Run on all ${count} documents`;
 
 /** What the one Run button says and does, from the state of each document. */
 export function planRun(input: RunPlanInput): RunPlan {

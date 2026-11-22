@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "./support/env";
 import { expect, test } from "./fixtures";
 import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
 import { Switcher } from "./pages/switcher";
@@ -113,6 +114,14 @@ test.describe("running the extraction", () => {
     const body = (await sent).postDataJSON() as { file_ids?: string[] };
     expect(body.file_ids).toHaveLength(1);
     await extraction.finished();
+    // The id sent is the open (first) document's, and no other document's cell was run.
+    const extracted = await page.evaluate(async (url) => {
+      const run = (await (await fetch(url)).json()) as {
+        cells: { stage: string; status: string; file_id: string }[];
+      };
+      return run.cells.filter((c) => c.stage === "extract" && c.status === "succeeded");
+    }, `${API_BASE_URL}/runs/${project.run_id}`);
+    expect(extracted.map((c) => c.file_id)).toEqual(body.file_ids);
 
     await switcher.open();
     await expect(switcher.item(DOCUMENTS[0])).toContainText("to review");

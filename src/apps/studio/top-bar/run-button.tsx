@@ -24,7 +24,7 @@ export function RunButton({ extraction }: { extraction: ExtractionRun }) {
   const runFiles = usePipelineStore((s) => s.runFiles);
   const activeDocId = usePipelineStore((s) => s.activeDocId);
   const cells = usePipelineStore((s) => s.cells);
-  const { extractions, isLoading } = useRunExtractions();
+  const { extractions, error, isLoading } = useRunExtractions();
   const { saved, draft, dirty, saving } = definition;
 
   const plan = useMemo(() => {
@@ -36,12 +36,13 @@ export function RunButton({ extraction }: { extraction: ExtractionRun }) {
       activeId: activeDocId,
       cells: Object.fromEntries(runFiles.map((f) => [f.id, cells[f.id]?.extract])),
       versions,
+      versionsFailed: !isLoading && !!error,
       savedVersion: saved?.version ?? 0,
       dirty,
       empty: (draft?.recordTypes.length ?? 0) === 0,
       running: running || saving,
     });
-  }, [runFiles, activeDocId, cells, extractions, isLoading, saved, draft, dirty, saving, running]);
+  }, [runFiles, activeDocId, cells, extractions, error, isLoading, saved, draft, dirty, saving, running]);
 
   if (!saved) return null;
   const start = (choice: RunChoice) => void run(choice.fileIds ? { fileIds: choice.fileIds } : {});

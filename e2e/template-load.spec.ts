@@ -46,7 +46,8 @@ test("load a template: unsaved, discard brings the old one back, then save it wi
   await expect((await fieldNames(page)).slice(0, 2)).toEqual(["Rule", "Kind"]);
   await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
 
-  await page.getByRole("button", { name: "Discard" }).click();
+  const menu0 = await openVersionMenu(page);
+  await menu0.getByRole("button", { name: "Discard changes" }).click();
   await expect(page.getByRole("table", { name: "Fields of ADR" })).toBeVisible();
   await expect(page.getByTestId("version-line")).not.toContainText("unsaved changes");
 
