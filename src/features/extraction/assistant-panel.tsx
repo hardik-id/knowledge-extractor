@@ -42,7 +42,7 @@ function suggestionsFor(draft: Draft): { label: string; text: string | null }[] 
   ];
 }
 
-function Message({ message }: { message: AssistantMessage }) {
+export function Message({ message }: { message: AssistantMessage }) {
   const mine = message.role === "user";
   const streaming = message.status === "streaming";
   return (
