@@ -54,6 +54,57 @@ test.describe("the assistant in the column", () => {
     await expect(dock.conversation.getByText("Discarded")).toBeVisible();
   });
 
+  test("a change to an existing field is a line under its row, and Keep all applies it", async ({
+    api,
+    expectApiError,
+    page,
+    person,
+    request,
+  }) => {
+    noExtractionYet(expectApiError);
+    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const dock = new AssistantDock(page);
+    await openOneScreen(page, project);
+    await dock.ask("make the status exact text");
+    await expect(dock.bar).toContainText("suggested change");
+    const line = dock.column.getByRole("listitem").filter({ hasText: /^Change\b/ });
+    await expect(line.first()).toBeVisible();
+    await expect(line.first()).toBeInViewport();
+    await expect(page.getByTestId("version-line")).not.toContainText("unsaved changes");
+    await dock.bar.getByRole("button", { name: "Keep all" }).click();
+    await expect(line).toHaveCount(0);
+    await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
+    // The decision is said, and the cursor is back in the input.
+    await expect(dock.column.getByRole("status")).toContainText(/Kept \d+ change/);
+    await expect(dock.input).toBeFocused();
+  });
+
+  test("a suggested field shows even when the record type has no fields", async ({
+    api,
+    expectApiError,
+    page,
+    person,
+    request,
+  }) => {
+    noExtractionYet(expectApiError);
+    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const dock = new AssistantDock(page);
+    await openOneScreen(page, project);
+    const column = fieldColumn(page);
+    const more = column.getByRole("button", { name: /^More actions for / });
+    await expect(more.first()).toBeVisible();
+    for (let left = await more.count(); left > 0; left--) {
+      await more.first().click();
+      await page.getByRole("menuitem", { name: "Remove" }).click();
+      await expect(more).toHaveCount(left - 1);
+    }
+    await expect(column.getByText("No fields. A record is then just")).toBeVisible();
+    await dock.ask("add a field for the approver");
+    await expect(dock.bar).toContainText("suggested change");
+    await expect(dock.newFieldRows).toHaveCount(1);
+    await expect(dock.newFieldRows.first()).toContainText("Approver");
+  });
+
   test("Discard all leaves the table as it was", async ({
     api,
     expectApiError,
@@ -113,7 +164,8 @@ test.describe("the assistant in the column", () => {
 
     await page.reload();
     await openOneScreen(page, project);
-    await dock.input.focus();
+    // Tabbing into the input leaves the conversation closed; a click opens it.
+    await dock.input.click();
     await expect(dock.conversation.getByText("add a field for the approver")).toBeVisible();
     await expect(dock.newFieldRows).toHaveCount(1);
   });

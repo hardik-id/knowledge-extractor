@@ -22,7 +22,7 @@ import { Message } from "@/features/extraction/assistant-panel";
 import { useAssistant } from "@/features/extraction/use-assistant";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { describeApiError } from "@/services/errors";
-import { resetOutcomes, useProposalSync } from "./use-proposal";
+import { focusAssistantInput, resetOutcomes, useProposalSync } from "./use-proposal";
 import { useWorkspace } from "./workspace-state";
 
 const OUTCOME_LINE = {
@@ -75,7 +75,7 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
                   <MoreHorizontal aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="min-w-44 whitespace-nowrap">
                 <DropdownMenuItem
                   disabled={busy || messages.length === 0}
                   onSelect={() => setConfirming(true)}
@@ -88,7 +88,10 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
               variant="ghost"
               size="icon-sm"
               aria-label="Close the conversation"
-              onClick={() => setConversationOpen(false)}
+              onClick={() => {
+                setConversationOpen(false);
+                focusAssistantInput();
+              }}
             >
               <ChevronDown aria-hidden />
             </Button>
@@ -110,29 +113,32 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
               aria-label="Conversation"
               aria-live="polite"
               aria-busy={assistant.isLoading}
-              className="flex max-h-[min(18rem,40dvh)] flex-col gap-3 overflow-y-auto px-4 pb-1"
+              className="flex max-h-[min(13rem,30dvh)] flex-col gap-3 overflow-y-auto px-4 pb-1"
             >
               {messages.length === 0 && !assistant.isLoading && (
                 <p className="text-small text-ink-muted">
                   Describe what you want to extract, or ask for a change.
                 </p>
               )}
-              {messages.map((m) => (
-                <div key={m.id} className="flex flex-col gap-1">
-                  <Message message={m} />
-                  {m.proposal && (
-                    <p
-                      className={
-                        outcomeOf(m) === "open"
-                          ? "text-small font-medium text-warning"
-                          : "text-small text-ink-muted"
-                      }
-                    >
-                      {OUTCOME_LINE[outcomeOf(m)]}
-                    </p>
-                  )}
-                </div>
-              ))}
+              {messages.map((m) => {
+                const outcome = m.proposal ? outcomeOf(m) : null;
+                return (
+                  <div key={m.id} className="flex flex-col gap-1">
+                    <Message message={m} />
+                    {outcome && (
+                      <p
+                        className={
+                          outcome === "open"
+                            ? "text-small font-medium text-warning"
+                            : "text-small text-ink-muted"
+                        }
+                      >
+                        {OUTCOME_LINE[outcome]}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -149,8 +155,11 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
           disabled={busy}
           aria-label="Ask the assistant"
           placeholder={messages.length > 0 ? "Ask for something else" : "Ask the assistant"}
-          onFocus={() => setConversationOpen(true)}
-          onChange={(e) => setText(e.target.value)}
+          onClick={() => setConversationOpen(true)}
+          onChange={(e) => {
+            setText(e.target.value);
+            setConversationOpen(true);
+          }}
         />
         <Button type="submit" variant="outline" disabled={busy || text.trim() === ""}>
           Send

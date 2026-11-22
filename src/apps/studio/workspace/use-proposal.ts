@@ -26,9 +26,14 @@ export interface ProposalInfo {
 let outcomes: Record<string, ProposalOutcome> = {};
 const listeners = new Set<() => void>();
 
-function setOutcome(messageId: string, outcome: ProposalOutcome) {
+export function setOutcome(messageId: string, outcome: ProposalOutcome) {
   outcomes = { ...outcomes, [messageId]: outcome };
   listeners.forEach((l) => l());
+}
+
+/** The outcomes now (for tests). */
+export function currentOutcomes() {
+  return outcomes;
 }
 
 /** Forgets every outcome: the conversation was cleared. */
@@ -65,11 +70,23 @@ export function useProposalSync(
   const decided = useOutcomes();
   const latestId = [...messages].reverse().find((m) => m.proposal)?.id;
 
-  const outcomeOf = (message: AssistantMessage): ProposalOutcome | "included" => {
-    const outcome = decided[message.id] ?? (message.id === latestId ? "open" : "replaced");
-    if (outcome !== "open" || !draft || !message.proposal) return outcome;
-    return shownOutcome(outcome, proposalChanges(draft, message.proposal.definition).length);
-  };
+  // Worked out once per change of messages, draft or decisions, not on every keystroke in the input.
+  const shown = useMemo(() => {
+    const map = new Map<string, ProposalOutcome | "included">();
+    for (const message of messages) {
+      if (!message.proposal) continue;
+      const outcome = decided[message.id] ?? (message.id === latestId ? "open" : "replaced");
+      map.set(
+        message.id,
+        outcome !== "open" || !draft
+          ? outcome
+          : shownOutcome(outcome, proposalChanges(draft, message.proposal.definition).length),
+      );
+    }
+    return map;
+  }, [messages, latestId, draft, decided]);
+  const outcomeOf = (message: AssistantMessage): ProposalOutcome | "included" =>
+    shown.get(message.id) ?? decided[message.id] ?? "replaced";
 
   const info = useMemo<ProposalInfo | null>(() => {
     const message = messages.find((m) => m.id === latestId);
@@ -88,8 +105,16 @@ export function useProposalSync(
   return outcomeOf;
 }
 
+/** Puts the cursor in the assistant's input: where focus goes when a control that had it disappears. */
+export function focusAssistantInput() {
+  document.querySelector<HTMLInputElement>('input[aria-label="Ask the assistant"]')?.focus();
+}
+
 /** The open proposal as the table shows it, with keeping and discarding all of it. */
-export function useProposal(definition: ExtractionDefinitionState): {
+export function useProposal(
+  definition: ExtractionDefinitionState,
+  onDecided?: (said: string) => void,
+): {
   info: ProposalInfo | null;
   keepAll: () => void;
   discardAll: () => void;
@@ -102,9 +127,18 @@ export function useProposal(definition: ExtractionDefinitionState): {
       if (!info) return;
       definition.setDraft(info.proposal.definition);
       setOutcome(info.messageId, "applied");
+      onDecided?.(
+        `Kept ${info.changes.length} ${info.changes.length === 1 ? "change" : "changes"}`,
+      );
+      focusAssistantInput();
     },
     discardAll: () => {
-      if (info) setOutcome(info.messageId, "dismissed");
+      if (!info) return;
+      setOutcome(info.messageId, "dismissed");
+      onDecided?.(
+        `Discarded ${info.changes.length} ${info.changes.length === 1 ? "change" : "changes"}`,
+      );
+      focusAssistantInput();
     },
   };
 }

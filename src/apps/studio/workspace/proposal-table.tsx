@@ -52,8 +52,14 @@ function lineText(change: ProposalChange): string {
 }
 
 /** "3 suggested changes · Keep all · Discard all", above the table. */
-export function ProposalBar({ definition }: { definition: ExtractionDefinitionState }) {
-  const { info, keepAll, discardAll } = useProposal(definition);
+export function ProposalBar({
+  definition,
+  onDecided,
+}: {
+  definition: ExtractionDefinitionState;
+  onDecided?: (said: string) => void;
+}) {
+  const { info, keepAll, discardAll } = useProposal(definition, onDecided);
   const { selectedTypeId } = useWorkspace();
   if (!info) return null;
   const type = info.current.recordTypes.find((t) => t.id === selectedTypeId);
@@ -97,22 +103,43 @@ export function ProposalBar({ definition }: { definition: ExtractionDefinitionSt
   );
 }
 
+// The lines of each row, worked out once per proposal and record type, not once per row.
+const linesCache = new WeakMap<ProposalInfo, Map<string, Map<string, ProposalChange[]>>>();
+
+function linesByField(info: ProposalInfo, type: RecordType): Map<string, ProposalChange[]> {
+  let byType = linesCache.get(info);
+  if (!byType) linesCache.set(info, (byType = new Map()));
+  const cached = byType.get(type.id);
+  if (cached) return cached;
+  const proposed = proposedType(info, type);
+  const lines = new Map<string, ProposalChange[]>();
+  for (const c of info.changes) {
+    if ((c.kind !== "changed-field" && c.kind !== "removed-field") || !inType(c, type, proposed))
+      continue;
+    const id = rowFieldId(c, type, proposed);
+    if (id != null) lines.set(id, [...(lines.get(id) ?? []), c]);
+  }
+  byType.set(type.id, lines);
+  return lines;
+}
+
 /** The changes proposed to one existing field, as lines under its row. */
 export function ProposalLines({ field }: { field: FieldDef }) {
   const { proposal, selectedTypeId } = useWorkspace();
   const info = proposal as ProposalInfo | null;
   const type = info?.current.recordTypes.find((t) => t.id === selectedTypeId);
-  if (!info || !type) return null;
-  const proposed = proposedType(info, type);
-  const lines = info.changes.filter(
-    (c) =>
-      (c.kind === "changed-field" || c.kind === "removed-field") &&
-      inType(c, type, proposed) &&
-      rowFieldId(c, type, proposed) === field.id,
-  );
+  const all = info && type ? linesByField(info, type) : null;
+  const lines = all?.get(field.id) ?? [];
+  const isFirst = !!all && all.keys().next().value === field.id;
+  const list = useRef<HTMLUListElement>(null);
+  const messageId = info?.messageId ?? null;
+  // A new proposal brings its first changed row into view: the table may be taller than the room left.
+  useEffect(() => {
+    if (isFirst) list.current?.scrollIntoView({ block: "nearest" });
+  }, [isFirst, messageId]);
   if (lines.length === 0) return null;
   return (
-    <ul className="space-y-1 pr-4 pb-2.5 pl-8">
+    <ul ref={list} className="space-y-1 pr-4 pb-2.5 pl-8">
       {lines.map((c, i) => (
         <li
           key={`${c.kind}-${i}`}
