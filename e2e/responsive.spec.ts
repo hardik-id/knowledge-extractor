@@ -49,10 +49,10 @@ test("a project and the extraction page fit a phone, and the assistant opens and
   const bar = page.getByTestId("project-top-bar");
   await expect(bar.getByRole("button", { name: "Phone project" })).toBeInViewport({ ratio: 1 });
   expect(await scrollsSideways(page), "the top bar scrolls sideways").toBe(false);
-  const run = page.getByRole("button", { name: "Run extraction" });
+  const run = page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ });
   await run.scrollIntoViewIfNeeded();
   await expect(run).toBeInViewport({ ratio: 1 });
-  await expect(page.getByRole("button", { name: "Save configuration" })).toBeVisible();
+  await expect(page.getByTestId("version-line")).toBeVisible();
   for (const name of ["Define", "Review", "Output"] as const) {
     await tab(page, name).click();
     await expect(tab(page, name)).toHaveAttribute("aria-selected", "true");

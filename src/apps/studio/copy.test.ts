@@ -22,7 +22,7 @@ const studioScreens = [
   ...readdirSync(join(root, "apps/studio"))
     .filter((f) => f.endsWith(".tsx"))
     .map((f) => join("apps/studio", f)),
-  "features/extraction/save-configuration-button.tsx",
+  ...["run-button", "version-menu", "more-menu"].map((f) => `apps/studio/top-bar/${f}.tsx`),
   "features/extraction/version-history.tsx",
 ];
 

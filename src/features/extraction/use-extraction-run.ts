@@ -6,12 +6,32 @@ import { toastFailure } from "@/features/auth/report-failure";
 import type { ExtractionNoun } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { useCanProceed, useStageStatus } from "@/store/selectors";
-import { useExtractionDefinition } from "./use-extraction-definition";
+import {
+  useExtractionDefinition,
+  type ExtractionDefinitionState,
+} from "./use-extraction-definition";
 
 export type ExtractionTab = "define" | "review" | "output";
 
+export interface RunOptions {
+  /** Run on these documents only. Default: every document of the run. */
+  fileIds?: string[];
+}
+
+export interface ExtractionRun {
+  noun: ExtractionNoun;
+  definition: ExtractionDefinitionState;
+  tab: ExtractionTab;
+  /** Absent where there are no tabs to switch. */
+  setTab?: (tab: ExtractionTab) => void;
+  running: boolean;
+  ranBefore: boolean;
+  /** Saves unsaved changes first, then starts the extraction. */
+  run: (options?: RunOptions) => Promise<void>;
+}
+
 /** The definition, the open tab and the Run action, shared by the actions and the workspace. */
-export function useExtractionRun(noun: ExtractionNoun = "definition") {
+export function useExtractionRun(noun: ExtractionNoun = "definition"): ExtractionRun {
   const definition = useExtractionDefinition(noun);
   const status = useStageStatus("extract");
   const canProceed = useCanProceed("extract");
@@ -23,7 +43,7 @@ export function useExtractionRun(noun: ExtractionNoun = "definition") {
   const running = status === "running";
   const ranBefore = hasOutput || canProceed;
 
-  const run = async () => {
+  const run = async (options?: RunOptions) => {
     const { saved, draft } = definition;
     if (!saved || !draft) return;
     if (!definition.valid) {
@@ -37,7 +57,10 @@ export function useExtractionRun(noun: ExtractionNoun = "definition") {
     const current = definition.dirty ? await definition.save() : saved;
     if (!current) return;
     try {
-      await executeStage("extract", { config: { definitionVersion: current.version } });
+      await executeStage("extract", {
+        config: { definitionVersion: current.version },
+        ...(options?.fileIds && { fileIds: options.fileIds }),
+      });
       setChosen("review");
     } catch (error) {
       toastFailure("Couldn't start extraction", error, noun);
@@ -46,5 +69,3 @@ export function useExtractionRun(noun: ExtractionNoun = "definition") {
 
   return { noun, definition, tab, setTab: setChosen, running, ranBefore, run };
 }
-
-export type ExtractionRun = ReturnType<typeof useExtractionRun>;

@@ -33,7 +33,9 @@ test("the dialog creates the project from the blank template and the start panel
   await expect(start.getByRole("button", { name: /^Blank/ })).toHaveCount(0);
   await expect(start.getByRole("button", { name: "Add a field yourself" })).toBeVisible();
   await expect(page.getByTestId("version-line")).toHaveText("Nothing saved yet");
-  await expect(page.getByRole("button", { name: "Run extraction" })).toBeDisabled();
+  await expect(
+    page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+  ).toBeDisabled();
 });
 
 test("a template row loads its fields as an unsaved change", async ({ page }) => {
@@ -42,10 +44,12 @@ test("a template row loads its fields as an unsaved change", async ({ page }) =>
   await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Fields of Rule" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(6);
-  await expect(page.getByText("Unsaved changes").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Run extraction" })).toBeEnabled();
+  await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
+  await expect(
+    page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+  ).toBeEnabled();
   await expect(page.getByTestId("version-line")).toContainText("Nothing saved yet");
-  await expect(page.getByText("Unsaved changes").first()).toBeVisible();
+  await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
   // Focus moved into the new content, not back to the page.
   expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
 });
@@ -79,8 +83,10 @@ test("Add a field yourself makes a record type named Record with one field", asy
   await page.getByRole("button", { name: "Add a field yourself" }).click();
   await expect(page.getByRole("textbox", { name: "Record type name" })).toHaveValue("Record");
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(1);
-  await expect(page.getByText("Unsaved changes").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Run extraction" })).toBeEnabled();
+  await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
+  await expect(
+    page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+  ).toBeEnabled();
 });
 
 test("the start panel has no accessibility violations and one orange action", async ({ page }) => {

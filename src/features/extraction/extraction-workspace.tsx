@@ -52,7 +52,7 @@ export function ExtractionWorkspace({
 
   return (
     <div className="flex flex-col gap-4">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as ExtractionTab)} className="gap-5">
+      <Tabs value={tab} onValueChange={(v) => setTab?.(v as ExtractionTab)} className="gap-5">
         <TabsList variant="line" aria-label="Extraction">
           <TabsTrigger value="define">Define</TabsTrigger>
           <TabsTrigger value="review">Review</TabsTrigger>

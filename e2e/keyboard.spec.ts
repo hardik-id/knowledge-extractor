@@ -21,7 +21,7 @@ async function tabTo(page: Page, name: string, limit = 60) {
   );
 }
 
-test("from the project list, a project opens and 'Run extraction' is reached with Tab and Enter", async ({
+test("from the project list, a project opens and 'Run on this document' is reached with Tab and Enter", async ({
   api,
   page,
   person,
@@ -37,7 +37,7 @@ test("from the project list, a project opens and 'Run extraction' is reached wit
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(extractPath(project.id));
 
-  const run = page.getByRole("button", { name: "Run extraction" });
+  const run = page.getByRole("button", { name: "Run on this document" });
   await expect(run).toBeVisible();
   // The top bar comes first: the project menu, then Run, and only then the tabs.
   await tabTo(page, "Keyboard project");
@@ -45,7 +45,7 @@ test("from the project list, a project opens and 'Run extraction' is reached wit
   await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Keyboard project" })).toBeFocused();
-  await tabTo(page, "Run extraction");
+  await tabTo(page, "Run on this document");
   await expect(run).toBeFocused();
   await expect(page.getByRole("tab", { name: "Define" })).not.toBeFocused();
   await page.keyboard.press("Enter");

@@ -1,8 +1,12 @@
 import { type AxeException, expectAccessible } from "./support/accessibility";
 import { expect, test } from "./fixtures";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import {
+  ExtractionPage,
+  openTemplatesDialog,
+  openVersionHistory,
+  projectWithDocuments,
+} from "./pages/extraction";
 import { DOCS, openDocuments, openExtraction, openNewProjectDialog } from "./pages/studio";
-import { clickUntilOpen } from "./support/first-click";
 
 /**
  * Violations that cannot be fixed in the app, each with the issue that tracks it.
@@ -60,7 +64,7 @@ for (const scheme of ["light", "dark"] as const) {
         const extraction = new ExtractionPage(page);
         await extraction.open(project);
         if (name !== "Define") {
-          await extraction.run("Run extraction");
+          await extraction.runAll();
           await extraction.finished();
           await extraction.openTab(name);
           await extraction.document(DOCS.roadmap).click();
@@ -75,8 +79,7 @@ for (const scheme of ["light", "dark"] as const) {
       const project = await projectWithDocuments(api, person, request, DOCUMENTS);
       await new ExtractionPage(page).open(project);
       await expect(page.getByTestId("version-line")).toBeVisible();
-      await page.getByRole("button", { name: "Version history" }).click();
-      const history = page.getByRole("dialog", { name: "Version history" });
+      const history = await openVersionHistory(page);
       await expect(history.getByRole("list", { name: "Versions" })).toBeVisible();
       await scan(page, "version history");
     });
@@ -84,11 +87,7 @@ for (const scheme of ["light", "dark"] as const) {
     test("the templates dialog", async ({ api, page }) => {
       const project = await api.createProject({ name: "Templates project" });
       await openExtraction(page, project, [DOCS.roadmap]);
-      const dialog = await clickUntilOpen(
-        page,
-        page.getByRole("button", { name: "Templates", exact: true }),
-        page.getByRole("dialog", { name: "Templates" }),
-      );
+      const dialog = await openTemplatesDialog(page);
       await dialog.getByRole("radio").nth(1).check();
       await expect(dialog.getByRole("region", { name: "What it would bring" })).toContainText(
         "Compared with the editor",

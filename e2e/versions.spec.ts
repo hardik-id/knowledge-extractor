@@ -1,5 +1,10 @@
 import { expect, test } from "./fixtures";
-import { editPrompt, saveConfiguration } from "./pages/extraction";
+import {
+  editPrompt,
+  ExtractionPage,
+  openVersionHistory,
+  saveConfiguration,
+} from "./pages/extraction";
 import { DOCS, openExtraction } from "./pages/studio";
 
 test.beforeEach(async ({ api, page }) => {
@@ -14,14 +19,13 @@ test("Save configuration with a note makes version 2, and the history lists both
 }) => {
   await expect(versionLine(page)).toContainText("Version 1");
   await editPrompt(page, "Find every renewal date");
-  await expect(page.getByText("Unsaved changes").first()).toBeVisible();
+  await expect(versionLine(page)).toHaveText("Version 1 · unsaved changes");
   await saveConfiguration(page, "Focus on renewals");
 
   await expect(versionLine(page)).toContainText("Version 2");
-  await expect(page.getByText("Unsaved changes")).toHaveCount(0);
+  await expect(versionLine(page)).toHaveText("Version 2");
 
-  await page.getByRole("button", { name: "Version history" }).click();
-  const history = page.getByRole("dialog", { name: "Version history" });
+  const history = await openVersionHistory(page);
   const versions = history.getByRole("list", { name: "Versions" }).getByRole("listitem");
   await expect(versions).toHaveCount(2);
   await expect(versions.nth(0)).toContainText("Version 2");
@@ -34,17 +38,14 @@ test("restoring version 1 makes a new version 3", async ({ page }) => {
   await saveConfiguration(page, "Focus on renewals");
   await expect(versionLine(page)).toContainText("Version 2");
 
-  await page.getByRole("button", { name: "Version history" }).click();
-  const history = page.getByRole("dialog", { name: "Version history" });
+  const history = await openVersionHistory(page);
   await history.getByRole("button", { name: "View version 1" }).click();
   await history.getByRole("button", { name: "Restore this version" }).click();
 
   await expect(versionLine(page)).toContainText("Version 3");
   await expect(page.getByLabel("What to extract")).not.toHaveValue("Find every renewal date");
 
-  await page.getByRole("button", { name: "Version history" }).click();
-  const versions = page
-    .getByRole("dialog", { name: "Version history" })
+  const versions = (await openVersionHistory(page))
     .getByRole("list", { name: "Versions" })
     .getByRole("listitem");
   await expect(versions).toHaveCount(3);
@@ -54,10 +55,10 @@ test("restoring version 1 makes a new version 3", async ({ page }) => {
 
 test("running with unsaved edits saves them as the next version", async ({ page }) => {
   await editPrompt(page, "Find every renewal date");
-  await page.getByRole("button", { name: "Run extraction" }).click();
+  await new ExtractionPage(page).run();
 
   await expect(versionLine(page)).toContainText("Version 2");
-  await expect(page.getByText("Unsaved changes")).toHaveCount(0);
+  await expect(versionLine(page)).toHaveText("Version 2");
 });
 
 test("a change made elsewhere is reported when saving, and nothing is lost", async ({
