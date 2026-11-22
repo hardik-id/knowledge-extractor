@@ -120,6 +120,7 @@ test("renaming the record type goes into the draft", async ({
   await name.fill("Decision record");
   await page.keyboard.press("Enter");
   await expect(column.getByRole("heading", { name: "Decision record" })).toBeVisible();
+  await expect(column.getByRole("button", { name: "Record type options" })).toBeFocused();
   await expect(column.getByRole("table", { name: "Fields of Decision record" })).toBeVisible();
   await expect(page.getByText("Unsaved changes").first()).toBeVisible();
 
@@ -128,6 +129,7 @@ test("renaming the record type goes into the draft", async ({
   await column.getByRole("textbox", { name: "Record type description" }).fill("A decision");
   await page.keyboard.press("Escape");
   await expect(column.getByRole("textbox", { name: "Record type description" })).toHaveCount(0);
+  await expect(column.getByRole("button", { name: "Record type options" })).toBeFocused();
 });
 
 test("a second record type shows the segmented control, and removing it brings the first back", async ({
@@ -180,6 +182,7 @@ test("the prompt is edited in place: a click opens a box, Esc or leaving closes 
   await expect(page.getByText("Unsaved changes").first()).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(screen.promptBox).toHaveCount(0);
+  await expect(screen.promptButton).toBeFocused();
   await expect(screen.promptButton).toContainText("Every decision, with who made it.");
 
   // Leaving the box closes it too.

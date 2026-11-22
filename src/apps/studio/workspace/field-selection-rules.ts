@@ -1,19 +1,5 @@
 import type { ExtractionRecord } from "@/services/contracts";
 
-/**
- * The selected field while it still exists in the record type shown, else null: removing the
- * field from the draft, or showing another record type, clears the selection.
- */
-export function survivingSelection(
-  fieldId: string | null,
-  recordTypes: readonly { id: string; fields: readonly { id: string }[] }[],
-  typeId: string | null,
-): string | null {
-  if (!fieldId) return null;
-  const type = recordTypes.find((t) => t.id === typeId);
-  return type?.fields.some((f) => f.id === fieldId) ? fieldId : null;
-}
-
 /** The first value of the field that has a place in the text: not rejected, anchored, with a span. */
 function locatedValueId(record: ExtractionRecord, fieldId: string): string | null {
   const value = record.fields.find(

@@ -40,11 +40,18 @@ export function RecordTypeBar({ definition }: { definition: ExtractionDefinition
   const focusNewField = useRef<number | null>(null);
   // Set when a menu item opens an input, so the closing menu leaves the focus to it.
   const keepFocus = useRef(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  // Set by Esc and Enter: the focus goes back to the options button. Not by a blur.
+  const returnFocus = useRef(false);
   const type = draft?.recordTypes.find((t) => t.id === selectedTypeId);
   const fieldCount = type?.fields.length ?? 0;
 
   useEffect(() => {
     if (editing) input.current?.focus();
+    else if (returnFocus.current) {
+      returnFocus.current = false;
+      trigger.current?.focus();
+    }
   }, [editing]);
 
   useEffect(() => {
@@ -67,6 +74,7 @@ export function RecordTypeBar({ definition }: { definition: ExtractionDefinition
     // The edit is what Esc and Enter close here: not the field selection, not the overlay.
     event.preventDefault();
     event.stopPropagation();
+    returnFocus.current = true;
     setEditing(null);
   };
 
@@ -131,7 +139,7 @@ export function RecordTypeBar({ definition }: { definition: ExtractionDefinition
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="Record type options">
+            <Button ref={trigger} variant="ghost" size="icon-sm" aria-label="Record type options">
               <MoreHorizontal aria-hidden />
             </Button>
           </DropdownMenuTrigger>

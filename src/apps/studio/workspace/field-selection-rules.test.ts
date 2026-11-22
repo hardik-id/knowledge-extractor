@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { ExtractionRecord, FieldValue } from "@/services/contracts";
-import { scrollTargetValueId, survivingSelection } from "./field-selection-rules";
+import { scrollTargetValueId } from "./field-selection-rules";
 
 const value = (id: string, fieldId: string, patch: Partial<FieldValue> = {}): FieldValue => ({
   id,
@@ -62,23 +62,5 @@ describe("scrollTargetValueId", () => {
     assert.equal(scrollTargetValueId(records, "t1", "r1", null), null);
     assert.equal(scrollTargetValueId(undefined, "t1", "r1", "f1"), null);
     assert.equal(scrollTargetValueId(records, "t1", "r1", "missing"), null);
-  });
-});
-
-describe("survivingSelection", () => {
-  const types = [
-    { id: "t1", fields: [{ id: "f1" }, { id: "f2" }] },
-    { id: "t2", fields: [{ id: "f3" }] },
-  ];
-
-  test("keeps a field of the type shown", () => {
-    assert.equal(survivingSelection("f1", types, "t1"), "f1");
-  });
-
-  test("clears when the field is gone or the type changed", () => {
-    assert.equal(survivingSelection("f9", types, "t1"), null);
-    assert.equal(survivingSelection("f1", types, "t2"), null);
-    assert.equal(survivingSelection("f1", types, null), null);
-    assert.equal(survivingSelection(null, types, "t1"), null);
   });
 });
