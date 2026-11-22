@@ -1,7 +1,6 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { ExtractionActions } from "@/features/run/use-extraction";
@@ -13,7 +12,8 @@ import type {
 } from "@/services/contracts";
 import type { FieldLabel } from "./labels";
 import { RecordCard } from "./record-card";
-import { countReviews, reviewSummary, sortRejectedLast, suggestedRecordIds } from "./record-rules";
+import { countReviews, reviewSummary, sortRejectedLast } from "./record-rules";
+import { useAcceptAll } from "./use-accept-all";
 
 export { ReviewStateLabel } from "./record-review-state";
 
@@ -73,40 +73,7 @@ export function RecordsPane({ definition, records, unanchored, ...rest }: Record
   const showTypes = groups.length > 1;
   const counts = countReviews(records);
 
-  // The newest records and actions, for the loop in "Accept all suggested".
-  const latest = useRef({ records, actions });
-  useEffect(() => {
-    latest.current = { records, actions };
-  });
-  const [accepting, setAccepting] = useState(false);
-
-  /**
-   * Accepts the suggested records one after another. Each change is sent with
-   * the revision of the records on screen, so after one succeeds this waits
-   * until the new records have been rendered (and the actions with them)
-   * before sending the next. It stops at the first failure or if the new
-   * records do not arrive.
-   */
-  const acceptAll = async () => {
-    setAccepting(true);
-    try {
-      for (const id of suggestedRecordIds(latest.current.records)) {
-        const current = latest.current.actions;
-        if (!current) return;
-        if (!(await current.updateRecord(id, { review: "accepted" }))) return;
-        const deadline = Date.now() + 3000;
-        while (
-          latest.current.records.find((r) => r.id === id)?.review === "suggested" &&
-          Date.now() < deadline
-        ) {
-          await new Promise((resolve) => setTimeout(resolve, 20));
-        }
-        if (latest.current.records.find((r) => r.id === id)?.review === "suggested") return;
-      }
-    } finally {
-      setAccepting(false);
-    }
-  };
+  const { acceptAll, accepting } = useAcceptAll(records, actions);
 
   return (
     <TooltipProvider>

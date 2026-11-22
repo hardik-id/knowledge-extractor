@@ -12,17 +12,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isApiError } from "@/lib/api/api-error";
 import { plural } from "@/lib/format";
 import { useAsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
 import type { DefinitionTemplate, ExtractionRecord, FieldDef } from "@/services/contracts";
 import { describeApiError } from "@/services/errors";
-import { usePipelineStore } from "@/store/pipeline-store";
 import { diffProposal } from "./proposal-diff";
 import { TemplatePicker } from "./template-picker";
 import { recordsImpact } from "./template-impact";
 import type { ExtractionDefinitionState } from "./use-extraction-definition";
+import { useRunExtractions } from "./use-run-extractions";
 
 const FORMAT_NAMES = { json: "JSON", markdown: "Markdown", csv: "CSV" } as const;
 
@@ -50,37 +49,7 @@ function fieldHow(field: FieldDef): string {
   return field.multiple ? `${how}, several values` : how;
 }
 
-/** The records of every file of the run that was extracted, to say what the next run does to them. */
-function useRunRecords(): { records: ExtractionRecord[] | undefined; error: unknown } {
-  const runId = usePipelineStore((s) => s.runId);
-  const runFiles = usePipelineStore((s) => s.runFiles);
-  const cells = usePipelineStore((s) => s.cells);
-  // Only a file an extraction ran on has records to ask for; its ETag says when they changed.
-  const extracted = useMemo(
-    () =>
-      runFiles
-        .filter((f) => cells[f.id]?.extract?.output)
-        .map((f) => ({ id: f.id, etag: cells[f.id]?.extract?.output?.etag ?? "" })),
-    [runFiles, cells],
-  );
-  const key = runId ? JSON.stringify([runId, extracted.map((f) => [f.id, f.etag])]) : null;
-  const { data, error } = useAsyncData(key, async (signal) => {
-    const all = await Promise.all(
-      extracted.map(async ({ id: fileId }) => {
-        try {
-          return (await services.extraction.getFileExtraction(runId!, fileId, signal)).records;
-        } catch (e) {
-          if (isApiError(e) && e.code === "extraction_not_found") return [];
-          throw e;
-        }
-      }),
-    );
-    return all.flat();
-  });
-  return { records: data, error };
-}
-
-function TemplateDialog({
+export function TemplateDialog({
   definition,
   onClose,
 }: {
@@ -90,7 +59,8 @@ function TemplateDialog({
   const { draft, dirty, applyTemplate } = definition;
   const [chosenId, setChosenId] = useState<string | null>(null);
   const list = useAsyncData("templates", (signal) => services.templates.list(signal));
-  const { records, error: recordsError } = useRunRecords();
+  const { extractions, error: recordsError } = useRunExtractions();
+  const records = useMemo(() => extractions?.flatMap((x) => x.records), [extractions]);
 
   const templates = list.data;
   const chosen = templates?.find((t) => t.id === chosenId) ?? null;

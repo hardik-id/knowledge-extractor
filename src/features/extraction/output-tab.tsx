@@ -59,7 +59,13 @@ export function OutputTab({ definition }: { definition: ExtractionDefinition }) 
   );
 }
 
-function FileOutput({ fileId, definition }: { fileId: string; definition: ExtractionDefinition }) {
+export function FileOutput({
+  fileId,
+  definition,
+}: {
+  fileId: string;
+  definition: ExtractionDefinition;
+}) {
   const { data, error, isLoading, retry } = useFileExtraction(fileId);
   const [rendered, setRendered] = useState(false);
   const format = definition.output.format;

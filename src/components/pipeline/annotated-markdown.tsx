@@ -38,6 +38,8 @@ export function AnnotatedMarkdown({
   marks,
   activeValueId,
   onMarkClick,
+  focusRecordId,
+  chips = true,
   className,
 }: AnnotatedMarkdownProps) {
   // The front matter is left out here: the Enrichment stage shows it, and this view is about the text.
@@ -52,10 +54,11 @@ export function AnnotatedMarkdown({
           marks: marks.map((m) => ({ start: m.start, end: m.end, data: { id: m.data.id } })),
           body,
           bodyOffset,
+          chips,
         },
       ] as [typeof rehypeHighlights, Parameters<typeof rehypeHighlights>[0]],
     ],
-    [marks, body, bodyOffset],
+    [marks, body, bodyOffset, chips],
   );
 
   const components = useMemo<Components>(() => {
@@ -73,13 +76,14 @@ export function AnnotatedMarkdown({
             label={textOf(props.node)}
             activeValueId={activeValueId}
             onMarkClick={onMarkClick}
+            focusRecordId={focusRecordId}
           >
             {props.children}
           </Highlight>
         );
       },
     };
-  }, [marks, activeValueId, onMarkClick]);
+  }, [marks, activeValueId, onMarkClick, focusRecordId]);
 
   return (
     <div className={cn("space-y-6", className)}>

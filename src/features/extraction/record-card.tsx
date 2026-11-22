@@ -26,7 +26,7 @@ export interface RecordCardProps {
   readOnly?: boolean;
 }
 
-function RecordActions({
+export function RecordActions({
   record,
   actions,
 }: {
@@ -124,7 +124,7 @@ function RecordActions({
   );
 }
 
-function ExampleToggle({
+export function ExampleToggle({
   record,
   actions,
 }: {

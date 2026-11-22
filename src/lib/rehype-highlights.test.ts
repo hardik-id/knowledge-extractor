@@ -9,13 +9,17 @@ import { splitFrontMatter } from "./front-matter";
 import { rehypeHighlights, type HighlightMark } from "./rehype-highlights";
 import type { Mark } from "./text-spans";
 
-async function render(document: string, marks: Mark<HighlightMark>[]): Promise<Root> {
+async function render(
+  document: string,
+  marks: Mark<HighlightMark>[],
+  chips?: boolean,
+): Promise<Root> {
   const { body } = splitFrontMatter(document);
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype)
-    .use(rehypeHighlights, { marks, body, bodyOffset: document.length - body.length });
+    .use(rehypeHighlights, { marks, body, bodyOffset: document.length - body.length, chips });
   return processor.run(processor.parse(body)) as Promise<Root>;
 }
 
@@ -162,5 +166,16 @@ describe("rehypeHighlights", () => {
     assert.equal(text, "a & b");
     // a, space, & (5 source characters), space, b, end
     assert.equal(map, "0,1,2,7,8,9");
+  });
+
+  test("has no chips attribute when chips is off, and keeps the marks", async () => {
+    const doc = "We decided to **use Postgres** for storage.\n";
+    const start = doc.indexOf("decided");
+    const end = doc.indexOf("Postgres") + "Postgres".length;
+    const tree = await render(doc, [{ start, end, data: { id: "m" } }], false);
+    assert.deepEqual(marked(tree), [
+      ["m", "undefined", "decided to "],
+      ["m", "undefined", "use Postgres"],
+    ]);
   });
 });

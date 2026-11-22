@@ -29,6 +29,8 @@ export interface RehypeHighlightsOptions {
   body: string;
   /** Where the body starts in the document the marks refer to. */
   bodyOffset: number;
+  /** Add the `data-chips` attribute (default true). Without it a piece carries no name chip. */
+  chips?: boolean;
 }
 
 export const MARKS_ATTRIBUTE = "data-marks";
@@ -62,7 +64,7 @@ function walk(parent: Root | Element, options: RehypeHighlightsOptions, seen: Se
 
 function cutText(
   node: Text,
-  { marks, body, bodyOffset }: RehypeHighlightsOptions,
+  { marks, body, bodyOffset, chips: withChips = true }: RehypeHighlightsOptions,
   seen: Set<string>,
 ): (Text | Element)[] {
   const start = node.position?.start.offset;
@@ -98,7 +100,9 @@ function cutText(
     pieces.push({
       type: "element",
       tagName: "mark",
-      properties: { [MARKS_ATTRIBUTE]: ids.join(" "), [CHIPS_ATTRIBUTE]: chips.join(" ") },
+      properties: withChips
+        ? { [MARKS_ATTRIBUTE]: ids.join(" "), [CHIPS_ATTRIBUTE]: chips.join(" ") }
+        : { [MARKS_ATTRIBUTE]: ids.join(" ") },
       children: [text],
     });
   }
