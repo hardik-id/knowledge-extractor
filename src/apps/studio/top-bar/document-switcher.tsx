@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,7 @@ const TONE: Record<DocumentStateKind, string> = {
   "to-review": "text-ink-muted",
   reviewed: "text-success",
   "nothing-found": "text-ink-muted",
+  unavailable: "text-ink-muted",
 };
 
 function StateMark({ kind }: { kind: DocumentStateKind }) {
@@ -55,9 +57,13 @@ export function DocumentSwitcher() {
   const activeDocId = usePipelineStore((s) => s.activeDocId);
   const setActiveDoc = usePipelineStore((s) => s.setActiveDoc);
   const states = useDocumentStates();
+  const found = runFiles.findIndex((f) => f.id === activeDocId);
+  // An id that is not among the run's files (removed, or restored from an old tab): use the first.
+  useEffect(() => {
+    if (runFiles.length > 0 && found < 0) setActiveDoc(runFiles[0].id);
+  }, [runFiles, found, setActiveDoc]);
   if (runFiles.length === 0) return null;
 
-  const found = runFiles.findIndex((f) => f.id === activeDocId);
   const index = found < 0 ? 0 : found;
   const active = runFiles[index];
   const go = (to: number) => setActiveDoc(runFiles[to].id);

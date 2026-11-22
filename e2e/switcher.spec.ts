@@ -43,7 +43,16 @@ test("the switcher steps through the documents and shows their state before and 
 
   await switcher.open();
   await expect(switcher.item(FIRST)).toContainText("3 to review");
-  await expect(switcher.item(SECOND)).toContainText(/to review|Nothing found|reviewed/);
+  await expect(switcher.item(SECOND)).toContainText(/\d+ to review|Nothing found/);
+  await page.keyboard.press("Escape");
+  await expect(switcher.menu).toHaveCount(0);
+
+  // A review edit shows in the list without a new run.
+  await extraction.openTab("Review");
+  await page.getByRole("button", { name: "Accept all suggested" }).click();
+  await expect(extraction.summary()).toHaveText("3 records · 3 accepted");
+  await switcher.open();
+  await expect(switcher.item(FIRST)).toContainText("3 records reviewed");
   await page.keyboard.press("Escape");
   await expect(switcher.menu).toHaveCount(0);
 

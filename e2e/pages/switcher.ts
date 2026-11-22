@@ -5,7 +5,7 @@ export class Switcher {
   constructor(readonly page: Page) {}
 
   get root() {
-    return this.page.getByTestId("document-switcher");
+    return this.page.getByRole("group", { name: "Document" });
   }
 
   get trigger() {

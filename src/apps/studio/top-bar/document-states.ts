@@ -1,7 +1,7 @@
 import type { FileExtraction, StageCell } from "@/services/contracts";
 
 export type DocumentStateKind =
-  "not-run" | "running" | "failed" | "to-review" | "reviewed" | "nothing-found";
+  "not-run" | "running" | "failed" | "to-review" | "reviewed" | "nothing-found" | "unavailable";
 
 export interface DocumentState {
   kind: DocumentStateKind;
