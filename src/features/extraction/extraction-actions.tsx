@@ -14,18 +14,27 @@ interface ExtractionActionsProps {
   showPublish?: boolean;
   /** "Save configuration": saves the draft as a new version, with a note. */
   showSave?: boolean;
+  /** Run stays disabled while the configuration has no record type (the Studio). */
+  requireFields?: boolean;
 }
 
 /**
  * The facts of a versioned configuration for the page header: "Version 4, saved 20 November ·
  * Unsaved changes", then "Version history" and "Templates" as quiet links.
  */
-export function ExtractionFacts({ extraction }: { extraction: ExtractionRun }) {
+export function ExtractionFacts({
+  extraction,
+  emptyIsUnsaved = false,
+}: {
+  extraction: ExtractionRun;
+  /** Reads "Nothing saved yet" for a configuration that has no record type (the Studio). */
+  emptyIsUnsaved?: boolean;
+}) {
   const { definition } = extraction;
   if (!definition.saved) return null;
   return (
     <>
-      <VersionBar definition={definition} />
+      <VersionBar definition={definition} emptyIsUnsaved={emptyIsUnsaved} />
       <TemplatesEntry definition={definition} />
     </>
   );
@@ -36,10 +45,12 @@ export function ExtractionActions({
   extraction,
   showPublish = true,
   showSave = false,
+  requireFields = false,
 }: ExtractionActionsProps) {
   const { definition, running, ranBefore, run } = extraction;
   const { saved } = definition;
   if (!saved) return null;
+  const empty = requireFields && (definition.draft?.recordTypes.length ?? 0) === 0;
   return (
     <>
       {showSave && <SaveConfigurationButton extraction={extraction} />}
@@ -54,7 +65,7 @@ export function ExtractionActions({
         variant={ranBefore ? "secondary" : "default"}
         size="lg"
         onClick={() => void run()}
-        disabled={running || definition.saving}
+        disabled={running || definition.saving || empty}
       >
         {ranBefore && <RotateCcw data-icon="inline-start" />}
         {ranBefore ? "Run again" : "Run extraction"}

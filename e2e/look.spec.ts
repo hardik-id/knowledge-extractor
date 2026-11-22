@@ -9,12 +9,12 @@ import {
 test.describe("the New project dialog on a desktop", () => {
   test.use({ viewport: { width: 1360, height: 900 } });
 
-  test("shows all four templates with no scrollbar", async ({ page }) => {
+  test("asks for a name and a description only, with no scrollbar", async ({ page }) => {
     await page.goto("/studio");
     const dialog = await openNewProjectDialog(page);
-    const templates = dialog.getByRole("radio");
-    await expect(templates).toHaveCount(4);
-    for (let i = 0; i < 4; i++) await expect(templates.nth(i)).toBeInViewport({ ratio: 1 });
+    await expect(dialog.getByLabel("Name")).toBeInViewport({ ratio: 1 });
+    await expect(dialog.getByLabel("Description (optional)")).toBeInViewport({ ratio: 1 });
+    await expect(dialog.getByRole("radio")).toHaveCount(0);
     expect(await hasInnerScroll(dialog), "the dialog scrolls").toBe(false);
     await expect(dialog.getByRole("button", { name: "Create project" })).toBeInViewport({
       ratio: 1,
@@ -28,7 +28,7 @@ test.describe("the New project dialog on a phone", () => {
   test("fits, and its buttons stay reachable", async ({ page }) => {
     await page.goto("/studio");
     const dialog = await openNewProjectDialog(page);
-    await expect(dialog.getByRole("radio")).toHaveCount(4);
+    await expect(dialog.getByRole("radio")).toHaveCount(0);
     await expect(dialog.getByRole("button", { name: "Cancel" })).toBeInViewport({ ratio: 1 });
     await expect(dialog.getByRole("button", { name: "Create project" })).toBeInViewport({
       ratio: 1,

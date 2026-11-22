@@ -42,7 +42,8 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto("/studio");
       const dialog = await openNewProjectDialog(page);
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole("radio", { name: /^Blank/ })).toBeVisible();
+      await expect(dialog.getByLabel("Name")).toBeVisible();
+      await expect(dialog.getByRole("radio")).toHaveCount(0);
       await scan(page, "New project dialog");
     });
 
