@@ -62,7 +62,7 @@ export function ExtractionActions({
         />
       )}
       <Button
-        variant={ranBefore ? "secondary" : "default"}
+        variant={ranBefore ? "secondary" : empty ? "outline" : "default"}
         size="lg"
         onClick={() => void run()}
         disabled={running || definition.saving || empty}

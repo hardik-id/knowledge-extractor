@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { CloudOff, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -92,12 +93,26 @@ function ExtractPanel() {
   const empty =
     !!saved && !!draft && saved.recordTypes.length === 0 && draft.recordTypes.length === 0;
   const starting = empty && assistant.messages.length === 0;
+  // Leaving the start panel removes the focused button: move focus to the new content.
+  const content = useRef<HTMLDivElement>(null);
+  const wasStarting = useRef(false);
+  useEffect(() => {
+    if (wasStarting.current && !starting) {
+      const target = content.current?.querySelector<HTMLElement>(
+        '[role="tab"][aria-selected="true"]',
+      );
+      (target ?? content.current)?.focus();
+    }
+    wasStarting.current = starting;
+  }, [starting]);
   return (
     <section aria-label="Extraction" className="flex flex-1 flex-col md:min-h-0">
       <ProjectTopBar extraction={extraction} />
       <h1 className="sr-only">{project?.name ? `${project.name}: Extraction` : "Extraction"}</h1>
       <div
-        className="relative min-w-0 flex-1 px-4 py-4 sm:px-6 md:min-h-0 md:overflow-y-auto"
+        ref={content}
+        tabIndex={-1}
+        className="relative min-w-0 flex-1 px-4 py-4 outline-none sm:px-6 md:min-h-0 md:overflow-y-auto"
         style={{ "--review-offset": "6rem" } as React.CSSProperties}
       >
         <FileProblems />

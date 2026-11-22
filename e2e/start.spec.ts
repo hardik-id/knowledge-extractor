@@ -44,6 +44,10 @@ test("a template row loads its fields as an unsaved change", async ({ page }) =>
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(6);
   await expect(page.getByText("Unsaved changes").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Run extraction" })).toBeEnabled();
+  await expect(page.getByTestId("version-line")).toContainText("Nothing saved yet");
+  await expect(page.getByText("Unsaved changes").first()).toBeVisible();
+  // Focus moved into the new content, not back to the page.
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
 });
 
 test("Suggest fields asks the assistant and the tabs come back with its proposal", async ({
@@ -57,6 +61,8 @@ test("Suggest fields asks the assistant and the tabs come back with its proposal
   await expect(
     extraction.conversation.getByRole("region", { name: "Proposed changes" }),
   ).toBeVisible();
+  // A proposal is not saved.
+  await expect(page.getByTestId("version-line")).toContainText("Nothing saved yet");
 });
 
 test("what the person wrote is what the assistant is asked", async ({ page }) => {
@@ -73,12 +79,36 @@ test("Add a field yourself makes a record type named Record with one field", asy
   await page.getByRole("button", { name: "Add a field yourself" }).click();
   await expect(page.getByRole("textbox", { name: "Record type name" })).toHaveValue("Record");
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(1);
+  await expect(page.getByText("Unsaved changes").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run extraction" })).toBeEnabled();
 });
 
 test("the start panel has no accessibility violations and one orange action", async ({ page }) => {
   await openStart(page);
+  await expect(page.locator('button[data-variant="default"]:visible')).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Suggest fields" })).toHaveAttribute(
+    "data-variant",
+    "default",
+  );
   await expectAccessible(page, "start panel");
 });
+
+for (const size of [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 720 },
+]) {
+  test.describe(`at ${size.width}x${size.height}`, () => {
+    test.use({ viewport: size });
+
+    test("no sideways scroll and every way to begin is reachable", async ({ page }) => {
+      await openStart(page);
+      expect(await scrollsSideways(page)).toBe(false);
+      const fresh = page.getByRole("button", { name: "Add a field yourself" });
+      await fresh.scrollIntoViewIfNeeded();
+      await expect(fresh).toBeInViewport();
+    });
+  });
+}
 
 test.describe("at phone width", () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -89,5 +119,10 @@ test.describe("at phone width", () => {
     const document = await page.getByTestId("start-document").boundingBox();
     const panel = await page.getByRole("complementary", { name: "Start" }).boundingBox();
     expect(document && panel && panel.y >= document.y + document.height - 1).toBe(true);
+    // A long template name does not squeeze its description into a narrow column.
+    const row = await page
+      .getByRole("button", { name: /^Architecture decision records/ })
+      .boundingBox();
+    expect(row && row.height).toBeLessThan(140);
   });
 });

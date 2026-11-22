@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
 import type { AssistantMessage, ExtractionDefinitionDraft } from "@/services/contracts";
@@ -31,11 +31,25 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
   const setAssistantMessages = usePipelineStore((s) => s.setAssistantMessages);
   const putAssistantMessage = usePipelineStore((s) => s.putAssistantMessage);
   const [sending, setSending] = useState(false);
+  const latest = useRef(messages);
+  useEffect(() => {
+    latest.current = messages;
+  }, [messages]);
 
   const { error, isLoading, retry } = useAsyncData(runId, async (signal) => {
     if (!runId) return null;
     const loaded = await services.extraction.getAssistantMessages(runId, signal);
-    if (!signal.aborted) setAssistantMessages(loaded);
+    if (!signal.aborted) {
+      // Live parts may have arrived while this was on its way: keep what is newer.
+      const local = latest.current;
+      const byId = new Map(local.map((m) => [m.id, m]));
+      const merged = loaded.map((m) => {
+        const mine = byId.get(m.id);
+        return mine && mine.status === "done" && m.status === "streaming" ? mine : m;
+      });
+      const known = new Set(loaded.map((m) => m.id));
+      setAssistantMessages([...merged, ...local.filter((m) => !known.has(m.id))]);
+    }
     return loaded;
   });
 

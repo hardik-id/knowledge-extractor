@@ -63,6 +63,9 @@ export function StartPanel({ definition, assistant }: StartPanelProps) {
             )}
             Suggest fields
           </Button>
+          <span role="status" className="sr-only">
+            {assistant.busy ? "Asking the assistant…" : ""}
+          </span>
           <span className="text-small text-ink-muted">
             Leave it empty to suggest from the open document.
           </span>
@@ -84,13 +87,13 @@ export function StartPanel({ definition, assistant }: StartPanelProps) {
                 <button
                   type="button"
                   onClick={() => definition.applyTemplate(template)}
-                  className="flex w-full items-baseline gap-3 rounded-panel border border-border-subtle bg-background px-3 py-2.5 text-left text-body text-ink hover:bg-surface-hover"
+                  className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 rounded-panel border border-border-subtle bg-background px-3 py-2.5 text-left text-body text-ink hover:bg-surface-hover sm:flex-nowrap"
                 >
-                  <span className="font-medium whitespace-nowrap">{template.name}</span>
-                  <span className="min-w-0 flex-1 text-small text-ink-muted">
+                  <span className="font-medium">{template.name}</span>
+                  <span className="order-last w-full min-w-0 text-small text-ink-muted sm:order-none sm:w-auto sm:flex-1">
                     {template.description}
                   </span>
-                  <span className="text-small whitespace-nowrap text-ink-muted">
+                  <span className="ml-auto text-small whitespace-nowrap text-ink-muted sm:ml-0">
                     {plural(templateFieldCount(template), "field")}
                   </span>
                 </button>
