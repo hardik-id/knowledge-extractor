@@ -96,9 +96,15 @@ function ClampedText({
 }
 
 /** Leads to a value's highlight in the document and puts the focus on it. */
-function showInDocument(valueId: string) {
+function showInDocument(valueId: string, openDocument?: () => void) {
   const mark = findHighlight(document, valueId);
-  if (!(mark instanceof HTMLElement)) return;
+  if (!(mark instanceof HTMLElement)) {
+    // The document is not the view on screen (Output): open it, then look again once it is drawn.
+    if (!openDocument) return;
+    openDocument();
+    requestAnimationFrame(() => requestAnimationFrame(() => showInDocument(valueId)));
+    return;
+  }
   scrollToElement(mark);
   mark.focus({ preventScroll: true });
 }
@@ -133,14 +139,23 @@ function StripLine({
   actions: ReturnType<typeof useExtractionActions>;
 }) {
   const [editing, setEditing] = useState(false);
+  const controls = useScreenControls();
   const value = entry?.value ?? null;
   return (
     <div
       data-strip-line={field.id}
       data-record-value={value?.id}
-      className={cn("flex items-start gap-3 rounded-control px-1", selected && "bg-surface-hover")}
+      className={cn(
+        "flex flex-wrap items-start gap-x-3 rounded-control px-1 sm:flex-nowrap",
+        selected && "bg-surface-hover",
+      )}
     >
-      <div className="flex h-8 w-[8rem] shrink-0 flex-col justify-center sm:w-[15.5rem] sm:flex-row sm:items-center sm:justify-start sm:gap-1.5">
+      <div
+        className={cn(
+          "min-h-8 w-full shrink-0 items-center gap-1.5 sm:flex sm:w-[13rem]",
+          first ? "flex" : "hidden",
+        )}
+      >
         {first && (
           <>
             <button
@@ -184,7 +199,11 @@ function StripLine({
               text={value.value ?? ""}
               struck={entry.rejected}
               showLabel={`Show in the document: ${field.name}, ${value.value ?? ""}`}
-              onShow={entry.placed ? () => showInDocument(value.id) : undefined}
+              onShow={
+                entry.placed
+                  ? () => showInDocument(value.id, () => controls?.setView("document"))
+                  : undefined
+              }
             />
             <span className="flex flex-wrap items-center gap-x-2">
               {entry.rejected && <ReviewStateLabel state="rejected" />}
@@ -204,7 +223,7 @@ function StripLine({
           field={field}
           actions={actions}
           onEdit={() => setEditing(true)}
-          className="flex shrink-0 items-center gap-0.5"
+          className="flex w-[7.5rem] shrink-0 items-center justify-start gap-0.5"
         />
       )}
     </div>
@@ -336,7 +355,7 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
           if (next instanceof Node && !event.currentTarget.contains(next))
             focusInside.current = false;
         }}
-        className="flex max-h-[45dvh] flex-col gap-2.5 overflow-y-auto border-t border-border-subtle bg-surface-tint px-4 pt-2.5 pb-3.5 outline-none"
+        className="flex max-h-[40dvh] flex-col gap-2.5 overflow-y-auto border-t border-border-subtle bg-surface-tint px-4 pt-2.5 pb-3.5 outline-none"
       >
         {!record ? (
           <p className={QUIET}>No records of this type were found in this document.</p>

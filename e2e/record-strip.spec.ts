@@ -247,12 +247,11 @@ test("a click on a field's name selects it and fades the other highlights; the t
   await expect(strip.fieldButton("Title")).toHaveAttribute("aria-pressed", "true");
   await screen.expectSelected(screen.column, "Title");
   await screen.expectFaded("Title");
-  await expect(strip.line("Title")).toHaveClass(/bg-surface-hover/);
-  await expect(strip.line("Status")).not.toHaveClass(/bg-surface-hover/);
+  await expect(strip.fieldButton("Status")).toHaveAttribute("aria-pressed", "false");
   // A selection made in the table shades the strip's line.
   await screen.select(screen.column, "Approved by");
-  await expect(strip.line("Approved by")).toHaveClass(/bg-surface-hover/);
-  await expect(strip.line("Title")).not.toHaveClass(/bg-surface-hover/);
+  await expect(strip.fieldButton("Approved by")).toHaveAttribute("aria-pressed", "true");
+  await expect(strip.fieldButton("Title")).toHaveAttribute("aria-pressed", "false");
   // A second click on the name clears it.
   await strip.fieldButton("Approved by").click();
   await screen.expectNothingSelected(screen.column);
@@ -497,8 +496,20 @@ for (const size of [
       if (size.width >= 1100) {
         // Pinned inside the window, leaving at least half of it to the document.
         expect(box!.y + box!.height).toBeLessThanOrEqual(size.height + 1);
-        expect(box!.height).toBeLessThanOrEqual(size.height / 2);
+        // The pane holds the strip: the document keeps clearly more than half of its height.
+        const paneBox = await documentPane(page).boundingBox();
+        expect(paneBox).not.toBeNull();
+        expect((box!.y - paneBox!.y) / paneBox!.height).toBeGreaterThan(0.55);
       }
+      // No line lies over the next one (a tag beside a name, a wrapped value).
+      const tops = await strip.strip.locator("[data-strip-line]").evaluateAll((lines) =>
+        lines.map((el) => {
+          const r = el.getBoundingClientRect();
+          return [r.top, r.bottom];
+        }),
+      );
+      for (let i = 1; i < tops.length; i++)
+        expect(tops[i]![0]).toBeGreaterThanOrEqual(tops[i - 1]![1] - 1);
       const mark = documentPane(page).locator("mark").first();
       await mark.scrollIntoViewIfNeeded();
       const markBox = await mark.boundingBox();
