@@ -32,11 +32,10 @@ export interface AnnotationProps {
   activeValueId?: string | null;
   onMarkClick?: (mark: HighlightData) => void;
   /**
-   * The record being looked at. When set, marks of other records are drawn as a
-   * hairline dashed underline without a fill; theirs is still a button, and
-   * hovering names the field.
+   * The field being looked at. When set, marks of other fields are drawn faded (a pale fill and
+   * underline, still in their colour); they are still buttons, and hovering names the field.
    */
-  focusRecordId?: string | null;
+  focusFieldId?: string | null;
   /** Show the field's name as a chip on the first piece of a mark (default true). */
   chips?: boolean;
 }
@@ -50,7 +49,7 @@ interface HighlightProps {
   label: string;
   activeValueId?: string | null;
   onMarkClick?: (mark: HighlightData) => void;
-  focusRecordId?: string | null;
+  focusFieldId?: string | null;
   children: React.ReactNode;
 }
 
@@ -73,11 +72,11 @@ export function Highlight({
   label,
   activeValueId,
   onMarkClick,
-  focusRecordId,
+  focusFieldId,
   children,
 }: HighlightProps) {
   const primary = primaryMark(items);
-  const { faint, active, labelIndex } = highlightLook(items, focusRecordId, activeValueId);
+  const { faded, active, labelIndex } = highlightLook(items, focusFieldId, activeValueId);
   const style = labelStyle(labelIndex);
   const chipSet = chipIds instanceof Set ? chipIds : new Set(chipIds);
   const chips = items.filter((item) => chipSet.has(item.id));
@@ -95,6 +94,7 @@ export function Highlight({
       aria-label={`${names.join(", ")}: ${label}`}
       title={names.length > 1 ? names.join(", ") : primary.name}
       data-value-id={primary.valueId}
+      data-record-id={primary.recordId}
       data-start={primary.start}
       onClick={select}
       onKeyDown={(event) => {
@@ -105,9 +105,7 @@ export function Highlight({
       }}
       className={cn(
         "cursor-pointer rounded-control [box-decoration-break:clone] px-px text-ink",
-        faint
-          ? "border-b border-dashed border-border-control"
-          : cn("border-b-2", style.highlight, style.underline),
+        faded ? cn("border-b-2", style.faded) : cn("border-b-2", style.highlight, style.underline),
         active && "border-b-4 outline-2 outline-offset-1 outline-ink-heading",
       )}
     >
@@ -149,7 +147,7 @@ export function AnnotatedText({
   marks,
   activeValueId,
   onMarkClick,
-  focusRecordId,
+  focusFieldId,
   chips = true,
   className,
 }: AnnotatedTextProps) {
@@ -171,7 +169,7 @@ export function AnnotatedText({
             label={piece.text}
             activeValueId={activeValueId}
             onMarkClick={onMarkClick}
-            focusRecordId={focusRecordId}
+            focusFieldId={focusFieldId}
           >
             <span {...{ [TEXT_START]: piece.start }}>{piece.text}</span>
           </Highlight>

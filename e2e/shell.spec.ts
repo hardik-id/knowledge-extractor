@@ -126,7 +126,9 @@ test.describe("on a phone", () => {
 
     // With documents the project shows its workspace, where the bar carries more and wraps: still no sideways scroll.
     await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Run extraction" })).toBeVisible();
+    await expect(
+      page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+    ).toBeVisible();
     expect(await sideways(page), "the page scrolls sideways").toBeLessThanOrEqual(0);
   });
 });

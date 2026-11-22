@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expectAccessible } from "./support/accessibility";
 import { expect, test, type Person } from "./fixtures";
-import { editPrompt } from "./pages/extraction";
+import { editPrompt, saveConfiguration } from "./pages/extraction";
 import { DOCS, extractPath, openExtraction } from "./pages/studio";
 
 /**
@@ -59,11 +59,7 @@ test("a refused token while working: one dialog, then the work is still there", 
   const address = page.url();
 
   const restore = refuse(person);
-  await page.getByRole("button", { name: "Save configuration" }).click();
-  await page
-    .getByRole("form", { name: "Save configuration" })
-    .getByRole("button", { name: "Save", exact: true })
-    .click();
+  await saveConfiguration(page);
 
   await expect(dialog(page)).toBeVisible();
   await expect(dialog(page)).toContainText("make token");
@@ -78,10 +74,7 @@ test("a refused token while working: one dialog, then the work is still there", 
   await expect(message).toHaveValue("also add a field for the owner");
 
   // The save the person was making can be done now.
-  await page
-    .getByRole("form", { name: "Save configuration" })
-    .getByRole("button", { name: "Save", exact: true })
-    .click();
+  await saveConfiguration(page);
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
 });
 

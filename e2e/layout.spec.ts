@@ -48,12 +48,11 @@ for (const size of [
 
       await page.goto(extractPath(project.id));
       await expect(tab(page, "Define")).toBeVisible();
-      // The document switcher and today's version text and actions do not fit one row from 1280
-      // px: two rows (about 85px, never more than 90px) until the later items of the redesign shorten the right side.
-      expect(
-        await barHeight(page),
-        "the top bar on the extraction page is two rows at most",
-      ).toBeLessThan(90);
+      expect(await barHeight(page), "the top bar on the extraction page").toBeLessThan(90);
+      // With unsaved changes the version text is longer: the bar stays one row.
+      await page.getByLabel("What to extract").fill("Something else to extract");
+      await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
+      expect(await barHeight(page), "the top bar with unsaved changes is one row").toBeLessThan(56);
       for (const name of TABS) {
         await tab(page, name).click();
         await expect(tab(page, name)).toHaveAttribute("aria-selected", "true");

@@ -5,11 +5,13 @@ import { Suspense } from "react";
 import { AppSwitcher } from "@/components/layout/app-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/features/auth/user-menu";
-import { ExtractionActions, ExtractionFacts } from "@/features/extraction/extraction-actions";
 import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 import { STUDIO_HOME } from "./nav-steps";
 import { ProjectMenu } from "./project-menu";
 import { DocumentSwitcher } from "./top-bar/document-switcher";
+import { MoreMenu } from "./top-bar/more-menu";
+import { RunButton } from "./top-bar/run-button";
+import { VersionMenu } from "./top-bar/version-menu";
 
 /**
  * The one bar of a project screen (it replaces the sidebar and the page header): the logo, the
@@ -51,15 +53,9 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
           <div className="contents md:ml-auto md:flex md:flex-wrap md:items-center md:justify-end md:gap-x-2 md:gap-y-1">
             {extraction && (
               <>
-                <div className="contents text-small text-ink-muted md:flex md:flex-wrap md:items-center md:gap-x-2 md:gap-y-1">
-                  <ExtractionFacts extraction={extraction} emptyIsUnsaved />
-                </div>
-                <ExtractionActions
-                  extraction={extraction}
-                  showPublish={false}
-                  showSave
-                  requireFields
-                />
+                <VersionMenu extraction={extraction} />
+                <RunButton extraction={extraction} />
+                <MoreMenu extraction={extraction} />
               </>
             )}
           </div>

@@ -1,4 +1,5 @@
 import { type Page } from "@playwright/test";
+import { openTemplatesDialog, openVersionHistory } from "./pages/extraction";
 import { addDocument, extractPath } from "./pages/studio";
 import { expect, test } from "./fixtures";
 
@@ -21,7 +22,7 @@ async function tabTo(page: Page, name: string, limit = 60) {
   );
 }
 
-test("from the project list, a project opens and 'Run extraction' is reached with Tab and Enter", async ({
+test("from the project list, a project opens and 'Run on this document' is reached with Tab and Enter", async ({
   api,
   page,
   person,
@@ -37,7 +38,7 @@ test("from the project list, a project opens and 'Run extraction' is reached wit
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(extractPath(project.id));
 
-  const run = page.getByRole("button", { name: "Run extraction" });
+  const run = page.getByRole("button", { name: "Run on this document" });
   await expect(run).toBeVisible();
   // The top bar comes first: the project menu, then Run, and only then the tabs.
   await tabTo(page, "Keyboard project");
@@ -45,7 +46,7 @@ test("from the project list, a project opens and 'Run extraction' is reached wit
   await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Keyboard project" })).toBeFocused();
-  await tabTo(page, "Run extraction");
+  await tabTo(page, "Run on this document");
   await expect(run).toBeFocused();
   await expect(page.getByRole("tab", { name: "Define" })).not.toBeFocused();
   await page.keyboard.press("Enter");
@@ -53,4 +54,27 @@ test("from the project list, a project opens and 'Run extraction' is reached wit
   // Enter ran it: the Review tab opens with the records.
   await expect(page.getByRole("tab", { name: "Review" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: "Run again" })).toBeVisible();
+});
+
+test("focus returns to the version text after Version history and to More after Templates close", async ({
+  api,
+  page,
+  person,
+}) => {
+  const project = await api.createProject({ name: "Focus project" });
+  await addDocument(person, project.run_id);
+  await page.goto(extractPath(project.id));
+
+  const version = page.getByRole("button", { name: /^(Version \d|Nothing saved yet)/ });
+  await expect(version).toBeVisible();
+  const history = await openVersionHistory(page);
+  await expect(history).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(history).toHaveCount(0);
+  await expect(version).toBeFocused();
+
+  const templates = await openTemplatesDialog(page);
+  await page.keyboard.press("Escape");
+  await expect(templates).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "More", exact: true })).toBeFocused();
 });

@@ -38,7 +38,7 @@ test("the switcher steps through the documents and shows their state before and 
   await switcher.previous.click();
   await expect(switcher.trigger).toContainText(FIRST);
 
-  await extraction.run("Run extraction");
+  await extraction.runAll();
   await extraction.finished();
 
   await switcher.open();

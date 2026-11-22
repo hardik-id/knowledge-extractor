@@ -51,6 +51,11 @@ describe("labelStyle", () => {
       assert.ok(s.chip.includes(`text-label-${i}`));
     }
   });
+  test("has a faded pair in the same colour for each of the six", () => {
+    for (let i = 1; i <= 6; i++) {
+      assert.equal(labelStyle(i).faded, `bg-label-${i}-soft/50 border-label-${i}/40`);
+    }
+  });
   test("wraps indices outside 1 to 6", () => {
     assert.equal(labelStyle(7).index, 1);
     assert.equal(labelStyle(0).index, 6);

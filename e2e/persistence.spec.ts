@@ -1,7 +1,7 @@
 import { type Page } from "@playwright/test";
+import { openVersionHistory, saveConfiguration } from "./pages/extraction";
 import { addDocument, extractPath, openDocumentsSheet, tab } from "./pages/studio";
 import { expect, test } from "./fixtures";
-import { clickUntilOpen } from "./support/first-click";
 
 const PROMPT = "Extract each decision record and who approved it.";
 const NOTE = "Narrowed to approvals";
@@ -27,9 +27,7 @@ test("a project built in one browser is whole in a brand-new one, and each tab s
   await page.goto(extractPath(project.id));
   await expect(tab(page, "Define")).toHaveAttribute("aria-selected", "true");
   await page.getByLabel("What to extract").fill(PROMPT);
-  await page.getByRole("button", { name: "Save configuration" }).click();
-  await page.getByLabel("Note (optional)").fill(NOTE);
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await saveConfiguration(page, NOTE);
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
 
   const message = page.getByLabel("Message to the assistant");
@@ -39,7 +37,7 @@ test("a project built in one browser is whole in a brand-new one, and each tab s
   await expect(conversation.getByText("Assistant", { exact: true })).toBeVisible();
   await expect(conversation.getByText("Writing…")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Run extraction" }).click();
+  await page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }).click();
   await expect(tab(page, "Review")).toHaveAttribute("aria-selected", "true");
   await page.getByRole("button", { name: "Accept all suggested" }).click();
   // It accepts one record after another: done when none is left to accept.
@@ -64,11 +62,7 @@ test("a project built in one browser is whole in a brand-new one, and each tab s
   ).toBeVisible();
   await expect(again.getByTestId("version-line")).toContainText("Version 2");
 
-  const history = await clickUntilOpen(
-    again,
-    again.getByRole("button", { name: "Version history" }),
-    again.getByRole("dialog", { name: "Version history" }),
-  );
+  const history = await openVersionHistory(again);
   await expect(history.getByText(NOTE)).toBeVisible();
   await history.getByRole("button", { name: "Close" }).click();
 
