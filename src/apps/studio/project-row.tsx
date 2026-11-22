@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Project } from "@/services/contracts";
-import { changedFact, configurationFact, documentsFact, openProjectHref } from "./project-facts";
+import { projectHref } from "./nav-steps";
+import { changedFact, configurationFact, documentsFact } from "./project-facts";
 
 interface ProjectRowProps {
   project: Project;
@@ -21,7 +22,7 @@ export function ProjectRow({ project, onEdit, onDelete }: ProjectRowProps) {
       <div className="min-w-0 space-y-0.5">
         <h2 className="text-body font-semibold">
           <Link
-            href={openProjectHref(project)}
+            href={projectHref(project.id)}
             className="rounded-control break-words text-link underline-offset-4 hover:underline"
           >
             {project.name}

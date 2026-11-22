@@ -1,5 +1,5 @@
 import { type Page } from "@playwright/test";
-import { addDocument } from "./pages/studio";
+import { addDocument, submitDocumentsButton } from "./pages/studio";
 import { expect, test } from "./fixtures";
 
 /** True when the page scrolls sideways. */
@@ -33,7 +33,7 @@ test.describe("on a desktop", () => {
     expect(scrolled, "the content scrolls under the top bar").toBeGreaterThan(0);
     const after = await bar.boundingBox();
     expect(after?.y).toBe(before?.y);
-    await expect(page.getByRole("button", { name: "Open in extraction" })).toBeInViewport();
+    await expect(submitDocumentsButton(page)).toBeInViewport();
 
     expect(await sideways(page), "the page scrolls sideways").toBeLessThanOrEqual(0);
   });
@@ -124,9 +124,8 @@ test.describe("on a phone", () => {
     await page.keyboard.press("Escape");
     await expect(items).toBeHidden();
 
-    // On the extraction page the bar carries more and wraps: still no sideways scroll.
-    await page.getByRole("button", { name: "Open in extraction" }).tap();
-    await expect(page).toHaveURL(/\/extract$/);
+    // With documents the project shows its workspace, where the bar carries more and wraps: still no sideways scroll.
+    await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Run extraction" })).toBeVisible();
     expect(await sideways(page), "the page scrolls sideways").toBeLessThanOrEqual(0);
   });

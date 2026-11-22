@@ -1,7 +1,13 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { ExtractionPage } from "./pages/extraction";
-import { DOCS, createProjectFromDialog, pickDocuments, scrollsSideways } from "./pages/studio";
+import {
+  DOCS,
+  createProjectFromDialog,
+  pickDocuments,
+  scrollsSideways,
+  submitDocumentsButton,
+} from "./pages/studio";
 import { expectAccessible } from "./support/accessibility";
 
 /** A new project from the dialog, with one document picked, opened in extraction: the start panel. */
@@ -9,8 +15,7 @@ async function openStart(page: Page, name = "Start project") {
   await createProjectFromDialog(page, name);
   await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
   await pickDocuments(page, [DOCS.roadmap]);
-  await page.getByRole("button", { name: "Open in extraction" }).click();
-  await expect(page).toHaveURL(/\/extract$/);
+  await submitDocumentsButton(page).click();
   await expect(
     page.getByRole("heading", { name: "What do you want from these documents?" }),
   ).toBeVisible();

@@ -1,7 +1,13 @@
 import { type Locator, type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { ExtractionPage, addDocuments, projectWithDocuments } from "./pages/extraction";
-import { DOCS, createProjectFromDialog, openDocuments, pickDocuments } from "./pages/studio";
+import {
+  DOCS,
+  createProjectFromDialog,
+  openDocuments,
+  pickDocuments,
+  submitDocumentsButton,
+} from "./pages/studio";
 
 /**
  * Screenshot comparison of a few stable screens, in the light theme, in Chromium on Linux.
@@ -61,7 +67,7 @@ test("a project list with two projects", async ({ api, page }) => {
   await shot(page, "projects-two.png");
 });
 
-test("the Documents page with two documents picked", async ({ api, page }) => {
+test("the documents picker with two documents picked", async ({ api, page }) => {
   const project = await api.createProject({ name: "Platform decisions" });
   await openDocuments(page, project);
   await pickDocuments(page, [DOCS.runbook, DOCS.decisions]);
@@ -83,7 +89,7 @@ test("the Define tab", async ({ api, page, person, request }) => {
 test("a new project starts empty", async ({ page }) => {
   await createProjectFromDialog(page, "Leave rules");
   await pickDocuments(page, [DOCS.roadmap]);
-  await page.getByRole("button", { name: "Open in extraction" }).click();
+  await submitDocumentsButton(page).click();
   const heading = page.getByRole("heading", { name: "What do you want from these documents?" });
   await expect(heading).toBeVisible();
   await expect(page.getByTestId("start-document")).toContainText(/\w/);

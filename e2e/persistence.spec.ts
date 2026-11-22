@@ -1,5 +1,5 @@
 import { type Page } from "@playwright/test";
-import { addDocument, extractPath, tab } from "./pages/studio";
+import { addDocument, extractPath, openDocumentsSheet, tab } from "./pages/studio";
 import { expect, test } from "./fixtures";
 import { clickUntilOpen } from "./support/first-click";
 
@@ -110,7 +110,6 @@ test("a project's documents are there in a new browser", async ({ api, contextFo
   await expect(page.getByText("1 document")).toBeVisible();
   await page.getByRole("link", { name: "Documents project" }).click();
   await expect(page).toHaveURL(extractPath(project.id));
-  await page.getByRole("link", { name: "Documents", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
-  await expect(page.getByText("1 document selected")).toBeVisible();
+  const sheet = await openDocumentsSheet(page);
+  await expect(sheet.getByText("1 document selected")).toBeVisible();
 });

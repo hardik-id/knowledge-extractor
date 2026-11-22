@@ -16,7 +16,7 @@ export const DOCS = {
   decisions: "architecture-decisions-2026.md",
 } as const;
 
-/** Opens a project's Documents page and picks the documents by name. */
+/** Opens a project that has no documents yet: the picker is the whole screen. */
 export async function openDocuments(page: Page, project: ApiProject) {
   await page.goto(`/studio/projects/${project.id}`);
   await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
@@ -28,18 +28,50 @@ export async function pickDocuments(page: Page, names: readonly string[]) {
   }
 }
 
-/** Saves the documents picked so far and waits for the answer. */
-export async function saveDocuments(page: Page) {
-  await page.getByRole("button", { name: "Save documents" }).click();
-  await expect(page.getByText("Documents saved")).toBeVisible();
+/** The one action of the picker screen: "Use 2 documents", or "Use documents" with none picked. */
+export function submitDocumentsButton(page: Page) {
+  return page.getByRole("button", { name: /^Use .*documents?$/ });
 }
 
-/** A project with the given documents saved, left on the extraction page. */
+/** The sheet "Add or remove documents" opens from the document switcher. */
+export function documentsSheet(page: Page) {
+  return page.getByRole("dialog", { name: "Add or remove documents" });
+}
+
+/** Opens the document picker's sheet from the switcher in the top bar of a project with documents. */
+export async function openDocumentsSheet(page: Page) {
+  const sheet = documentsSheet(page);
+  // The first click after a navigation can be lost while the page settles: try again.
+  await expect(async () => {
+    if (!(await sheet.isVisible())) {
+      const item = page.getByRole("menuitem", { name: "Add or remove documents" });
+      if (!(await item.isVisible())) {
+        await page
+          .getByRole("group", { name: "Document" })
+          .getByRole("button", { name: /^Document: / })
+          .click({ timeout: 2_000 });
+      }
+      await item.click({ timeout: 2_000 });
+    }
+    await expect(sheet).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+  return sheet;
+}
+
+/** Saves the documents picked so far in the open sheet and waits for the answer. */
+export async function saveDocuments(page: Page) {
+  await documentsSheet(page).getByRole("button", { name: "Save documents" }).click();
+  await expect(page.getByText("Documents saved")).toBeVisible();
+  await expect(documentsSheet(page)).toBeHidden();
+}
+
+/** A project with the given documents saved, left on its workspace. */
 export async function openExtraction(page: Page, project: ApiProject, names: readonly string[]) {
   await openDocuments(page, project);
   await pickDocuments(page, names);
-  await page.getByRole("button", { name: "Open in extraction" }).click();
-  await expect(page).toHaveURL(/\/extract$/);
+  await submitDocumentsButton(page).click();
+  await expect(page.getByRole("tab", { name: "Define" })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/studio/projects/${project.id}$`));
   await expect(page.getByTestId("project-top-bar").locator("visible=true")).toBeVisible();
   await expect(page.getByTestId("version-line")).toBeVisible();
 }
@@ -97,9 +129,9 @@ export async function addDocument(person: Person, runId: string) {
   }
 }
 
-/** The extraction page of a project (the address the project list links to once it has documents). */
+/** A project's one address: the picker without documents, the workspace with them. */
 export function extractPath(projectId: string) {
-  return `/studio/projects/${projectId}/extract`;
+  return `/studio/projects/${projectId}`;
 }
 
 /** The three tabs of the workspace, and the tab panel the page shows for each. */

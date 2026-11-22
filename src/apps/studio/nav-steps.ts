@@ -3,14 +3,9 @@
 /** The entry: the person's projects. */
 export const STUDIO_HOME = "/studio";
 
-/** A project's Documents step. */
+/** A project: its documents picker until it has documents, then its workspace. */
 export function projectHref(projectId: string): string {
   return `${STUDIO_HOME}/projects/${encodeURIComponent(projectId)}`;
-}
-
-/** A project's extraction workspace. */
-export function extractionHref(projectId: string): string {
-  return `${projectHref(projectId)}/extract`;
 }
 
 const PROJECT_PATH = /^\/studio\/projects\/([^/]+)(\/.*)?$/;

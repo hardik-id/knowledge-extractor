@@ -17,7 +17,15 @@ const nextConfig: NextConfig = {
   // Redirect index routes here rather than with redirect() in a page:
   // a page that only redirects can't be prerendered for instant validation.
   async redirects() {
-    const redirects = [{ source: "/", destination: FIRST_APP.href, permanent: false }];
+    const redirects = [
+      { source: "/", destination: FIRST_APP.href, permanent: false },
+      // The extraction workspace used to have its own address.
+      {
+        source: "/studio/projects/:id/extract",
+        destination: "/studio/projects/:id",
+        permanent: false,
+      },
+    ];
     if (offersPipeline) {
       redirects.push({ source: "/pipeline", destination: "/pipeline/select", permanent: false });
     }

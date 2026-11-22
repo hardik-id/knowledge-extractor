@@ -1,12 +1,5 @@
 import { plural } from "@/lib/format";
 import type { Project } from "@/services/contracts";
-import { extractionHref, projectHref } from "./nav-steps";
-
-/** Where opening a project goes: extraction once it has documents, otherwise Documents. */
-export function openProjectHref(project: Pick<Project, "id" | "documentCount">): string {
-  return project.documentCount > 0 ? extractionHref(project.id) : projectHref(project.id);
-}
-
 export function documentsFact(project: Pick<Project, "documentCount">): string {
   return plural(project.documentCount, "document");
 }

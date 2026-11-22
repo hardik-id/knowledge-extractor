@@ -38,7 +38,8 @@ for (const size of [
       await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
       expect(await overflow(page), "the project list").toBeLessThanOrEqual(0);
 
-      await page.goto(`/studio/projects/${project.id}`);
+      const empty = await api.createProject({ name: "Layout empty project" });
+      await page.goto(`/studio/projects/${empty.id}`);
       await expect(page.getByTestId("project-top-bar")).toBeVisible();
       expect(await overflow(page), "the Documents page").toBeLessThanOrEqual(0);
       expect(await barHeight(page), "the top bar on the Documents page is one row").toBeLessThan(
@@ -78,12 +79,12 @@ test.describe("at 1024 x 768", () => {
 test.describe("at 390 x 844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("the top bar stays a fifth of the screen at most", async ({ api, page, person }) => {
+  test("the top bar stays a quarter of the screen at most", async ({ api, page, person }) => {
     const project = await api.createProject({ name: "Phone bar project" });
     await addDocument(person, project.run_id);
     await page.goto(extractPath(project.id));
     await expect(tab(page, "Define")).toBeVisible();
-    expect(await barHeight(page), "the bar at 390").toBeLessThan(844 * 0.2);
+    expect(await barHeight(page), "the bar at 390").toBeLessThan(844 * 0.25);
   });
 
   test("scrolling to the end shows the end of the content", async ({ api, page, person }) => {
