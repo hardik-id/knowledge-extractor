@@ -1,20 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CloudOff, FileSearch } from "lucide-react";
+import { CloudOff, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
-import { ExtractionActions, ExtractionFacts } from "@/features/extraction/extraction-actions";
 import { ExtractionWorkspace } from "@/features/extraction/extraction-workspace";
 import { useExtractionRun } from "@/features/extraction/use-extraction-run";
 import { useOnSessionResumed, useSessionEnded } from "@/features/auth/use-session";
-import { StageSummary } from "@/features/run/stage-summary";
+import { CellStatusLabel } from "@/components/pipeline/cell-status-label";
+import { useShallow } from "zustand/react/shallow";
+import { plural } from "@/lib/format";
 import { isUnauthorized } from "@/lib/api/api-error";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { projectHref } from "./nav-steps";
-import { StudioPanel } from "./studio-panel";
+import { ProjectTopBar } from "./project-top-bar";
 
 /** Inside an open project (see ProjectScope): the workspace once its run has documents. */
 export function ExtractPageContent() {
@@ -37,72 +38,93 @@ export function ExtractPageContent() {
 
   if (!hasDocuments) {
     return (
-      <div className="px-5 py-10 sm:px-8">
-        <EmptyState
-          icon={FileSearch}
-          title="No documents opened yet"
-          description="Choose the documents you want to extract from first."
-          action={
-            <Button asChild>
-              <Link href={projectHref(projectId)}>Go to documents</Link>
-            </Button>
-          }
-        />
-      </div>
+      <>
+        <ProjectTopBar />
+        <div className="px-5 py-10 sm:px-8">
+          <EmptyState
+            icon={FileSearch}
+            title="No documents opened yet"
+            description="Choose the documents you want to extract from first."
+            action={
+              <Button asChild>
+                <Link href={projectHref(projectId)}>Go to documents</Link>
+              </Button>
+            }
+          />
+        </div>
+      </>
     );
   }
 
   if (runLoad === "error") {
     return (
-      <div className="px-5 py-10 sm:px-8">
-        <EmptyState
-          icon={CloudOff}
-          title="Couldn't load this workspace"
-          description={describeApiError(error)}
-          action={
-            <Button variant="outline" onClick={() => void loadRun()}>
-              Try again
-            </Button>
-          }
-        />
-      </div>
+      <>
+        <ProjectTopBar />
+        <div className="px-5 py-10 sm:px-8">
+          <EmptyState
+            icon={CloudOff}
+            title="Couldn't load this workspace"
+            description={describeApiError(error)}
+            action={
+              <Button variant="outline" onClick={() => void loadRun()}>
+                Try again
+              </Button>
+            }
+          />
+        </div>
+      </>
     );
   }
 
-  return <ExtractPanel projectId={projectId} />;
+  return <ExtractPanel />;
 }
 
-function ExtractPanel({ projectId }: { projectId: string }) {
+function ExtractPanel() {
   const extraction = useExtractionRun("configuration");
   return (
-    <StudioPanel
-      id="studio-extract"
-      title="Knowledge extraction"
-      status={
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <StageSummary stage="extract" />
-          <ExtractionFacts extraction={extraction} />
-          <Button
-            variant="link"
-            size="sm"
-            asChild
-            className="h-auto px-0 no-underline hover:underline"
-          >
-            <Link href={projectHref(projectId)}>
-              <ArrowLeft data-icon="inline-start" />
-              Change documents
-            </Link>
-          </Button>
-        </div>
-      }
-      actions={<ExtractionActions extraction={extraction} showPublish={false} showSave />}
-    >
-      <ExtractionWorkspace
-        extraction={extraction}
-        definitionNote="This extraction configuration applies to this workspace only."
-        versioned
-      />
-    </StudioPanel>
+    <section aria-label="Extraction" className="flex flex-1 flex-col md:min-h-0">
+      <ProjectTopBar extraction={extraction} />
+      <div className="relative min-w-0 flex-1 px-4 py-4 sm:px-6 md:min-h-0 md:overflow-y-auto">
+        <FileProblems />
+        <ExtractionWorkspace
+          extraction={extraction}
+          definitionNote="This extraction configuration applies to this workspace only."
+          versioned
+        />
+      </div>
+    </section>
+  );
+}
+
+/** Only what needs attention: how many documents failed or are out of date. Nothing when all is well. */
+function FileProblems() {
+  const { failed, stale, firstError } = usePipelineStore(
+    useShallow((s) => {
+      const cells = s.runFiles.map((file) => s.cells[file.id]?.extract);
+      return {
+        failed: cells.filter((cell) => cell?.status === "failed").length,
+        stale: cells.filter((cell) => cell?.status === "stale").length,
+        firstError: cells.find((cell) => cell?.status === "failed")?.error?.message,
+      };
+    }),
+  );
+  if (failed === 0 && stale === 0) return null;
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+      {failed > 0 && (
+        <CellStatusLabel
+          status="failed"
+          label={`${plural(failed, "file")} failed`}
+          title={firstError}
+        />
+      )}
+      {stale > 0 && (
+        <CellStatusLabel
+          status="stale"
+          label={`${plural(stale, "file")} out of date: an earlier stage ran again`}
+        />
+      )}
+    </div>
   );
 }
 

@@ -1,4 +1,4 @@
-/** Knowledge Studio's addresses and its two steps. Pure, so the sidebar's rules can be tested. */
+/** Knowledge Studio's addresses. Pure, so they can be tested. */
 
 /** The entry: the person's projects. */
 export const STUDIO_HOME = "/studio";
@@ -24,44 +24,4 @@ export function projectIdFromPath(pathname: string): string | null {
   } catch {
     return match[1];
   }
-}
-
-export type StudioStepId = "documents" | "extraction";
-
-export interface StudioStep {
-  id: StudioStepId;
-  label: string;
-  href: string;
-  current: boolean;
-  /** Extraction needs documents in the project. */
-  disabled: boolean;
-  /** Why it is disabled, for people and screen readers. */
-  reason?: string;
-}
-
-/** The steps of the project the address belongs to; none outside a project. */
-export function studioSteps(pathname: string, hasDocuments: boolean): StudioStep[] {
-  const projectId = projectIdFromPath(pathname);
-  if (projectId === null) return [];
-
-  // What follows the project id: "" or "/" for Documents, "/extract…" for extraction.
-  const rest = (PROJECT_PATH.exec(pathname)?.[2] ?? "").replace(/\/$/, "");
-  const disabled = !hasDocuments;
-  return [
-    {
-      id: "documents",
-      label: "Documents",
-      href: projectHref(projectId),
-      current: rest === "",
-      disabled: false,
-    },
-    {
-      id: "extraction",
-      label: "Extraction",
-      href: extractionHref(projectId),
-      current: rest === "/extract" || rest.startsWith("/extract/"),
-      disabled,
-      reason: disabled ? "Open documents in extraction first." : undefined,
-    },
-  ];
 }

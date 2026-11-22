@@ -15,6 +15,7 @@ const NO_PROJECT = {
 export const createNoProjectSlice: SliceCreator<ProjectSlice> = () => ({
   ...NO_PROJECT,
   openProject: async () => {},
+  setProject: () => {},
 });
 
 /** What a project's store does differently from the pipeline's. */
@@ -143,6 +144,10 @@ export function createProjectSlice(
             );
           }
         }
+      },
+
+      setProject: (project) => {
+        if (get().projectId === project.id && get().projectLoad === "ready") set({ project });
       },
 
       setActiveDoc: (fileId) => {

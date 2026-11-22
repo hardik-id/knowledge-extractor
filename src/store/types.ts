@@ -114,6 +114,8 @@ export interface ProjectSlice {
    * it is already open (or opening). Never rejects: the outcome is `projectLoad`.
    */
   openProject: (projectId: string) => Promise<void>;
+  /** Shows a changed project (a rename) at once. Ignored unless it is the open one. */
+  setProject: (project: Project) => void;
 }
 
 export type PipelineState = NavigationSlice & FilesSlice & RunSlice & ProjectSlice;

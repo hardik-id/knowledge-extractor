@@ -81,6 +81,20 @@ test.describe("on a desktop", () => {
       Math.abs((b?.y ?? 0) + (b?.height ?? 0) / 2 - ((c?.y ?? 0) + (c?.height ?? 0) / 2)),
     ).toBeLessThan(6);
     await expect(page.getByRole("columnheader", { name: "Folder" })).toBeVisible();
+
+    // The project's own actions sit in the same toolbar row, to the right of the count.
+    const [summary, save, open] = await Promise.all(
+      [
+        page.getByText(/\d+ documents? selected/),
+        page.getByRole("button", { name: "Save documents" }),
+        page.getByRole("button", { name: "Open in extraction" }),
+      ].map((l) => l.boundingBox()),
+    );
+    const middle = (box: typeof summary) => (box?.y ?? 0) + (box?.height ?? 0) / 2;
+    expect(Math.abs(middle(summary) - middle(save))).toBeLessThan(8);
+    expect(Math.abs(middle(save) - middle(open))).toBeLessThan(8);
+    expect((save?.x ?? 0) + (save?.width ?? 0)).toBeLessThanOrEqual(open?.x ?? 0);
+    expect(summary?.y ?? 0, "the toolbar is under the top bar").toBeGreaterThan(48);
     await all.click();
     await expect(page.getByRole("button", { name: "Deselect all shown" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open in extraction" })).toBeEnabled();

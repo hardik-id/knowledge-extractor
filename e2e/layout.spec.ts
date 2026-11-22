@@ -9,9 +9,16 @@ function overflow(page: Page): Promise<number> {
   );
 }
 
+/** The height of a project's top bar: 48px when it is one row. */
+async function barHeight(page: Page): Promise<number> {
+  return (await page.getByTestId("project-top-bar").boundingBox())?.height ?? 0;
+}
+
 for (const size of [
+  { width: 1280, height: 720 },
   { width: 1280, height: 800 },
   { width: 1360, height: 900 },
+  { width: 1440, height: 900 },
 ]) {
   test.describe(`at ${size.width} x ${size.height}`, () => {
     test.use({ viewport: size });
@@ -32,10 +39,17 @@ for (const size of [
       expect(await overflow(page), "the project list").toBeLessThanOrEqual(0);
 
       await page.goto(`/studio/projects/${project.id}`);
-      await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
+      await expect(page.getByTestId("project-top-bar")).toBeVisible();
       expect(await overflow(page), "the Documents page").toBeLessThanOrEqual(0);
+      expect(await barHeight(page), "the top bar on the Documents page is one row").toBeLessThan(
+        56,
+      );
 
       await page.goto(extractPath(project.id));
+      await expect(tab(page, "Define")).toBeVisible();
+      expect(await barHeight(page), "the top bar on the extraction page is one row").toBeLessThan(
+        56,
+      );
       for (const name of TABS) {
         await tab(page, name).click();
         await expect(tab(page, name)).toHaveAttribute("aria-selected", "true");
@@ -58,7 +72,7 @@ test.describe("at 390 x 844", () => {
     const gap = await page.evaluate(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);
       let bottom = 0;
-      for (const el of document.querySelectorAll("main *")) {
+      for (const el of Array.from(document.querySelectorAll("main *"))) {
         const r = el.getBoundingClientRect();
         if (r.height > 0 && r.width > 0) bottom = Math.max(bottom, r.bottom + window.scrollY);
       }

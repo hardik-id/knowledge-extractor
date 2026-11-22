@@ -1,5 +1,5 @@
 import { type APIRequestContext, type Page, expect } from "@playwright/test";
-import { API_BASE_URL } from "../support/env";
+import { API_BASE_URL, API_ORIGIN } from "../support/env";
 import type { Api, ApiProject, Person } from "../fixtures";
 
 interface ApiDocument {
@@ -57,7 +57,16 @@ export async function projectWithDocuments(
 
 /** The extraction workspace of a project. */
 export class ExtractionPage {
-  constructor(readonly page: Page) {}
+  /** The run of the open project, noted from the first request the page makes for it. */
+  private runId: string | null = null;
+
+  constructor(readonly page: Page) {
+    page.on("request", (request) => {
+      const match = /^\/api\/v1\/runs\/([^/?]+)/.exec(new URL(request.url()).pathname);
+      if (!match || !request.url().startsWith(API_ORIGIN)) return;
+      this.runId ??= match[1];
+    });
+  }
 
   async open(project: ApiProject) {
     await this.page.goto(`/studio/projects/${project.id}/extract`);
@@ -101,8 +110,32 @@ export class ExtractionPage {
     expect((await accepted).ok(), "the backend accepted the run").toBe(true);
   }
 
+  /**
+   * The run is over: no extract cell of the run is queued or running (read from the API from inside
+   * the page, as the screen no longer has a badge to wait for), and Run is enabled again.
+   */
   async finished() {
-    await expect(this.page.getByText("Ready to proceed")).toBeVisible({ timeout: 30_000 });
+    const runId = this.runId;
+    if (!runId) throw new Error("finished(): the page has made no request for its run yet");
+    await expect
+      .poll(
+        async () => {
+          // From inside the page: the fixtures put the person's token on the page's own requests
+          // only, so `page.request` (a separate client) would be refused with a 401.
+          const run = await this.page.evaluate(async (url) => {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`GET ${url} answered ${response.status}`);
+            return (await response.json()) as { cells: { stage: string; status: string }[] };
+          }, `${API_BASE_URL}/runs/${runId}`);
+          return run.cells.filter(
+            (cell) =>
+              cell.stage === "extract" && (cell.status === "queued" || cell.status === "running"),
+          ).length;
+        },
+        { timeout: 30_000, message: "extract cells still queued or running" },
+      )
+      .toBe(0);
+    await expect(this.page.getByRole("button", { name: /^Run (extraction|again)$/ })).toBeEnabled();
   }
 
   /** A document in the list of the Review (or Output) tab. */
@@ -133,4 +166,16 @@ export class ExtractionPage {
     await form.getByRole("button", { name: "Save", exact: true }).click();
     await expect(this.page.getByTestId("version-line")).not.toHaveText(/Version 1,/);
   }
+}
+
+/** Changes the "What to extract" text, which leaves the configuration with unsaved changes. */
+export async function editPrompt(page: Page, text: string) {
+  await page.getByLabel("What to extract").fill(text);
+}
+
+export async function saveConfiguration(page: Page, note?: string) {
+  await page.getByRole("button", { name: "Save configuration" }).click();
+  const form = page.getByRole("form", { name: "Save configuration" });
+  if (note) await form.getByLabel("Note (optional)").fill(note);
+  await form.getByRole("button", { name: "Save", exact: true }).click();
 }

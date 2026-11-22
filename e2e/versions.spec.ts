@@ -1,5 +1,6 @@
 import { expect, test } from "./fixtures";
-import { DOCS, editPrompt, openExtraction, saveConfiguration } from "./pages/studio";
+import { editPrompt, saveConfiguration } from "./pages/extraction";
+import { DOCS, openExtraction } from "./pages/studio";
 
 test.beforeEach(async ({ api, page }) => {
   const project = await api.createProject({ name: "Versions project" });

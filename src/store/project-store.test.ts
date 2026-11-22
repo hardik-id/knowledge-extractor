@@ -282,6 +282,23 @@ describe("a Studio store opened by project id", () => {
     assert.equal(store.getState().runId, a.runId);
   });
 
+  test("setProject shows a renamed project at once, and only for the open one", async () => {
+    const project = await services.projects.create({ name: "Before" });
+    const other = await services.projects.create({ name: "Other" });
+    const store = await openedOn(project);
+
+    const saved = await services.projects.rename(project.id, {
+      name: "After",
+      description: "Now described",
+    });
+    store.getState().setProject(saved);
+    assert.equal(store.getState().project?.name, "After");
+    assert.equal(store.getState().project?.description, "Now described");
+
+    store.getState().setProject(other);
+    assert.equal(store.getState().project?.name, "After", "another project is ignored");
+  });
+
   test("the pipeline's store has no project, and still lets go of its run on a new selection", async () => {
     const store = createRunStore("test-pipeline:run");
     await store.persist.rehydrate();

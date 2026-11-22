@@ -39,8 +39,15 @@ test("from the project list, a project opens and 'Run extraction' is reached wit
 
   const run = page.getByRole("button", { name: "Run extraction" });
   await expect(run).toBeVisible();
+  // The top bar comes first: the project menu, then Run, and only then the tabs.
+  await tabTo(page, "Keyboard project");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Keyboard project" })).toBeFocused();
   await tabTo(page, "Run extraction");
   await expect(run).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Define" })).not.toBeFocused();
   await page.keyboard.press("Enter");
 
   // Enter ran it: the Review tab opens with the records.

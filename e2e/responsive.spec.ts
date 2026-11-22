@@ -36,13 +36,19 @@ test("a project and the extraction page fit a phone, and the assistant opens and
   await addDocument(person, project.run_id);
 
   await page.goto(`/studio/projects/${project.id}`);
-  await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
+  await expect(page.getByTestId("project-top-bar")).toBeVisible();
+  await expect(
+    page.getByTestId("project-top-bar").getByRole("link", { name: "Projects" }),
+  ).toBeInViewport({ ratio: 1 });
   await expect(page.getByRole("button", { name: "Open in extraction" })).toBeVisible();
   expect(await scrollsSideways(page), "the project page scrolls sideways").toBe(false);
   await expect(page.getByRole("button", { name: "Save documents" })).toBeVisible();
 
   await page.goto(extractPath(project.id));
   await expect(tab(page, "Define")).toBeVisible();
+  const bar = page.getByTestId("project-top-bar");
+  await expect(bar.getByRole("button", { name: "Phone project" })).toBeInViewport({ ratio: 1 });
+  expect(await scrollsSideways(page), "the top bar scrolls sideways").toBe(false);
   const run = page.getByRole("button", { name: "Run extraction" });
   await run.scrollIntoViewIfNeeded();
   await expect(run).toBeInViewport({ ratio: 1 });
