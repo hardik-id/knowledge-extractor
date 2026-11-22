@@ -1,7 +1,7 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
-import { useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -88,6 +88,11 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
   // Nothing to show as output while there is nothing to extract.
   const configured = (definition.draft?.recordTypes.length ?? 0) > 0;
   const shown = configured ? view : "document";
+  // Do not let a stale Output choice come back when a field is added again.
+  const setView = controls?.setView;
+  useEffect(() => {
+    if (!configured && view !== "document") setView?.("document");
+  }, [configured, view, setView]);
 
   return (
     <div className="flex flex-1 md:min-h-0">

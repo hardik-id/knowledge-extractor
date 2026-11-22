@@ -22,7 +22,6 @@ import { useScreenControls, useWorkspace } from "./workspace-state";
 export function FieldColumn({ definition }: { definition: ExtractionDefinitionState }) {
   const { draft, saved, setDraft, errors, showErrors } = definition;
   const { selectedTypeId, selectedFieldId, proposal, setConversationOpen } = useWorkspace();
-  const assistant = useAssistant(draft ?? undefined);
   const controls = useScreenControls();
   const scroller = useRef<HTMLDivElement>(null);
   const selection = useFieldSelection();
@@ -71,10 +70,10 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
     <div className="flex min-h-0 flex-1 flex-col">
       {!starting && <RecordTypeBar definition={definition} />}
       {!starting && <PromptLine definition={definition} />}
-      <div ref={scroller} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none">
+      <div ref={scroller} tabIndex={-1} role="region" aria-label="Field list" className="min-h-0 flex-1 overflow-y-auto outline-none">
         {starting && (
           <div className="px-4 py-4">
-            <StartPanel definition={definition} assistant={assistant} />
+            <StartPanelWithAssistant definition={definition} />
           </div>
         )}
         <ProposalBar definition={definition} onDecided={setDecision} />
@@ -128,4 +127,10 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
       <AssistantDock definition={definition} />
     </div>
   );
+}
+
+/** The start panel's own conversation hook, so it only exists while the panel does. */
+function StartPanelWithAssistant({ definition }: { definition: ExtractionDefinitionState }) {
+  const assistant = useAssistant(definition.draft ?? undefined);
+  return <StartPanel definition={definition} assistant={assistant} />;
 }

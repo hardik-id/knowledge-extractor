@@ -65,6 +65,7 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
           <Button
             ref={trigger}
             variant="ghost"
+            title={versionLabel(saved.version, empty, dirty)}
             className={`min-w-0 ${dirty ? "text-ink" : "text-ink-muted"}`}
           >
             <span

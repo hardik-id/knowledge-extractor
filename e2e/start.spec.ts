@@ -82,6 +82,20 @@ test("Discard all on a template brings the start panel back", async ({
   await expect(page.getByTestId("version-line")).toHaveText("Nothing saved yet");
 });
 
+test("a template offer does not follow the person into another project", async ({ page }) => {
+  await openStart(page, "Offer project A");
+  const dock = new AssistantDock(page);
+  await page.getByRole("button", { name: /^Policy rules/ }).click();
+  await expect(dock.bar).toContainText("suggested change");
+
+  // A client-side move to Projects, then a second project: nothing suggested there.
+  await page.getByRole("link", { name: "Projects" }).first().click();
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+  await openStart(page, "Offer project B");
+  await expect(dock.bar).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Suggested changes" })).toHaveCount(0);
+});
+
 test("Suggest fields asks the assistant, opens the conversation and shows its proposal as rows", async ({
   page,
 }) => {

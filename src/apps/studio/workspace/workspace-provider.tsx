@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useReducer, type ReactNode } from "react";
+import { useEffect, useMemo, useReducer, type ReactNode } from "react";
+import { offerProposal } from "./use-proposal";
 import { useFileExtraction } from "@/features/run/use-extraction";
 import type { RecordType } from "@/services/contracts";
 import {
@@ -28,6 +29,8 @@ export function WorkspaceProvider({
 }) {
   const [selection, dispatch] = useReducer(workspaceReducer, INITIAL_SELECTION);
   const records = useFileExtraction(fileId).data?.records;
+  // A template offer belongs to this screen: it must not outlive the project or document.
+  useEffect(() => () => offerProposal(null), []);
 
   const value = useMemo<WorkspaceState>(() => {
     const selectedTypeId = resolveTypeId(selection.selectedTypeId, recordTypes);
