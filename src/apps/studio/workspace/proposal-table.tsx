@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import type { ProposalChange } from "@/features/extraction/proposal-diff";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
+import { plural } from "@/lib/format";
 import type { FieldDef, RecordType } from "@/services/contracts";
 import { useProposal, type ProposalInfo } from "./use-proposal";
 import { useWorkspace } from "./workspace-state";
@@ -65,8 +66,10 @@ export function ProposalBar({
   const type = info.current.recordTypes.find((t) => t.id === selectedTypeId);
   const proposed = type && proposedType(info, type);
   // What has no row in this table (the prompt, the output, other record types) is listed here.
+  // A record type the proposal adds is drawn under the table, with its fields (ProposedTypes).
   const elsewhere = info.changes.filter(
     (c) =>
+      c.kind !== "added-type" &&
       !(
         type &&
         inType(c, type, proposed) &&
@@ -179,31 +182,76 @@ export function ProposedFieldRows({ typeId }: { typeId: string }) {
   return (
     <>
       {fields.map((f, i) => (
-        <tr
-          key={f.id}
-          ref={i === 0 ? first : undefined}
-          className="block border-b border-border-subtle bg-surface-tint"
-        >
-          <td className="block py-2.5 pr-4 pl-4">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span
-                aria-hidden
-                className="size-2 shrink-0 rounded-pill border-2 border-ink-muted"
-              />
-              <span className="font-medium text-ink">{f.name.trim() || f.key}</span>
-              <span className="rounded-pill bg-success-soft px-2 text-caption font-semibold text-success">
-                New field
-              </span>
-              <span className="text-caption text-ink-muted">
-                {TYPE_LABEL[f.valueType]} · {f.mode === "quote" ? "exact quote" : "worked out"}
-                {f.multiple ? " · several values" : ""}
-              </span>
-            </div>
-            {f.description.trim() !== "" && (
-              <p className="mt-0.5 ml-4 text-small text-ink-muted">{f.description}</p>
+        <ProposedFieldRow key={f.id} field={f} rowRef={i === 0 ? first : undefined} />
+      ))}
+    </>
+  );
+}
+
+/** One proposed field as a read-only table row (`tr`) marked "New field". */
+function ProposedFieldRow({
+  field: f,
+  rowRef,
+}: {
+  field: FieldDef;
+  rowRef?: React.Ref<HTMLTableRowElement>;
+}) {
+  return (
+    <tr ref={rowRef} className="block border-b border-border-subtle bg-surface-tint">
+      <td className="block py-2.5 pr-4 pl-4">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span aria-hidden className="size-2 shrink-0 rounded-pill border-2 border-ink-muted" />
+          <span className="font-medium text-ink">{f.name.trim() || f.key}</span>
+          <span className="rounded-pill bg-success-soft px-2 text-caption font-semibold text-success">
+            New field
+          </span>
+          <span className="text-caption text-ink-muted">
+            {TYPE_LABEL[f.valueType]} · {f.mode === "quote" ? "exact quote" : "worked out"}
+            {f.multiple ? " · several values" : ""}
+          </span>
+        </div>
+        {f.description.trim() !== "" && (
+          <p className="mt-0.5 ml-4 text-small text-ink-muted">{f.description}</p>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * The record types the proposal adds, each as a table of its own: the name marked "New record
+ * type", then its fields as rows marked "New field". It is how a proposal looks while the
+ * configuration is still empty, and it sits under the field table otherwise.
+ */
+export function ProposedTypes() {
+  const { proposal } = useWorkspace();
+  const info = proposal as ProposalInfo | null;
+  if (!info) return null;
+  const types = info.changes
+    .filter((c) => c.kind === "added-type")
+    .map((c) => info.proposal.definition.recordTypes.find((t) => t.id === c.typeId))
+    .filter((t): t is RecordType => !!t);
+  return (
+    <>
+      {types.map((t, i) => (
+        <table key={`${t.id}-${i}`} className="block w-full">
+          <caption className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-subtle bg-surface-tint py-2 pr-4 pl-4 text-left">
+            <span className="font-semibold text-ink-heading">{t.name.trim() || "Record type"}</span>
+            <span className="rounded-pill bg-success-soft px-2 text-caption font-semibold text-success">
+              New record type
+            </span>
+            <span className="text-caption text-ink-muted">{plural(t.fields.length, "field")}</span>
+          </caption>
+          <tbody className="block">
+            {t.fields.length === 0 ? (
+              <tr className="block border-b border-border-subtle bg-surface-tint">
+                <td className="block py-2.5 pr-4 pl-4 text-small text-ink-muted">No fields.</td>
+              </tr>
+            ) : (
+              t.fields.map((f) => <ProposedFieldRow key={f.id} field={f} />)
             )}
-          </td>
-        </tr>
+          </tbody>
+        </table>
       ))}
     </>
   );

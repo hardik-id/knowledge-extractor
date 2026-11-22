@@ -41,7 +41,11 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
   const assistant = useAssistant(definition.draft ?? undefined);
   const { messages, busy } = assistant;
   const { conversationOpen, setConversationOpen } = useWorkspace();
-  const outcomeOf = useProposalSync(definition.draft ?? undefined, messages);
+  const outcomeOf = useProposalSync(
+    definition.draft ?? undefined,
+    messages,
+    !assistant.isLoading && !assistant.error,
+  );
   const [text, setText] = useState("");
   const [confirming, setConfirming] = useState(false);
   const id = useId();
