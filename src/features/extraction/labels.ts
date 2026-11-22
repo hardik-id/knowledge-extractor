@@ -90,7 +90,9 @@ export interface FieldLabel {
 }
 
 /** The label of every field of the definition, by field id. Stable while the definition's fields keep their order. */
-export function fieldLabels(definition: ExtractionDefinition): Map<string, FieldLabel> {
+export function fieldLabels(
+  definition: Pick<ExtractionDefinition, "recordTypes">,
+): Map<string, FieldLabel> {
   const labels = new Map<string, FieldLabel>();
   let position = 0;
   for (const recordType of definition.recordTypes) {

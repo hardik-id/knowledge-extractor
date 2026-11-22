@@ -72,3 +72,13 @@ describe("fieldLabels", () => {
     assert.equal(a.get("f2")?.index, b.get("f2")?.index);
   });
 });
+
+describe("fieldLabels with a draft", () => {
+  test("needs only the record types", () => {
+    const { recordTypes } = definition([2, 1]);
+    const labels = fieldLabels({ recordTypes });
+    assert.deepEqual([...labels.keys()], ["f0", "f1", "f2"]);
+    assert.equal(labels.get("f2")?.index, 3);
+    assert.equal(labels.get("f2")?.recordType.id, "t1");
+  });
+});

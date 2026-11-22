@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ExtractionDefinitionDraft, FieldDef } from "@/services/contracts";
-import { diffProposal, shownOutcome } from "./proposal-diff";
+import { diffProposal, proposalChanges, shownOutcome } from "./proposal-diff";
 
 const field = (id: string, key: string, name: string, over: Partial<FieldDef> = {}): FieldDef => ({
   id,
@@ -105,5 +105,74 @@ describe("shownOutcome", () => {
     assert.equal(shownOutcome("applied", 0), "applied");
     assert.equal(shownOutcome("dismissed", 3), "dismissed");
     assert.equal(shownOutcome("replaced", 0), "replaced");
+  });
+});
+
+describe("proposalChanges", () => {
+  it("gives nothing when nothing changed", () => {
+    assert.deepEqual(proposalChanges(base(), structuredClone(base())), []);
+  });
+
+  it("names the kind, the type and the field of each change", () => {
+    const p = base();
+    p.prompt = "Find all decisions";
+    p.output = { format: "markdown", template: "# {{title}}" };
+    p.recordTypes[0]!.fields = [
+      field("f1", "title", "Title", { mode: "inferred" }),
+      field("f3", "owner", "Owner"),
+    ];
+    p.recordTypes.push({ id: "t2", name: "Risk", description: "", fields: [] });
+    assert.deepEqual(proposalChanges(base(), p), [
+      { kind: "prompt", typeId: null, fieldId: null, text: "Prompt changed" },
+      { kind: "added-type", typeId: "t2", fieldId: null, text: "Record type added: Risk" },
+      { kind: "added-field", typeId: "t1", fieldId: "f3", text: "ADR: field added: Owner" },
+      { kind: "removed-field", typeId: "t1", fieldId: "f2", text: "ADR: field removed: Approver" },
+      {
+        kind: "changed-field",
+        typeId: "t1",
+        fieldId: "f1",
+        text: "ADR / Title: now worked out by the model",
+      },
+      {
+        kind: "output",
+        typeId: null,
+        fieldId: null,
+        text: "Output format changed to Markdown",
+      },
+      { kind: "output", typeId: null, fieldId: null, text: "Template changed" },
+    ]);
+  });
+
+  it("reports a record type rename and description change as changed-type", () => {
+    const p = base();
+    p.recordTypes[0]!.name = "Decision";
+    p.recordTypes[0]!.description = "A choice made";
+    assert.deepEqual(proposalChanges(base(), p), [
+      {
+        kind: "changed-type",
+        typeId: "t1",
+        fieldId: null,
+        text: "Record type renamed: ADR to Decision",
+      },
+      { kind: "changed-type", typeId: "t1", fieldId: null, text: "Decision: description changed" },
+    ]);
+  });
+
+  it("names a removed record type", () => {
+    const p = base();
+    p.recordTypes = [];
+    assert.deepEqual(proposalChanges(base(), p), [
+      { kind: "removed-type", typeId: "t1", fieldId: null, text: "Record type removed: ADR" },
+    ]);
+  });
+
+  it("is what diffProposal says, in words", () => {
+    const p = base();
+    p.prompt = "Other";
+    p.recordTypes[0]!.fields.pop();
+    assert.deepEqual(
+      diffProposal(base(), p),
+      proposalChanges(base(), p).map((c) => c.text),
+    );
   });
 });

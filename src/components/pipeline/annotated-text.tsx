@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { highlightLook } from "@/features/extraction/highlight-look";
 import { labelStyle } from "@/features/extraction/labels";
 import { TEXT_START } from "@/lib/dom-selection";
 import { segmentText, type Mark } from "@/lib/text-spans";
@@ -30,6 +31,14 @@ export interface AnnotationProps {
   /** The value that is selected: all of its spans are emphasised. */
   activeValueId?: string | null;
   onMarkClick?: (mark: HighlightData) => void;
+  /**
+   * The record being looked at. When set, marks of other records are drawn as a
+   * hairline dashed underline without a fill; theirs is still a button, and
+   * hovering names the field.
+   */
+  focusRecordId?: string | null;
+  /** Show the field's name as a chip on the first piece of a mark (default true). */
+  chips?: boolean;
 }
 
 interface HighlightProps {
@@ -41,6 +50,7 @@ interface HighlightProps {
   label: string;
   activeValueId?: string | null;
   onMarkClick?: (mark: HighlightData) => void;
+  focusRecordId?: string | null;
   children: React.ReactNode;
 }
 
@@ -63,11 +73,12 @@ export function Highlight({
   label,
   activeValueId,
   onMarkClick,
+  focusRecordId,
   children,
 }: HighlightProps) {
   const primary = primaryMark(items);
-  const style = labelStyle(primary.labelIndex);
-  const active = activeValueId != null && items.some((item) => item.valueId === activeValueId);
+  const { faint, active, labelIndex } = highlightLook(items, focusRecordId, activeValueId);
+  const style = labelStyle(labelIndex);
   const chipSet = chipIds instanceof Set ? chipIds : new Set(chipIds);
   const chips = items.filter((item) => chipSet.has(item.id));
   const names = [...new Set(items.map((item) => item.name))];
@@ -93,9 +104,10 @@ export function Highlight({
         }
       }}
       className={cn(
-        "cursor-pointer rounded-control border-b-2 [box-decoration-break:clone] px-px text-ink",
-        style.highlight,
-        style.underline,
+        "cursor-pointer rounded-control [box-decoration-break:clone] px-px text-ink",
+        faint
+          ? "border-b border-dashed border-border-control"
+          : cn("border-b-2", style.highlight, style.underline),
         active && "border-b-4 outline-2 outline-offset-1 outline-ink-heading",
       )}
     >
@@ -137,6 +149,8 @@ export function AnnotatedText({
   marks,
   activeValueId,
   onMarkClick,
+  focusRecordId,
+  chips = true,
   className,
 }: AnnotatedTextProps) {
   const pieces = useMemo(() => segmentText(text, marks), [text, marks]);
@@ -151,10 +165,13 @@ export function AnnotatedText({
           <Highlight
             key={piece.start}
             items={piece.marks}
-            chipIds={piece.marks.filter((m) => m.start === piece.start).map((m) => m.id)}
+            chipIds={
+              chips ? piece.marks.filter((m) => m.start === piece.start).map((m) => m.id) : []
+            }
             label={piece.text}
             activeValueId={activeValueId}
             onMarkClick={onMarkClick}
+            focusRecordId={focusRecordId}
           >
             <span {...{ [TEXT_START]: piece.start }}>{piece.text}</span>
           </Highlight>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { FileCode, History } from "lucide-react";
 import { AnnotatedMarkdown } from "@/components/pipeline/annotated-markdown";
 import { AnnotatedText, type HighlightData } from "@/components/pipeline/annotated-text";
@@ -8,33 +8,21 @@ import { CellStatusLabel } from "@/components/pipeline/cell-status-label";
 import { EmptyState } from "@/components/pipeline/empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useExtractionActions, useFileExtraction } from "@/features/run/use-extraction";
-import {
-  extractionInputEtag,
-  hasExtractionInput,
-  useExtractionInput,
-} from "@/features/run/use-extraction-input";
-import { readSelection } from "@/lib/dom-selection";
-import { spanFromRange } from "@/lib/text-spans";
+import { hasExtractionInput } from "@/features/run/use-extraction-input";
 import { cn } from "@/lib/utils";
 import type {
   ExtractionDefinition,
   ExtractionRecord,
-  FieldDef,
   FieldValue,
-  RecordType,
   StageCell,
-  TextSpan,
 } from "@/services/contracts";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { useSelectedFiles } from "@/store/selectors";
 import type { SourceFile } from "@/types/pipeline";
 import { STAGE_META } from "@/features/stages/config";
-import { fieldLabels } from "./labels";
 import { RecordsPane } from "./records-pane";
 import { FileList, ReviewPanes, Segmented } from "./review-panes";
-import { buildReviewMarks } from "./review-marks";
 import {
   findHighlight,
   findHighlightNear,
@@ -42,8 +30,9 @@ import {
   findRecordValue,
   scrollToElement,
 } from "./review-scroll";
-import { placeMenu, recordHeading, valuesWithNew, type Place } from "./review-selection";
-import { SELECTION_MENU_WIDTH, SelectionMenu } from "./selection-menu";
+import { recordHeading } from "./review-selection";
+import { SelectionMenu } from "./selection-menu";
+import { useDocumentReview } from "./use-document-review";
 
 /** Review tab: the run's files, the document with its extracted values highlighted, and the records. */
 export function ReviewTab({ definition }: { definition: ExtractionDefinition }) {
@@ -86,15 +75,6 @@ interface Row {
   cell: StageCell | undefined;
 }
 
-/** A finished text selection in the document, and where its menu goes. */
-interface PendingSelection {
-  start: number;
-  end: number;
-  place: Place;
-  /** Made with the keyboard. */
-  keyboard: boolean;
-}
-
 /** Everything that belongs to one open file. Keyed by file, so the selection resets when another is opened. */
 function ReviewWorkspace({
   definition,
@@ -108,135 +88,45 @@ function ReviewWorkspace({
   const setActiveDoc = usePipelineStore((s) => s.setActiveDoc);
   const fileId = active?.file.id ?? null;
 
-  const text = useExtractionInput(fileId);
-  const extraction = useFileExtraction(fileId);
-  const listedEtag = usePipelineStore((s) => (fileId ? extractionInputEtag(s, fileId) : null));
-  // The loaded text is the truth; until it arrives, the version the store knows.
-  const inputEtag = text.data?.etag ?? listedEtag;
-
   const [view, setView] = useState<"rendered" | "source">("rendered");
   const [activeValueId, setActiveValueId] = useState<string | null>(null);
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
-  const [selection, setSelection] = useState<PendingSelection | null>(null);
-  // A value just added from a selection, to be made active once it is in the records.
-  const [added, setAdded] = useState<{ recordId: string; fieldId: string; span: TextSpan } | null>(
-    null,
-  );
-  const frameRef = useRef<HTMLDivElement>(null);
-  const documentRef = useRef<HTMLDivElement>(null);
-  const touchRef = useRef(false);
   const recordsRef = useRef<HTMLDivElement>(null);
 
-  const actions = useExtractionActions(extraction.data);
-
-  const labels = useMemo(() => fieldLabels(definition), [definition]);
-  const sourceText = text.data?.text;
-  const records = extraction.data?.records;
-  const review = useMemo(
-    () =>
-      sourceText !== undefined && records
-        ? buildReviewMarks(sourceText, labels, { records })
-        : null,
-    [sourceText, labels, records],
-  );
-
-  const failure = text.error ?? extraction.error;
-  const loading = !text.data || !extraction.data || !review;
-  const retry = () => {
-    if (text.error) text.retry();
-    if (extraction.error) extraction.retry();
-  };
-
-  const outdated =
-    extraction.data !== undefined && inputEtag !== null && extraction.data.sourceEtag !== inputEtag;
-
-  const addedValue = added
-    ? records
-        ?.find((r) => r.id === added.recordId)
-        ?.fields.find(
-          (v) =>
-            v.fieldId === added.fieldId &&
-            v.spans[0]?.start === added.span.start &&
-            v.spans[0]?.quote === added.span.quote,
-        )
-    : undefined;
-  const shownValueId = addedValue?.id ?? activeValueId;
-
-  // Selecting text: read it when the pointer or Shift is released, or (on touch) when it settles.
-  const capture = useCallback(
-    (keyboard: boolean) => {
-      const root = documentRef.current;
-      const frame = frameRef.current;
-      if (!root || !frame || sourceText === undefined) return;
-      const read = readSelection(root, sourceText);
-      if (!read) {
-        setSelection(null);
-        return;
-      }
-      const box = frame.getBoundingClientRect();
-      setSelection({
-        start: read.range.start,
-        end: read.range.end,
-        keyboard,
-        place: placeMenu({
-          anchor: { x: read.rect.right - box.left, bottom: read.rect.bottom - box.top },
-          boxWidth: frame.clientWidth,
-          menuWidth: SELECTION_MENU_WIDTH,
-        }),
-      });
+  const {
+    text,
+    extraction,
+    sourceText,
+    records,
+    labels,
+    review,
+    failure,
+    loading,
+    retry,
+    outdated,
+    actions,
+    frameRef,
+    documentRef,
+    touchRef,
+    selection,
+    capture,
+    closeMenu,
+    activeRecord,
+    activeType,
+    setAdded,
+    addedValue,
+    addToField,
+    newRecord,
+  } = useDocumentReview({
+    fileId,
+    definition,
+    activeRecordId,
+    onRecordCreated: (id) => {
+      setActiveValueId(null);
+      setActiveRecordId(id);
     },
-    [sourceText],
-  );
-  const closeMenu = useCallback(() => setSelection(null), []);
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const onChange = () => {
-      clearTimeout(timer);
-      if (document.getSelection()?.isCollapsed) {
-        setSelection(null);
-      } else if (touchRef.current) {
-        timer = setTimeout(() => capture(false), 400);
-      }
-    };
-    document.addEventListener("selectionchange", onChange);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("selectionchange", onChange);
-    };
-  }, [capture]);
-
-  const activeRecord = records?.find((r) => r.id === activeRecordId);
-  const activeType = activeRecord
-    ? definition.recordTypes.find((t) => t.id === activeRecord.recordTypeId)
-    : undefined;
-
-  const finishSelection = () => {
-    document.getSelection()?.removeAllRanges();
-    setSelection(null);
-  };
-  const addToField = async (field: FieldDef) => {
-    if (!selection || !activeRecord || sourceText === undefined) return;
-    const span = spanFromRange(sourceText, selection.start, selection.end);
-    const saved = await actions.setFieldValues(
-      activeRecord.id,
-      field.id,
-      valuesWithNew(activeRecord, field, { value: span.quote, span }),
-    );
-    if (!saved) return;
-    setAdded({ recordId: activeRecord.id, fieldId: field.id, span });
-    finishSelection();
-  };
-  const newRecord = async (type: RecordType) => {
-    if (!selection || sourceText === undefined) return;
-    const span = spanFromRange(sourceText, selection.start, selection.end);
-    const id = await actions.addRecord({ recordTypeId: type.id, span, fields: [] });
-    if (!id) return;
-    setAdded(null);
-    setActiveValueId(null);
-    setActiveRecordId(id);
-    finishSelection();
-  };
+  });
+  const shownValueId = addedValue?.id ?? activeValueId;
 
   const selectMark = (mark: HighlightData) => {
     setAdded(null);
@@ -361,7 +251,7 @@ function ReviewWorkspace({
                     Try again
                   </Button>
                 </div>
-              ) : loading ? (
+              ) : loading || !review ? (
                 <Loading label="Loading document" />
               ) : view === "rendered" ? (
                 <AnnotatedMarkdown
