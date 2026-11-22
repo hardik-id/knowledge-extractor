@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Editing a field where it is</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Code+Pro:wght@500&display=swap">
+<style>
+body{margin:0}
+a{color:#1a33c9}a:hover{color:#000a6e}
+</style>
+</helmet>
+<div style="display: flex; flex-direction: column; min-height: 960px; background: #ffffff; color: #0b1033; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 48px; padding: 6px 16px; box-sizing: border-box; border-bottom: 1px solid #e3e5ea">
+<span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 4px; background: #000a6e; display: inline-flex; align-items: center; justify-content: center"><span style="width: 8px; height: 8px; border-radius: 999px; background: #ff6a00"></span></span>
+<a href="#" style="font-weight: 500; text-decoration: none">Projects</a>
+<span aria-hidden="true" style="color: #565d70">/</span>
+<button type="button" style="height: 32px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: #000a6e; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 6px">Architecture decisions<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+<span aria-hidden="true" style="width: 1px; height: 20px; background: #e3e5ea"></span>
+<button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #868c9b; border-radius: 4px; background: #ffffff; color: #0b1033; font: inherit; display: inline-flex; align-items: center; gap: 8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg><span style="font-family: 'Source Code Pro', ui-monospace, monospace; font-size: 13px">architecture-decisions-2026.md</span><span style="color: #565d70; font-size: 13px">1 of 2</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+<div style="display: inline-flex; border: 1px solid #868c9b; border-radius: 4px; overflow: hidden">
+<button type="button" aria-pressed="true" style="height: 30px; padding: 0 10px; border: 0; background: #eceef2; color: #0b1033; font: inherit; font-weight: 500">Document</button>
+<button type="button" aria-pressed="false" style="height: 30px; padding: 0 10px; border: 0; border-left: 1px solid #868c9b; background: #ffffff; color: #565d70; font: inherit">Output</button>
+</div>
+<span style="flex: 1 1 0"></span>
+<button type="button" style="height: 32px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: #565d70; font: inherit; display: inline-flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #c94b00"></span>Version 3 · unsaved changes</button>
+<button type="button" style="height: 32px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: #0b1033; font: inherit; display: inline-flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>Assistant</button>
+<button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 4px; background: #c94b00; color: #ffffff; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 6px">Run on this document<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+<button type="button" aria-label="More" style="width: 32px; height: 32px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #565d70; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 auto">
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px; box-sizing: border-box">
+<article style="max-width: 680px; margin: 0 auto; font-size: 15px; line-height: 24px">
+<h1 style="margin: 0 0 8px; font-size: 22px; line-height: 28px; font-weight: 600; color: #000a6e">Architecture decisions 2026</h1>
+<p style="margin: 0 0 16px; color: #565d70; font-style: italic">Source: Confluence · Engineering / Architecture · last modified 3 November 2026</p>
+<p style="margin: 0 0 24px">This log holds the architecture decisions of the platform group.</p>
+<h2 style="margin: 0 0 12px; font-size: 16px; line-height: 24px; font-weight: 600; color: #000a6e">ADR-012: <span style="background: #dfe8ff; border-bottom: 2px solid #1a4fd6; border-radius: 2px; padding: 1px 2px">Use Postgres for the orders service</span></h2>
+<p style="margin: 0 0 16px"><strong>Status:</strong> <span style="background: #f0e3fb; border-bottom: 2px solid #7a2bc2; border-radius: 2px; padding: 1px 2px; outline: 2px solid #7a2bc2; outline-offset: 2px">Accepted</span> <strong>Date:</strong> <span style="background: #d8f1f2; border-bottom: 2px solid #00707a; border-radius: 2px; padding: 1px 2px">3 November 2026</span> <strong>Approved by:</strong> <span style="background: #fbe1ef; border-bottom: 2px solid #b01773; border-radius: 2px; padding: 1px 2px">J. Smit</span>, <span style="background: #fbe1ef; border-bottom: 2px solid #b01773; border-radius: 2px; padding: 1px 2px">A. de Vries</span></p>
+<h3 style="margin: 0 0 8px; font-size: 15px; line-height: 24px; font-weight: 600; color: #000a6e">Context</h3>
+<p style="margin: 0 0 16px"><span style="background: #f7edc9; border-bottom: 2px solid #7a5b00; border-radius: 2px; padding: 1px 2px">The orders service needs transactions across several tables, and the team already runs Postgres for billing.</span></p>
+<h3 style="margin: 0 0 8px; font-size: 15px; line-height: 24px; font-weight: 600; color: #000a6e">Decision</h3>
+<p style="margin: 0 0 32px"><span style="background: #e0f2d9; border-bottom: 2px solid #2d6f1e; border-radius: 2px; padding: 1px 2px">We store orders in Postgres and drop the document store pilot.</span></p>
+<h2 style="margin: 0 0 12px; font-size: 16px; line-height: 24px; font-weight: 600; color: #000a6e">ADR-013: <span style="border-bottom: 1px dashed #868c9b">Adopt OpenTelemetry for tracing</span></h2>
+<p style="margin: 0"><strong>Status:</strong> <span style="border-bottom: 1px dashed #868c9b">Proposed</span> <strong>Date:</strong> <span style="border-bottom: 1px dashed #868c9b">10 November 2026</span> <strong>Approved by:</strong></p>
+</article>
+</main>
+
+<aside style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; border-left: 1px solid #e3e5ea; box-sizing: border-box">
+
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 16px; border-bottom: 1px solid #e3e5ea">
+<h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: #000a6e">ADR</h2>
+<span style="color: #565d70; font-size: 13px">6 fields</span>
+<span style="flex: 1 1 0"></span>
+<button type="button" style="height: 28px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: #0b1033; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add field</button>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px 8px 16px; background: #f5f6f8; border-bottom: 1px solid #e3e5ea">
+<span style="font-weight: 600">Record 1 of 3</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #565d70"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; border: 2px solid #8a5a00; box-sizing: border-box"></span>Suggested</span>
+<span style="flex: 1 1 0"></span>
+<button type="button" style="height: 28px; padding: 0 10px; border: 1px solid #868c9b; border-radius: 4px; background: #ffffff; color: #0b1033; font: inherit; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Accept</button>
+<button type="button" style="height: 28px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: #0b1033; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>Reject</button>
+</div>
+
+<div style="flex: 1 1 auto">
+
+<div style="display: flex; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #e3e5ea"><div style="flex: 0 0 136px; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #1a4fd6"></span>Title</div><div style="flex: 1 1 0; min-width: 0">Use Postgres for the orders service</div></div>
+
+<div style="border-bottom: 1px solid #e3e5ea; background: #f5f6f8">
+<div style="display: flex; gap: 12px; padding: 10px 16px">
+<div style="flex: 0 0 136px; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 600; color: #000a6e"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #7a2bc2"></span>Status</div>
+<div style="flex: 1 1 0; min-width: 0">accepted</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 16px 32px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px"><span style="font-size: 13px; font-weight: 600">Field definition</span><span style="font-size: 13px; color: #565d70">Applies to every record, in every document</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px">
+<div style="flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; gap: 4px"><label for="f-name" style="font-size: 13px; font-weight: 500">Name</label><input id="f-name" type="text" value="Status" style="height: 32px; padding: 0 10px; box-sizing: border-box; border: 1px solid #868c9b; border-radius: 4px; background: #ffffff; color: #0b1033; font: inherit"></div>
+<div style="flex: 0 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 4px"><label for="f-type" style="font-size: 13px; font-weight: 500">Type</label><select id="f-type" style="height: 32px; padding: 0 8px; box-sizing: border-box; border: 1px solid #868c9b; border-radius: 4px; background: #ffffff; color: #0b1033; font: inherit"><option>Choice</option><option>Text</option><option>Date</option><option>Number</option></select></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px"><label for="f-look" style="font-size: 13px; font-weight: 500">What to look for</label><textarea id="f-look" rows="2" style="width: 100%; box-sizing: border-box; padding: 6px 10px; border: 1px solid #868c9b; border-radius: 4px; background: #ffffff; color: #0b1033; font: inherit; resize: vertical">Where the decision stands.</textarea></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; font-weight: 500">Allowed values</span>
+<div style="display: flex; flex-wrap: wrap; gap: 6px"><span style="padding: 2px 10px; border: 1px solid #868c9b; border-radius: 999px; background: #ffffff; font-size: 13px">proposed</span><span style="padding: 2px 10px; border: 1px solid #868c9b; border-radius: 999px; background: #ffffff; font-size: 13px">accepted</span><span style="padding: 2px 10px; border: 1px solid #868c9b; border-radius: 999px; background: #ffffff; font-size: 13px">superseded</span><span style="padding: 2px 10px; border: 1px solid #868c9b; border-radius: 999px; background: #ffffff; font-size: 13px">rejected</span><button type="button" style="height: 26px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: #1a33c9; font: inherit; font-size: 13px; font-weight: 500">Add a value</button></div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; font-weight: 500">Where the value comes from</span>
+<label style="display: flex; align-items: center; gap: 8px"><input type="radio" name="f-mode" style="margin: 0; accent-color: #1a33c9">Copied word for word from the text</label>
+<label style="display: flex; align-items: center; gap: 8px"><input type="radio" name="f-mode" checked style="margin: 0; accent-color: #1a33c9">Worked out by the model, with the passage it relied on</label>
+<label style="display: flex; align-items: center; gap: 8px; margin-top: 4px"><input type="checkbox" style="margin: 0; accent-color: #1a33c9">A record can have several values</label>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #868c9b; border-radius: 4px; background: #ffffff; color: #0b1033; font: inherit; font-weight: 500">Done</button><span style="flex: 1 1 0"></span><button type="button" style="height: 32px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: #c0182c; font: inherit">Remove field</button></div>
+</div>
+</div>
+
+<div style="display: flex; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #e3e5ea"><div style="flex: 0 0 136px; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #00707a"></span>Decided on</div><div style="flex: 1 1 0; min-width: 0">2026-11-03</div></div>
+<div style="display: flex; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #e3e5ea"><div style="flex: 0 0 136px; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #b01773"></span>Approved by</div><div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px"><span>J. Smit</span><span>A. de Vries</span></div></div>
+<div style="display: flex; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #e3e5ea"><div style="flex: 0 0 136px; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #7a5b00"></span>Context</div><div style="flex: 1 1 0; min-width: 0">The orders service needs transactions across several tables, and the team already runs Postgres for billing.</div></div>
+<div style="display: flex; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #e3e5ea"><div style="flex: 0 0 136px; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #2d6f1e"></span>Decision</div><div style="flex: 1 1 0; min-width: 0">We store orders in Postgres and drop the document store pilot.</div></div>
+
+</div>
+
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 16px; border-top: 1px solid #e3e5ea">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a33c9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
+<input type="text" aria-label="Ask the assistant" placeholder="Ask the assistant for a change" style="flex: 1 1 0; min-width: 0; height: 32px; padding: 0 10px; box-sizing: border-box; border: 1px solid #868c9b; border-radius: 4px; background: #ffffff; color: #0b1033; font: inherit">
+</div>
+
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
