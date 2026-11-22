@@ -25,7 +25,7 @@ const NOT_FOUND = "text-body text-ink-muted";
 const QUOTE_HINT = "Select text in the document to change this";
 
 /** A text, date, number or choice input with Save and Cancel. Enter saves, Escape cancels. */
-function ValueEditor({
+export function ValueEditor({
   field,
   initial,
   disabled,
@@ -110,12 +110,30 @@ function ToolButton({
   icon: Icon,
   disabled,
   onClick,
+  text,
 }: {
   label: string;
   icon: typeof Check;
   disabled: boolean;
   onClick: () => void;
+  /** Shown beside the icon; the accessible name stays `label`. */
+  text?: string;
 }) {
+  if (text) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label={label}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        <Icon aria-hidden />
+        {text}
+      </Button>
+    );
+  }
   return (
     <Button
       type="button"
@@ -157,6 +175,116 @@ function Origin({
   );
 }
 
+/** Saves a value's new text with the field's other values kept. Resolves to whether it was saved. */
+export function saveValueEdit(
+  actions: ExtractionActions,
+  record: ExtractionRecord,
+  field: FieldDef,
+  siblings: FieldValue[],
+  valueId: string,
+  text: string,
+): Promise<boolean> {
+  return actions.setFieldValues(record.id, field.id, valuesAfterEdit(siblings, valueId, text));
+}
+
+/**
+ * The actions on one value: accept, reject, undo, edit (when its text can be typed) and remove.
+ * `ValueRow` puts them in its hover toolbar; the record strip and the value menu use them where the
+ * value is seen. `onEdit` opens the caller's `ValueEditor`. With `labelled` each button shows its
+ * word beside the icon; the accessible names are the same either way.
+ */
+export function ValueActions({
+  record,
+  value,
+  siblings,
+  field,
+  actions,
+  onEdit,
+  className,
+  labelled,
+  onChanged,
+}: {
+  record: ExtractionRecord;
+  value: FieldValue;
+  siblings: FieldValue[];
+  field: FieldDef;
+  actions: ExtractionActions;
+  onEdit: () => void;
+  className?: string;
+  labelled?: boolean;
+  /** Called after accept, reject, undo or remove was saved. */
+  onChanged?: () => void;
+}) {
+  const pending = actions.pending;
+  const name = `${field.name} value`;
+  const rejected = value.review === "rejected";
+  const done = async (saved: Promise<boolean>) => {
+    if (await saved) onChanged?.();
+  };
+  const setReview = (review: ReviewState) =>
+    done(actions.setValueReview(record.id, value.id, review));
+  const word = (text: string) => (labelled ? text : undefined);
+  return (
+    <div role="group" aria-label={`Actions for ${name}`} className={className}>
+      {rejected ? (
+        <ToolButton
+          label={`Undo ${name}`}
+          text={word("Undo")}
+          icon={RotateCcw}
+          disabled={pending}
+          onClick={() => setReview("suggested")}
+        />
+      ) : (
+        <>
+          {value.review !== "accepted" && (
+            <ToolButton
+              label={`Accept ${name}`}
+              text={word("Accept")}
+              icon={Check}
+              disabled={pending}
+              onClick={() => setReview("accepted")}
+            />
+          )}
+          <ToolButton
+            label={`Reject ${name}`}
+            text={word("Reject")}
+            icon={X}
+            disabled={pending}
+            onClick={() => setReview("rejected")}
+          />
+          {value.review === "accepted" && (
+            <ToolButton
+              label={`Undo ${name}`}
+              text={word("Undo")}
+              icon={RotateCcw}
+              disabled={pending}
+              onClick={() => setReview("suggested")}
+            />
+          )}
+        </>
+      )}
+      {canEditValue(field, value) && (
+        <ToolButton
+          label={`Edit ${name}`}
+          text={word("Correct")}
+          icon={Pencil}
+          disabled={pending}
+          onClick={onEdit}
+        />
+      )}
+      <ToolButton
+        label={`Remove ${name}`}
+        text={word("Remove")}
+        icon={Trash2}
+        disabled={pending}
+        onClick={() =>
+          done(actions.setFieldValues(record.id, field.id, valuesAfterRemove(siblings, value.id)))
+        }
+      />
+    </div>
+  );
+}
+
 interface ValueRowProps {
   record: ExtractionRecord;
   value: FieldValue;
@@ -190,11 +318,7 @@ export function ValueRow({
 
   const saveEdit = async (text: string, from: FieldValue) => {
     if (!actions) return;
-    const ok = await actions.setFieldValues(
-      record.id,
-      field.id,
-      valuesAfterEdit(siblings, from.id, text),
-    );
+    const ok = await saveValueEdit(actions, record, field, siblings, from.id, text);
     if (ok) setEditing(false);
   };
 
@@ -318,65 +442,19 @@ export function ValueRow({
     );
   }
 
-  const setReview = (review: ReviewState) => actions.setValueReview(record.id, value.id, review);
-  const pending = actions.pending;
-  const name = `${field.name} value`;
-
   return (
     <div data-record-value={value.id} className={frame}>
       <Origin inferred={inferred} evidence={evidence} hint />
       {content}
-      <div role="group" aria-label={`Actions for ${name}`} className={TOOLBAR}>
-        {rejected ? (
-          <ToolButton
-            label={`Undo ${name}`}
-            icon={RotateCcw}
-            disabled={pending}
-            onClick={() => setReview("suggested")}
-          />
-        ) : (
-          <>
-            {value.review !== "accepted" && (
-              <ToolButton
-                label={`Accept ${name}`}
-                icon={Check}
-                disabled={pending}
-                onClick={() => setReview("accepted")}
-              />
-            )}
-            <ToolButton
-              label={`Reject ${name}`}
-              icon={X}
-              disabled={pending}
-              onClick={() => setReview("rejected")}
-            />
-            {value.review === "accepted" && (
-              <ToolButton
-                label={`Undo ${name}`}
-                icon={RotateCcw}
-                disabled={pending}
-                onClick={() => setReview("suggested")}
-              />
-            )}
-          </>
-        )}
-        {canEditValue(field, value) && (
-          <ToolButton
-            label={`Edit ${name}`}
-            icon={Pencil}
-            disabled={pending}
-            onClick={() => setEditing(true)}
-          />
-        )}
-        <ToolButton
-          label={`Remove ${name}`}
-          icon={Trash2}
-          disabled={pending}
-          onClick={() =>
-            actions.setFieldValues(record.id, field.id, valuesAfterRemove(siblings, value.id))
-          }
-        />
-      </div>
+      <ValueActions
+        record={record}
+        value={value}
+        siblings={siblings}
+        field={field}
+        actions={actions}
+        onEdit={() => setEditing(true)}
+        className={TOOLBAR}
+      />
     </div>
   );
 }
