@@ -103,6 +103,16 @@ describe("planRun", () => {
     const plan = planRun(input({ cells: current, versions: atVersion, running: true }));
     assert.equal(plan.disabled, true);
     assert.equal(plan.primary, true);
+    assert.equal(plan.main.label, "Running…");
+    assert.equal(plan.running, true);
+    assert.equal(plan.alternative, undefined);
+  });
+
+  test("saving waits without claiming a run", () => {
+    const plan = planRun(input({ saving: true }));
+    assert.equal(plan.disabled, true);
+    assert.equal(plan.running, undefined);
+    assert.notEqual(plan.main.label, "Running…");
   });
 
   test("an unknown open document falls back to the first", () => {

@@ -17,8 +17,10 @@ export interface RunPlanInput {
   dirty: boolean;
   /** The configuration has no record type. */
   empty: boolean;
-  /** An extraction is going. */
+  /** An extraction is going: from the click until it has ended. */
   running: boolean;
+  /** The configuration is being saved: the button waits, and still says what it will do. */
+  saving?: boolean;
 }
 
 export interface RunChoice {
@@ -33,6 +35,8 @@ export interface RunPlan {
   /** The button is the orange one; "Run again" is the secondary look. */
   primary: boolean;
   disabled: boolean;
+  /** An extraction is going: the button says "Running…" with a spinner. */
+  running?: boolean;
   /** Another way to run, in the menu next to the button. */
   alternative?: RunChoice;
 }
@@ -55,7 +59,10 @@ const allLabel = (count: number) =>
 /** What the one Run button says and does, from the state of each document. */
 export function planRun(input: RunPlanInput): RunPlan {
   const count = input.fileIds.length;
-  const disabled = input.empty || input.running || count === 0;
+  const disabled = input.empty || input.running || !!input.saving || count === 0;
+  if (input.running) {
+    return { main: { label: "Running…" }, primary: true, disabled: true, running: true };
+  }
   const all: RunChoice = { label: allLabel(count) };
   const active =
     input.activeId && input.fileIds.includes(input.activeId) ? input.activeId : input.fileIds[0];

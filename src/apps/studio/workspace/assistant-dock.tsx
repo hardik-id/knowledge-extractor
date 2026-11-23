@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Message } from "@/features/extraction/assistant-panel";
+import { AssistantWorking, Message } from "@/features/extraction/assistant-panel";
 import { useAssistant } from "@/features/extraction/use-assistant";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { describeApiError } from "@/services/errors";
@@ -31,7 +31,7 @@ import { useWorkspace } from "./workspace-state";
  */
 export function AssistantDock({ definition }: { definition: ExtractionDefinitionState }) {
   const assistant = useAssistant(definition.draft ?? undefined);
-  const { messages, busy } = assistant;
+  const { messages, busy, activity } = assistant;
   const { conversationOpen, setConversationOpen } = useWorkspace();
   const outcomeOf = useProposalSync(
     definition.draft ?? undefined,
@@ -46,7 +46,7 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
   // The newest message is the one to read.
   useEffect(() => {
     if (conversationOpen && log.current) log.current.scrollTop = log.current.scrollHeight;
-  }, [conversationOpen, messages]);
+  }, [conversationOpen, messages, activity]);
 
   const submit = async () => {
     if (busy || text.trim() === "") return;
@@ -135,6 +135,7 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
                   </div>
                 );
               })}
+              {(activity === "working" || activity === "awaited") && <AssistantWorking />}
             </div>
           )}
         </div>
@@ -150,7 +151,13 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
           value={text}
           disabled={busy}
           aria-label="Ask the assistant"
-          placeholder={messages.length > 0 ? "Ask for something else" : "Ask the assistant"}
+          placeholder={
+            !conversationOpen && activity !== "idle"
+              ? "Assistant is working…"
+              : messages.length > 0
+                ? "Ask for something else"
+                : "Ask the assistant"
+          }
           onClick={() => setConversationOpen(true)}
           onChange={(e) => {
             setText(e.target.value);

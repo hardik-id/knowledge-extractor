@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown, Loader2, RotateCcw } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,8 @@ export function RunButton({ extraction }: { extraction: ExtractionRun }) {
       savedVersion: saved?.version ?? 0,
       dirty,
       empty: (draft?.recordTypes.length ?? 0) === 0,
-      running: running || saving,
+      running,
+      saving,
     });
   }, [
     runFiles,
@@ -69,6 +70,13 @@ export function RunButton({ extraction }: { extraction: ExtractionRun }) {
         className={showMenu ? "rounded-r-none" : undefined}
         onClick={() => start(plan.main)}
       >
+        {plan.running && (
+          <Loader2
+            data-icon="inline-start"
+            aria-hidden
+            className="animate-spin motion-reduce:animate-none"
+          />
+        )}
         {plan.main.label === "Run again" && <RotateCcw data-icon="inline-start" aria-hidden />}
         {plan.main.label}
       </Button>

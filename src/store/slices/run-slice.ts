@@ -33,11 +33,33 @@ export const createRunSlice: SliceCreator<RunSlice> = (set, get) => {
     setConnection: (connection) => set({ connection }),
     setAssistantMessages: (assistantMessages) => set({ assistantMessages }),
     putAssistantMessage: (message) =>
-      set((s) => ({
-        assistantMessages: s.assistantMessages.some((m) => m.id === message.id)
-          ? s.assistantMessages.map((m) => (m.id === message.id ? message : m))
-          : [...s.assistantMessages, message],
-      })),
+      set((s) => {
+        if (s.assistantMessages.some((m) => m.id === message.id)) {
+          return {
+            assistantMessages: s.assistantMessages.map((m) => (m.id === message.id ? message : m)),
+          };
+        }
+        // The reply can arrive over the socket before the answer to the send: the person's
+        // message still goes before it, or the conversation would look like it awaits a reply.
+        let at = s.assistantMessages.length;
+        if (message.role === "user") {
+          while (
+            at > 0 &&
+            s.assistantMessages[at - 1].role === "assistant" &&
+            (s.assistantMessages[at - 1].status === "streaming" ||
+              s.assistantMessages[at - 1].createdAt >= message.createdAt)
+          ) {
+            at--;
+          }
+        }
+        return {
+          assistantMessages: [
+            ...s.assistantMessages.slice(0, at),
+            message,
+            ...s.assistantMessages.slice(at),
+          ],
+        };
+      }),
     applyAssistantEvent: (event) =>
       set((s) => {
         const known = s.assistantMessages.find((m) => m.id === event.messageId);

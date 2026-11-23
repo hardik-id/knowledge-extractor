@@ -5,6 +5,13 @@ import { useAsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
 import type { AssistantMessage, ExtractionDefinitionDraft } from "@/services/contracts";
 import { toastFailure } from "@/features/auth/report-failure";
+import {
+  AWAITED_EXPIRY_MS,
+  assistantActivity,
+  awaitedMessageId,
+  mergeAssistantMessages,
+  type AssistantActivity,
+} from "./assistant-activity";
 import { usePipelineStore } from "@/store/pipeline-store";
 
 export interface AssistantState {
@@ -14,6 +21,8 @@ export interface AssistantState {
   retry: () => void;
   /** A reply is being written, or a message is on its way. */
   busy: boolean;
+  /** "awaited": last message is the person's, no reply known; "working": no text yet; "writing". */
+  activity: AssistantActivity;
   /** Resolves true when the message was accepted. */
   send: (text: string) => Promise<boolean>;
   /** Removes the whole conversation. Resolves true when it was cleared. */
@@ -31,6 +40,7 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
   const setAssistantMessages = usePipelineStore((s) => s.setAssistantMessages);
   const putAssistantMessage = usePipelineStore((s) => s.putAssistantMessage);
   const [sending, setSending] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const latest = useRef(messages);
   useEffect(() => {
     latest.current = messages;
@@ -41,24 +51,33 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
     const loaded = await services.extraction.getAssistantMessages(runId, signal);
     if (!signal.aborted) {
       // Live parts may have arrived while this was on its way: keep what is newer.
-      const local = latest.current;
-      const byId = new Map(local.map((m) => [m.id, m]));
-      const merged = loaded.map((m) => {
-        const mine = byId.get(m.id);
-        return mine && mine.status === "done" && m.status === "streaming" ? mine : m;
-      });
-      const known = new Set(loaded.map((m) => m.id));
-      setAssistantMessages([...merged, ...local.filter((m) => !known.has(m.id))]);
+      setAssistantMessages(mergeAssistantMessages(latest.current, loaded));
     }
     return loaded;
   });
 
+  // A reply awaited for too long (on this page's clock) is given up on.
+  const awaitedId = awaitedMessageId(messages);
+  const [expiredId, setExpiredId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!awaitedId) return;
+    const timer = setTimeout(() => setExpiredId(awaitedId), AWAITED_EXPIRY_MS);
+    return () => clearTimeout(timer);
+  }, [awaitedId]);
+  const activity = assistantActivity(
+    messages,
+    sendingMessage,
+    awaitedId !== null && expiredId === awaitedId,
+  );
+  // Awaiting a reply that may never come does not lock the input: only a request in flight or a
+  // streaming reply known here does.
   const busy = sending || messages.some((m) => m.status === "streaming");
 
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!runId || !draft || trimmed === "" || busy) return false;
     setSending(true);
+    setSendingMessage(true);
     try {
       const sent = await services.extraction.sendAssistantMessage(runId, trimmed, draft);
       putAssistantMessage(sent);
@@ -68,6 +87,7 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
       return false;
     } finally {
       setSending(false);
+      setSendingMessage(false);
     }
   };
 
@@ -86,5 +106,5 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
     }
   };
 
-  return { messages, isLoading, error, retry, busy, send, clear };
+  return { messages, isLoading, error, retry, busy, activity, send, clear };
 }
