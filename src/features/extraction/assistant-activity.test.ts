@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { AssistantMessage } from "@/services/contracts";
-import { assistantActivity, mergeAssistantMessages } from "./assistant-activity";
+import {
+  AWAITED_EXPIRY_MS,
+  assistantActivity,
+  createAwaitedTracker,
+  mergeAssistantMessages,
+} from "./assistant-activity";
 
 let n = 0;
 function msg(over: Partial<AssistantMessage>): AssistantMessage {
@@ -23,9 +28,14 @@ describe("assistantActivity", () => {
     assert.equal(assistantActivity([user(), msg({ text: "ok" })]), "idle");
   });
 
-  test("working while the person's message has no reply after it", () => {
-    assert.equal(assistantActivity([user()]), "working");
-    assert.equal(assistantActivity([user(), msg({ text: "ok" }), user()]), "working");
+  test("awaited while the person's message has no reply after it", () => {
+    assert.equal(assistantActivity([user()]), "awaited");
+    assert.equal(assistantActivity([user(), msg({ text: "ok" }), user()]), "awaited");
+  });
+
+  test("awaited and expired is idle, but a send in flight is still working", () => {
+    assert.equal(assistantActivity([user()], false, true), "idle");
+    assert.equal(assistantActivity([user()], true, true), "working");
   });
 
   test("working while a send is on its way", () => {
@@ -44,6 +54,22 @@ describe("assistantActivity", () => {
 
   test("idle again when the reply ended, even empty", () => {
     assert.equal(assistantActivity([user(), msg({ status: "done", text: "" })]), "idle");
+  });
+});
+
+describe("createAwaitedTracker", () => {
+  test("expires after the wait, counted from the first sight of that message id", () => {
+    let t = 1000;
+    const tracker = createAwaitedTracker(() => t);
+    const first = [user({ id: "a" })];
+    assert.equal(tracker.expired(first), false);
+    t += AWAITED_EXPIRY_MS - 1;
+    assert.equal(tracker.expired(first), false);
+    t += 1;
+    assert.equal(tracker.expired(first), true);
+    // A new message starts a new wait; a reply ends it.
+    assert.equal(tracker.expired([user({ id: "b" })]), false);
+    assert.equal(tracker.expired([user({ id: "b" }), msg({})]), false);
   });
 });
 
@@ -68,5 +94,24 @@ describe("mergeAssistantMessages", () => {
         ["u", "done"],
       ],
     );
+  });
+
+  test("both streaming: the longer local text wins over an older fetched copy", () => {
+    const local = msg({ id: "r", text: "hello wor", status: "streaming" });
+    const merged = mergeAssistantMessages([local], [{ ...local, text: "hello" }]);
+    assert.equal(merged[0].text, "hello wor");
+  });
+
+  test("both streaming: a local proposal wins when the fetched copy has none", () => {
+    const proposal = { definition: { prompt: "", recordTypes: [] } } as never;
+    const local = msg({ id: "r", text: "a", status: "streaming", proposal });
+    const merged = mergeAssistantMessages([local], [{ ...local, proposal: null }]);
+    assert.ok(merged[0].proposal);
+  });
+
+  test("both streaming: the fetched copy wins when it is as long or longer", () => {
+    const local = msg({ id: "r", text: "he", status: "streaming" });
+    assert.equal(mergeAssistantMessages([local], [{ ...local, text: "hello" }])[0].text, "hello");
+    assert.equal(mergeAssistantMessages([local], [{ ...local }])[0].text, "he");
   });
 });

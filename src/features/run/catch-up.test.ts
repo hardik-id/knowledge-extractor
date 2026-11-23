@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import type { AssistantMessage, StageCell } from "@/services/contracts";
 import type { PipelineState } from "@/store/types";
-import { shouldPoll, somethingInProgress } from "./catch-up";
+import { shouldPoll, shouldRefreshSlowly, somethingInProgress } from "./catch-up";
 
 const cell = (status: StageCell["status"]): StageCell => ({
   fileId: "f",
@@ -58,6 +58,51 @@ describe("shouldPoll", () => {
     for (const connection of ["open", "connecting", "idle"] as const) {
       assert.equal(shouldPoll({ ...busy, connection }), false);
     }
+  });
+});
+
+describe("shouldRefreshSlowly", () => {
+  const busy = { ...idle, assistantMessages: [userMessage] };
+  test("refreshes while a reply is awaited and the connection is not down", () => {
+    assert.equal(shouldRefreshSlowly({ ...busy, connection: "open" }), true);
+    assert.equal(shouldRefreshSlowly({ ...busy, connection: "connecting" }), true);
+  });
+  test("not when idle, or when the awaited wait expired", () => {
+    assert.equal(shouldRefreshSlowly({ ...idle, connection: "open" }), false);
+    assert.equal(shouldRefreshSlowly({ ...busy, connection: "open" }, true), false);
+  });
+  test("not while the connection is down: the 4 s polling covers it", () => {
+    assert.equal(shouldRefreshSlowly({ ...busy, connection: "closed" }), false);
+    assert.equal(shouldPoll({ ...busy, connection: "closed" }), true);
+    assert.equal(shouldPoll({ ...busy, connection: "closed" }, true), false);
+  });
+});
+
+describe("watchSlowRefresh", () => {
+  test("refreshes on a timer while not idle, one at a time, stops on cleanup", async () => {
+    const { createStore } = await import("zustand/vanilla");
+    const { watchSlowRefresh } = await import("./catch-up");
+    const store = createStore<
+      Pick<PipelineState, "connection" | "cells" | "startingStages" | "assistantMessages">
+    >(() => ({ connection: "open", cells: {}, startingStages: [], assistantMessages: [] }));
+    let calls = 0;
+    const stop = watchSlowRefresh(
+      store as never,
+      async () => {
+        calls++;
+      },
+      undefined,
+      5,
+    );
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(calls, 0, "idle: no refresh");
+    store.setState({ assistantMessages: [userMessage] });
+    await new Promise((r) => setTimeout(r, 30));
+    assert.ok(calls >= 2, `refreshed while awaited (${calls})`);
+    stop();
+    const after = calls;
+    await new Promise((r) => setTimeout(r, 30));
+    assert.equal(calls, after);
   });
 });
 

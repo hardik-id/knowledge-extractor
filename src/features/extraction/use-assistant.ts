@@ -6,7 +6,9 @@ import { services } from "@/services";
 import type { AssistantMessage, ExtractionDefinitionDraft } from "@/services/contracts";
 import { toastFailure } from "@/features/auth/report-failure";
 import {
+  AWAITED_EXPIRY_MS,
   assistantActivity,
+  awaitedMessageId,
   mergeAssistantMessages,
   type AssistantActivity,
 } from "./assistant-activity";
@@ -19,7 +21,7 @@ export interface AssistantState {
   retry: () => void;
   /** A reply is being written, or a message is on its way. */
   busy: boolean;
-  /** "working": a reply is awaited and has no text yet; "writing": it is being written. */
+  /** "awaited": last message is the person's, no reply known; "working": no text yet; "writing". */
   activity: AssistantActivity;
   /** Resolves true when the message was accepted. */
   send: (text: string) => Promise<boolean>;
@@ -54,8 +56,22 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
     return loaded;
   });
 
-  const activity = assistantActivity(messages, sendingMessage);
-  const busy = sending || activity !== "idle" || messages.some((m) => m.status === "streaming");
+  // A reply awaited for too long (on this page's clock) is given up on.
+  const awaitedId = awaitedMessageId(messages);
+  const [expiredId, setExpiredId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!awaitedId) return;
+    const timer = setTimeout(() => setExpiredId(awaitedId), AWAITED_EXPIRY_MS);
+    return () => clearTimeout(timer);
+  }, [awaitedId]);
+  const activity = assistantActivity(
+    messages,
+    sendingMessage,
+    awaitedId !== null && expiredId === awaitedId,
+  );
+  // Awaiting a reply that may never come does not lock the input: only a request in flight or a
+  // streaming reply known here does.
+  const busy = sending || messages.some((m) => m.status === "streaming");
 
   const send = async (text: string) => {
     const trimmed = text.trim();

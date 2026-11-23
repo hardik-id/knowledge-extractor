@@ -135,7 +135,7 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
                   </div>
                 );
               })}
-              {activity === "working" && <AssistantWorking />}
+              {(activity === "working" || activity === "awaited") && <AssistantWorking />}
             </div>
           )}
         </div>
@@ -151,7 +151,13 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
           value={text}
           disabled={busy}
           aria-label="Ask the assistant"
-          placeholder={messages.length > 0 ? "Ask for something else" : "Ask the assistant"}
+          placeholder={
+            !conversationOpen && activity !== "idle"
+              ? "Assistant is working…"
+              : messages.length > 0
+                ? "Ask for something else"
+                : "Ask the assistant"
+          }
           onClick={() => setConversationOpen(true)}
           onChange={(e) => {
             setText(e.target.value);
