@@ -44,7 +44,12 @@ describe("an offered proposal", () => {
   const offer = (id: string): ProposalOffer => ({
     id,
     proposal: {
-      definition: { prompt: "", recordTypes: [], output: { format: "markdown", template: "" } },
+      definition: {
+        prompt: "",
+        recordTypes: [],
+        output: { format: "markdown", template: "" },
+        chunking: { strategy: "auto" as const, size: null },
+      },
       reasons: [],
     },
   });
@@ -141,7 +146,12 @@ describe("decisions one change at a time", () => {
     const offer: ProposalOffer = {
       id: "template:adr",
       proposal: {
-        definition: { prompt: "", recordTypes: [], output: { format: "markdown", template: "" } },
+        definition: {
+          prompt: "",
+          recordTypes: [],
+          output: { format: "markdown", template: "" },
+          chunking: { strategy: "auto" as const, size: null },
+        },
         reasons: [],
       },
     };

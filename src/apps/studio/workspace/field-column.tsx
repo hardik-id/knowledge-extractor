@@ -8,6 +8,7 @@ import type { ExtractionDefinitionState } from "@/features/extraction/use-extrac
 import { useAssistant } from "@/features/extraction/use-assistant";
 import { StartPanel } from "../start/start-panel";
 import { AssistantDock } from "./assistant-dock";
+import { ChunkingRow } from "./chunking-row";
 import { PromptLine } from "./prompt-line";
 import { focusAssistantInput } from "./use-proposal";
 import { ProposalBar, ProposalLines, ProposedFieldRows, ProposedTypes } from "./proposal-table";
@@ -70,6 +71,7 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
     <div className="flex min-h-0 flex-1 flex-col">
       {!starting && <RecordTypeBar definition={definition} />}
       {!starting && <PromptLine definition={definition} />}
+      {!starting && <ChunkingRow definition={definition} />}
       <div
         ref={scroller}
         tabIndex={-1}

@@ -111,8 +111,9 @@ const draftOf = ({
   prompt,
   recordTypes,
   output,
+  chunking,
 }: ExtractionDefinition): ExtractionDefinitionDraft =>
-  structuredClone({ prompt, recordTypes, output });
+  structuredClone({ prompt, recordTypes, output, chunking });
 
 /** The first Markdown heading of the text: the whole line and its words, as spans. */
 function headingSpans(text: string): { line: TextSpan; words: TextSpan } | null {

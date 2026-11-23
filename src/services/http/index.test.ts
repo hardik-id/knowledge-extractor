@@ -59,6 +59,7 @@ const wireDefinition = {
   prompt: "p",
   record_types: [],
   output: { format: "json", template: "" },
+  chunking: { strategy: "auto" as const, size: null },
 };
 
 describe("projects, documents, versions and the conversation", () => {
@@ -138,6 +139,7 @@ describe("projects, documents, versions and the conversation", () => {
       prompt: "p",
       recordTypes: [],
       output: { format: "json" as const, template: "" },
+      chunking: { strategy: "auto" as const, size: null },
     };
 
     await extraction.getDefinitionVersion("r1", 2);
@@ -172,6 +174,7 @@ describe("templates", () => {
             prompt: "",
             record_types: [],
             output: { format: "markdown", template: "" },
+            chunking: { strategy: "auto" as const, size: null },
           },
         },
       ],

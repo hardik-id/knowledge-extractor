@@ -172,7 +172,11 @@ function propose(definition: Draft, text: string, { newId }: AssistantOptions): 
 
   if (/\badrs?\b|architecture decision/.test(haystack)) {
     const adr = freshIds(DEFAULT_EXTRACTION_DEFINITION, newId);
-    next = { ...adr, prompt: definition.prompt.trim() || adr.prompt };
+    next = {
+      ...adr,
+      prompt: definition.prompt.trim() || adr.prompt,
+      chunking: structuredClone(definition.chunking),
+    };
     reply =
       "I set this up for architecture decision records: the title, the context and the decision are copied exactly, and the status and date are worked out from the text. The template shows each record as a short page.";
   } else if (/\bpolic(?:y|ies)\b|requirement|regulation|\bmust\b/.test(haystack)) {
@@ -198,6 +202,7 @@ function propose(definition: Draft, text: string, { newId }: AssistantOptions): 
       prompt: definition.prompt.trim() || "Extract every requirement in the document.",
       recordTypes: [recordType],
       output: { format: "markdown", template: templateFor(recordType) },
+      chunking: structuredClone(definition.chunking),
     };
     reply =
       "I chose exact quotes for the requirement and who it applies to, because requirements must not be reworded. The category is worked out from the text.";
@@ -219,6 +224,7 @@ function propose(definition: Draft, text: string, { newId }: AssistantOptions): 
       prompt: definition.prompt.trim() || `Extract every ${name.toLowerCase()} in the document.`,
       recordTypes: [recordType],
       output: { format: "markdown", template: templateFor(recordType) },
+      chunking: structuredClone(definition.chunking),
     };
     reply = `I started with one record type, ${name}, with a title copied exactly and a summary worked out from the text. Ask me to add or change fields from here.`;
   }

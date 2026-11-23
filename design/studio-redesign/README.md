@@ -6,12 +6,12 @@ Revision: the product owner kept the field table with its "Exact quote" and "Sev
 
 The screens are on a design canvas: https://claude.ai/artifact/9TwyPyoViaYsukUxiBJmac (private to the product owner). Their source is in this folder, to read for the exact structure, labels, sizes and colours. They are mock-ups, not app code, and do not run on their own:
 
-| File | Screen |
-| --- | --- |
-| `Main.dc.html` | The working screen: the document with the record strip under it, the field table on the right (the field "Title" is selected) |
-| `Start.dc.html` | A new project starts empty |
-| `Switcher.dc.html` | Switching documents |
-| `Proposal.dc.html` | The assistant suggests changes you keep or discard (drawn before the revision: the idea holds, the rows are now table rows) |
+| File               | Screen                                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `Main.dc.html`     | The working screen: the document with the record strip under it, the field table on the right (the field "Title" is selected) |
+| `Start.dc.html`    | A new project starts empty                                                                                                    |
+| `Switcher.dc.html` | Switching documents                                                                                                           |
+| `Proposal.dc.html` | The assistant suggests changes you keep or discard (drawn before the revision: the idea holds, the rows are now table rows)   |
 
 ## The design
 
@@ -23,10 +23,13 @@ The screens are on a design canvas: https://claude.ai/artifact/9TwyPyoViaYsukUxi
 6. **Right: one column**, about 560px (at least 480px; below about 1100px wide it becomes an overlay opened by a "Fields" button). From the top:
    - the record type: its name, "n fields", "Add field"; a segmented control when there are several record types;
    - "What to extract": the prompt on one line, truncated; a click edits it in place;
-   - **the field table**, today's Define table with its controls in place: the field's colour dot and name with what to look for under it, the type, the "Exact quote" and "Several values" checkboxes, and the options menu (move, edit key, remove); the allowed values of a choice as today. A click on a row outside its controls selects the field (point 3);
-   - **the assistant**: a one-line input at the bottom of the column. Using it, or "Assistant" in the top bar, opens the conversation upward inside the column, oldest message first. A proposal is shown in the table: a bar "3 suggested changes · Keep all · Discard all", a new field as a row marked "New field", a changed setting or a removal as a line under the row it concerns, each later with its own Keep and Discard. A message that proposed changes keeps a one-line record ("1 kept", "Waiting for you"). "Clear conversation" is in a small menu.
+
+- "Chunking": a one-line row under it, closed by default, that says what is chosen ("Automatic", "By paragraph, 4000 characters"). The header is a button (a chevron, `aria-expanded`); open, it shows "Strategy" (Automatic, By heading, By paragraph, Fixed size) and, unless Automatic, "Size" in characters (a whole number from 1000 to 8000, 4000 to start). A wrong size shows its message in place. It is hidden with "What to extract" (no prompt and no record type), and an assistant proposal or a template never changes it;
+- **the field table**, today's Define table with its controls in place: the field's colour dot and name with what to look for under it, the type, the "Exact quote" and "Several values" checkboxes, and the options menu (move, edit key, remove); the allowed values of a choice as today. A click on a row outside its controls selects the field (point 3);
+- **the assistant**: a one-line input at the bottom of the column. Using it, or "Assistant" in the top bar, opens the conversation upward inside the column, oldest message first. A proposal is shown in the table: a bar "3 suggested changes · Keep all · Discard all", a new field as a row marked "New field", a changed setting or a removal as a line under the row it concerns, each later with its own Keep and Discard. A message that proposed changes keeps a one-line record ("1 kept", "Waiting for you"). "Clear conversation" is in a small menu.
+
 7. **A new project starts empty.** The New project dialog asks for a name and a description only, and always creates the project from the blank template. With an empty configuration the right column shows "What do you want from these documents?" with a text box and the orange "Suggest fields" (it asks the assistant), "Or start from a template" with the three templates as rows, and "Or start fresh" with "Add a field yourself" (it adds a record type named "Record" with one field; the name can be changed). A template fills the list as suggestions to keep or discard.
-8. **Run.** One orange button that says what happens: "Run on this document" (menu: "Run on all N documents") when this document has no results or the configuration changed since its run; "Run on all N documents" when this one is current and others are not; a secondary "Run again" when everything is current; disabled while the configuration is empty. Running saves the configuration first when it has unsaved changes. A document whose records come from an older version of the configuration shows a quiet "Fields changed since this run". When the backend refuses a run because another is going, the screen says so.
+8. **Run.** One orange button that says what happens: "Run on this document" (menu: "Run on all N documents") when this document has no results or the configuration changed since its run; "Run on all N documents" when this one is current and others are not; a secondary "Run again" when everything is current; disabled while the configuration is empty. Running saves the configuration first when it has unsaved changes. A document whose records come from an older version of the configuration shows a quiet "Configuration changed since this run". When the backend refuses a run because another is going, the screen says so.
 9. **Versions.** The version text reads "Version 3", "Version 3 · unsaved changes" or "Nothing saved yet". A click opens save with a note, discard changes and the version history.
 10. **Gone:** the "Ready to proceed" badge, the helper paragraphs under the prompt and above the record types, the "What to look for" column (it moves under the field name), the record cards of the Review tab (the strip and the highlights replace them), the label chips in the text, the file list column of Review and Output, the assistant's footer hint.
 11. **Sizes.** It works at 1440x900 and 1280x720 with no sideways page scroll, and stacks or overlays at 390x844. The rules of `design/DESIGN.md` (Polder for apps) stay: hairlines, 4px and 6px radii, 14px Inter, 32px controls, one orange action per view, a visible focus ring, both themes.

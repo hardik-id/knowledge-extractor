@@ -22,6 +22,7 @@ const definition = (counts: number[]): ExtractionDefinition => {
     createdAt: "2026-01-01T00:00:00.000Z",
     prompt: "",
     output: { format: "json", template: "" },
+    chunking: { strategy: "auto" as const, size: null },
     recordTypes: counts.map((count, t) => ({
       id: `t${t}`,
       name: `Type ${t}`,

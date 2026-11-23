@@ -4,6 +4,7 @@ import {
   CELL_STATUSES,
   FIELD_MODES,
   FIELD_VALUE_TYPES,
+  CHUNKING_STRATEGIES,
   OUTPUT_FORMATS,
   REVIEW_STATES,
   isWorkStageId,
@@ -34,6 +35,7 @@ import {
   type Run,
   type RunFile,
   type StageCell,
+  type ChunkingSettings,
   type StageOutputMeta,
 } from "../contracts";
 
@@ -49,7 +51,7 @@ import {
  *   run   { id, created_at, files: file[], cells: cell[] }
  *   execution request  { file_ids?, config?: { definition_version, … } }   (config keys in snake_case)
  *   span  { start, end, quote }   (start and end count Unicode code points)
- *   definition  { version, prompt, output: { format, template },
+ *   definition  { version, prompt, output: { format, template }, chunking: { strategy, size } (absent: auto),
  *                 record_types: [{ id, name, description,
  *                   fields: [{ id, key, name, description, mode, value_type, choices?, multiple }] }] }
  *   file extraction  { file_id, revision, source_etag, definition_version,
@@ -275,6 +277,17 @@ function bool(value: unknown, path: string): boolean {
   return value;
 }
 
+function parseChunking(value: unknown, path: string): ChunkingSettings {
+  // A version saved before chunking existed: automatic.
+  if (value === undefined || value === null) return { strategy: "auto", size: null };
+  const o = object(value, path);
+  const strategy = oneOf(o.strategy, CHUNKING_STRATEGIES, `${path}.strategy`);
+  if (strategy === "auto") return { strategy, size: null };
+  const size = o.size;
+  if (size === null || size === undefined) return { strategy, size: null };
+  return { strategy, size: number(size, `${path}.size`) };
+}
+
 function parseDefinitionBody(value: unknown, path: string): ExtractionDefinitionDraft {
   const o = object(value, path);
   const output = object(o.output, `${path}.output`);
@@ -287,6 +300,7 @@ function parseDefinitionBody(value: unknown, path: string): ExtractionDefinition
       format: oneOf(output.format, OUTPUT_FORMATS, `${path}.output.format`),
       template: string(output.template, `${path}.output.template`),
     },
+    chunking: parseChunking(o.chunking, `${path}.chunking`),
   };
 }
 
@@ -390,6 +404,7 @@ export function toWireDefinition(draft: ExtractionDefinitionDraft) {
       })),
     })),
     output: { format: draft.output.format, template: draft.output.template },
+    chunking: { strategy: draft.chunking.strategy, size: draft.chunking.size },
   };
 }
 

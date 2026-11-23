@@ -33,11 +33,23 @@ const base = (): ExtractionDefinitionDraft => ({
     },
   ],
   output: { format: "json", template: "" },
+  chunking: { strategy: "auto" as const, size: null },
 });
 
 describe("diffProposal", () => {
   it("gives nothing when nothing changed", () => {
     assert.deepEqual(diffProposal(base(), structuredClone(base())), []);
+  });
+
+  it("does not count chunking: a proposal never changes it, and keeping all leaves the draft's own", () => {
+    const p = base();
+    p.chunking = { strategy: "heading", size: 4000 };
+    assert.deepEqual(diffProposal(base(), p), []);
+    p.prompt = "Find all decisions";
+    const mine = { ...base(), chunking: { strategy: "fixed" as const, size: 2000 } };
+    const kept = applyChanges(mine, p, proposalChanges(mine, p));
+    assert.equal(kept.prompt, "Find all decisions");
+    assert.deepEqual(kept.chunking, { strategy: "fixed", size: 2000 });
   });
 
   it("sees a changed prompt, format and template", () => {

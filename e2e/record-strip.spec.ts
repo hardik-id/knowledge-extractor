@@ -373,7 +373,7 @@ test("a reviewed record survives a run with another configuration version", asyn
     DOCUMENTS,
     expectApiError,
   );
-  await expect(strip.strip.getByText("Fields changed since this run")).toHaveCount(0);
+  await expect(strip.strip.getByText("Configuration changed since this run")).toHaveCount(0);
   await strip.recordButton("Accept").click();
   await strip.next.click();
   await strip.recordButton("Reject").click();
@@ -383,11 +383,11 @@ test("a reviewed record survives a run with another configuration version", asyn
   await fieldColumn(page).getByRole("textbox", { name: "Name of field 1" }).fill("Heading");
   await saveConfiguration(page, "Renamed");
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
-  await expect(strip.strip.getByText("Fields changed since this run")).toBeVisible();
+  await expect(strip.strip.getByText("Configuration changed since this run")).toBeVisible();
 
   await extraction.run();
   await extraction.finished();
-  await expect(strip.strip.getByText("Fields changed since this run")).toHaveCount(0);
+  await expect(strip.strip.getByText("Configuration changed since this run")).toHaveCount(0);
   await expect(strip.position).toBeVisible();
   const list = await strip.openList();
   await expect(list.getByText("Accepted", { exact: true })).toHaveCount(1);

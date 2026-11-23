@@ -465,7 +465,7 @@ export function RecordStrip({ definition }: { definition: ExtractionDefinitionSt
             )}
           </>
         )}
-        {changed && <p className={QUIET}>Fields changed since this run</p>}
+        {changed && <p className={QUIET}>Configuration changed since this run</p>}
       </section>
     </TooltipProvider>
   );

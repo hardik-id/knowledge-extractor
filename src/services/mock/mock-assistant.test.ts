@@ -11,6 +11,7 @@ const bare = (prompt = ""): ExtractionDefinitionDraft => ({
   prompt,
   recordTypes: [],
   output: { format: "markdown", template: "" },
+  chunking: { strategy: "auto" as const, size: null },
 });
 const adr = () => structuredClone(DEFAULT_EXTRACTION_DEFINITION);
 const reply = (text: string, definition = adr()) => assistantReply(text, definition, options);
@@ -20,6 +21,30 @@ function proposed(text: string, definition = adr()) {
   assert.ok(result.proposal, `expected a proposal for "${text}": ${result.text}`);
   return result.proposal;
 }
+
+test("a proposal keeps the chunking of the definition it was made from", () => {
+  const mine = { ...adr(), chunking: { strategy: "paragraph" as const, size: 3000 } };
+  for (const text of [
+    "add a field for approval date",
+    "Extract all ADRs",
+    "extract every policy requirement",
+    "find the risks",
+  ]) {
+    const result = reply(text, mine);
+    if (result.proposal) {
+      assert.deepEqual(
+        result.proposal.definition.chunking,
+        { strategy: "paragraph", size: 3000 },
+        text,
+      );
+    }
+  }
+  const fresh = reply("Extract all ADRs", {
+    ...bare(),
+    chunking: { strategy: "heading", size: 4000 },
+  });
+  assert.deepEqual(fresh.proposal?.definition.chunking, { strategy: "heading", size: 4000 });
+});
 
 function assertValid(definition: ExtractionDefinitionDraft) {
   assert.ok(definition.recordTypes.length > 0);

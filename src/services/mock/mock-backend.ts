@@ -40,6 +40,9 @@ import {
   type ReviewState,
   type TextSpan,
   MAX_DEFINITION_NOTE_LENGTH,
+  CHUNK_SIZE_MAX,
+  CHUNK_SIZE_MIN,
+  normalChunking,
   type Run,
   type RunEventHandlers,
   type RunFile,
@@ -695,6 +698,27 @@ export class MockBackend {
         });
       }
     }
+    const size = draft.chunking?.size;
+    if (
+      draft.chunking &&
+      draft.chunking.strategy !== "auto" &&
+      size != null &&
+      (!Number.isInteger(size) || size < CHUNK_SIZE_MIN || size > CHUNK_SIZE_MAX)
+    ) {
+      throw new ApiError({
+        status: 422,
+        code: "invalid_definition",
+        message: "The definition is not valid.",
+        details: {
+          errors: [
+            {
+              path: "chunking",
+              message: `The chunk size must be between ${CHUNK_SIZE_MIN} and ${CHUNK_SIZE_MAX} characters.`,
+            },
+          ],
+        },
+      });
+    }
     return this.pushDefinition(run, draft, current.version + 1, note.trim());
   }
 
@@ -1277,8 +1301,9 @@ export class MockBackend {
       };
       this.save();
     }
-    // Runs saved before versions had notes.
+    // Runs saved before versions had notes, or chunking.
     run.definition.note ??= "";
+    run.definition.chunking ??= { strategy: "auto", size: null };
     run.definition.createdAt ??= run.createdAt;
     return run.definition;
   }
@@ -1296,6 +1321,8 @@ export class MockBackend {
       prompt: draft.prompt,
       recordTypes: structuredClone(draft.recordTypes),
       output: structuredClone(draft.output),
+      // A save without the key keeps the saved setting, like the server (older clients).
+      chunking: normalChunking(draft.chunking ?? current.chunking),
       version,
       note,
       createdAt: this.timestamp(),
@@ -1310,6 +1337,7 @@ export class MockBackend {
     return [...(run.previousDefinitions ?? []), current].map((d) => ({
       ...d,
       note: d.note ?? "",
+      chunking: d.chunking ?? { strategy: "auto", size: null },
       createdAt: d.createdAt ?? run.createdAt,
     }));
   }

@@ -147,6 +147,9 @@ export interface ScreenControls {
   /** The record strip is folded to its first line. Held here so it holds across documents. */
   stripCollapsed: boolean;
   setStripCollapsed: (collapsed: boolean) => void;
+  /** The Chunking row is open. Held here so it holds across documents. */
+  chunkingOpen: boolean;
+  setChunkingOpen: (open: boolean) => void;
 }
 
 export const ScreenControlsContext = createContext<ScreenControls | null>(null);

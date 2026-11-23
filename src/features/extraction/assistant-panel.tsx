@@ -160,7 +160,7 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
                     draft={draft}
                     outcome={outcomes[m.id] ?? (m.id === latestProposalId ? "open" : "replaced")}
                     onApply={() => {
-                      setDraft(m.proposal!.definition);
+                      setDraft({ ...m.proposal!.definition, chunking: draft.chunking });
                       setOutcomes((o) => ({ ...o, [m.id]: "applied" }));
                       toast.success("Applied. Review it and save, or run the extraction.");
                     }}
