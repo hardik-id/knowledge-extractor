@@ -38,8 +38,9 @@ export function ChunkingRow({ definition }: { definition: ExtractionDefinitionSt
   // What the size box shows while it is being typed in: "1500.5" or "" are not sizes, yet they stay.
   const [typed, setTyped] = useState<string | null>(null);
 
-  // A size that is wrong when the person tries to save or run: open the row, the problem is in it.
-  const mustShow = showErrors && !!errors.chunkSize;
+  // A size that is wrong when the person tries to save or run, or that the server refused: open
+  // the row, the problem is in it.
+  const mustShow = (showErrors && !!errors.chunkSize) || !!chunkingProblem;
   useEffect(() => {
     if (mustShow) setOpen(true);
   }, [mustShow, setOpen]);
