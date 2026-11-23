@@ -4,6 +4,11 @@ import type { ExtractionDefinition } from "@/services/contracts";
 import {
   addField,
   addRecordType,
+  chunkingSummary,
+  chunkSizeError,
+  parseChunkSize,
+  setChunkingSize,
+  setChunkingStrategy,
   deriveKey,
   isDirty,
   isValid,
@@ -51,6 +56,7 @@ const saved: ExtractionDefinition = {
     },
   ],
   output: { format: "json", template: "" },
+  chunking: { strategy: "auto" as const, size: null },
 };
 
 describe("deriveKey", () => {
@@ -163,5 +169,81 @@ describe("validateDraft", () => {
     assert.ok(validateDraft(d).fields["f2"]?.choices);
     d = updateField(d, "t1", "f2", { choices: ["Accepted"] });
     assert.equal(isValid(validateDraft(d)), true);
+  });
+});
+
+describe("chunking", () => {
+  const draft = () => toDraft(saved);
+
+  test("a version without chunking, or with a size on automatic, is the same as automatic: not dirty", () => {
+    const old = { ...saved } as Partial<ExtractionDefinition>;
+    delete old.chunking;
+    const d = toDraft(old as ExtractionDefinition);
+    assert.deepEqual(d.chunking, { strategy: "auto", size: null });
+    assert.equal(isDirty(d, old as ExtractionDefinition), false);
+    const odd = { ...saved, chunking: { strategy: "auto" as const, size: 3000 } };
+    assert.equal(isDirty(toDraft(odd), odd), false);
+    assert.deepEqual(toDraft(odd).chunking, { strategy: "auto", size: null });
+  });
+
+  test("a non-auto strategy takes 4000 when there is no size, and keeps the size it has", () => {
+    const heading = setChunkingStrategy(draft(), "heading");
+    assert.deepEqual(heading.chunking, { strategy: "heading", size: 4000 });
+    const sized = setChunkingSize(heading, 2500);
+    assert.deepEqual(setChunkingStrategy(sized, "fixed").chunking, {
+      strategy: "fixed",
+      size: 2500,
+    });
+  });
+
+  test("automatic clears the size", () => {
+    const d = setChunkingStrategy(
+      setChunkingSize(setChunkingStrategy(draft(), "fixed"), 2500),
+      "auto",
+    );
+    assert.deepEqual(d.chunking, { strategy: "auto", size: null });
+  });
+
+  test("a changed chunking is unsaved, and putting it back is not", () => {
+    const d = setChunkingStrategy(draft(), "paragraph");
+    assert.equal(isDirty(d, saved), true);
+    assert.equal(isDirty(setChunkingStrategy(d, "auto"), saved), false);
+  });
+
+  test("the size box: empty and text are no size, other numbers are kept for validation", () => {
+    assert.equal(parseChunkSize(""), null);
+    assert.equal(parseChunkSize("  "), null);
+    assert.equal(parseChunkSize("abc"), null);
+    assert.equal(parseChunkSize("4000"), 4000);
+    assert.equal(parseChunkSize("1500.5"), 1500.5);
+  });
+
+  test("validation: automatic has nothing to check; the size is a whole number from 1000 to 8000", () => {
+    const withSize = (size: number | null) =>
+      setChunkingSize(setChunkingStrategy(draft(), "fixed"), size);
+    assert.equal(validateDraft(draft()).chunkSize, undefined);
+    assert.equal(chunkSizeError({ strategy: "auto", size: null }), null);
+    for (const ok of [1000, 4000, 8000]) {
+      assert.equal(validateDraft(withSize(ok)).chunkSize, undefined, String(ok));
+    }
+    for (const bad of [null, 999, 8001, 1500.5, 0, -4000, Number.NaN]) {
+      const errors = validateDraft(withSize(bad));
+      assert.match(errors.chunkSize ?? "", /whole number from 1000 to 8000/, String(bad));
+      assert.equal(isValid(errors), false);
+    }
+  });
+
+  test("the closed row's text", () => {
+    assert.equal(chunkingSummary({ strategy: "auto", size: null }), "Automatic");
+    assert.equal(
+      chunkingSummary({ strategy: "heading", size: 4000 }),
+      "By heading, 4000 characters",
+    );
+    assert.equal(
+      chunkingSummary({ strategy: "paragraph", size: 2000 }),
+      "By paragraph, 2000 characters",
+    );
+    assert.equal(chunkingSummary({ strategy: "fixed", size: 8000 }), "Fixed size, 8000 characters");
+    assert.equal(chunkingSummary({ strategy: "fixed", size: null }), "Fixed size");
   });
 });

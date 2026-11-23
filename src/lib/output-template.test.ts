@@ -73,6 +73,7 @@ const definition = (
   prompt: "",
   recordTypes: [adr, policy],
   output: { format, template },
+  chunking: { strategy: "auto", size: null },
 });
 
 describe("recordValues", () => {

@@ -83,6 +83,7 @@ export const MOCK_TEMPLATES: readonly DefinitionTemplate[] = [
           ],
         },
       ],
+      chunking: { strategy: "auto", size: null },
       output: {
         format: "markdown",
         template:
@@ -156,6 +157,7 @@ export const MOCK_TEMPLATES: readonly DefinitionTemplate[] = [
           ],
         },
       ],
+      chunking: { strategy: "auto", size: null },
       output: {
         format: "markdown",
         template:
@@ -170,6 +172,7 @@ export const MOCK_TEMPLATES: readonly DefinitionTemplate[] = [
     definition: {
       prompt: "",
       recordTypes: [],
+      chunking: { strategy: "auto", size: null },
       output: {
         format: "markdown",
         template: "",
@@ -252,6 +255,7 @@ export const MOCK_TEMPLATES: readonly DefinitionTemplate[] = [
           ],
         },
       ],
+      chunking: { strategy: "auto", size: null },
       output: {
         format: "json",
         template: "",

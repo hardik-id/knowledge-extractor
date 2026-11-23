@@ -41,10 +41,25 @@ export interface ExtractionDefinitionState {
   /** Makes an older version the newest one and loads it as the draft. Resolves to it, or null. */
   restore: (version: number) => Promise<ExtractionDefinition | null>;
   discard: () => void;
+  /** The server's message about the chunk size after a refused save; gone once the chunking changes. */
+  chunkingProblem: string;
   /** Replaces the draft with the template's configuration. It stays unsaved until saved or discarded. */
   applyTemplate: (template: DefinitionTemplate) => void;
   /** The note a save starts with after a template was loaded ("From template: <name>"), until it is saved or discarded. */
   suggestedNote: string;
+}
+
+/** The server's own words about the chunking in a refused save (a 422 whose problem path is `chunking`). */
+function chunkingProblemOf(error: unknown): string | null {
+  if (!isApiError(error) || error.status !== 422) return null;
+  const errors = (error.details as { errors?: unknown } | undefined)?.errors;
+  if (!Array.isArray(errors)) return null;
+  for (const item of errors) {
+    const { path, message } = (item ?? {}) as { path?: unknown; message?: unknown };
+    if (typeof path === "string" && path.startsWith("chunking") && typeof message === "string")
+      return message;
+  }
+  return null;
 }
 
 const NO_ERRORS: DraftErrors = { types: {}, fields: {}, general: [] };
@@ -68,6 +83,7 @@ export function useExtractionDefinition(
   } | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [refused, setRefused] = useState<{ message: string; chunking: string } | null>(null);
 
   // Take a freshly loaded definition (new run, or a reload after a conflict).
   let state = local;
@@ -95,7 +111,11 @@ export function useExtractionDefinition(
     });
 
   const reportFailure = (e: unknown, title: string) => {
-    if (isApiError(e) && e.code === "definition_conflict") {
+    const problem = chunkingProblemOf(e);
+    if (problem && current) {
+      // Shown next to the size box, where it can be fixed, not as a toast.
+      setRefused({ message: problem, chunking: JSON.stringify(current.draft.chunking) });
+    } else if (isApiError(e) && e.code === "definition_conflict") {
       toast.error(`The ${noun} changed elsewhere`, {
         description: "We loaded the latest version. Make your changes again.",
       });
@@ -166,12 +186,18 @@ export function useExtractionDefinition(
     save,
     restore,
     suggestedNote: current?.suggestedNote ?? "",
+    // Only while the chunking is what the server refused.
+    chunkingProblem:
+      refused && draft && refused.chunking === JSON.stringify(draft.chunking)
+        ? refused.message
+        : "",
     applyTemplate: (template) => {
       setLocal((prev) =>
         prev
           ? {
               ...prev,
-              draft: structuredClone(template.definition),
+              // A template suggests; it does not change how the document is chunked.
+              draft: { ...structuredClone(template.definition), chunking: prev.draft.chunking },
               suggestedNote: templateNote(template.name),
             }
           : prev,

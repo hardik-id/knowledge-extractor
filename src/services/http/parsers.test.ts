@@ -256,6 +256,25 @@ describe("extraction parsers", () => {
     assert.equal(wire.record_types[0].fields[0].value_type, "choice");
   });
 
+  test("chunking: read as the server sends it; absent is automatic; sent on every save", () => {
+    assert.deepEqual(parseDefinition(wireDefinition).chunking, { strategy: "auto", size: null });
+    const wired = { ...wireDefinition, chunking: { strategy: "paragraph", size: 3000 } };
+    const d = parseDefinition(wired);
+    assert.deepEqual(d.chunking, { strategy: "paragraph", size: 3000 });
+    const { version, note, createdAt, ...draft } = d;
+    assert.ok(version && note !== undefined && createdAt);
+    assert.deepEqual(toWireDefinition(draft).chunking, { strategy: "paragraph", size: 3000 });
+    const auto = { ...wireDefinition, chunking: { strategy: "auto", size: null } };
+    assert.deepEqual(toWireDefinition(parseDefinition(auto)).chunking, {
+      strategy: "auto",
+      size: null,
+    });
+    const bad = { ...wireDefinition, chunking: { strategy: "sentence", size: null } };
+    assert.throws(() => parseDefinition(bad), isInvalidResponse);
+    const text = { ...wireDefinition, chunking: { strategy: "fixed", size: "4000" } };
+    assert.throws(() => parseDefinition(text), isInvalidResponse);
+  });
+
   test("a definition with an unknown enum value is invalid", () => {
     const bad = structuredClone(wireDefinition);
     bad.record_types[0].fields[0].mode = "guess";

@@ -276,6 +276,26 @@ export interface ExtractionOutputSettings {
   template: string;
 }
 
+export const CHUNKING_STRATEGIES = ["auto", "heading", "paragraph", "fixed"] as const;
+export type ChunkingStrategy = (typeof CHUNKING_STRATEGIES)[number];
+
+/** How a document is cut into pieces before extraction. `size` (characters) is null for "auto". */
+export interface ChunkingSettings {
+  strategy: ChunkingStrategy;
+  size: number | null;
+}
+
+/** What the server takes as a chunk size, in characters. The server's own limit may be lower. */
+export const CHUNK_SIZE_MIN = 1000;
+export const CHUNK_SIZE_MAX = 8000;
+export const CHUNK_SIZE_DEFAULT = 4000;
+
+/** The setting as the server stores it: automatic has no size, any other strategy has one (4000 if none given). */
+export function normalChunking(chunking: ChunkingSettings | null | undefined): ChunkingSettings {
+  if (!chunking || chunking.strategy === "auto") return { strategy: "auto", size: null };
+  return { strategy: chunking.strategy, size: chunking.size ?? CHUNK_SIZE_DEFAULT };
+}
+
 export interface ExtractionDefinition {
   /** Goes up by one on every save. An extraction run names the version it used. */
   version: number;
@@ -283,6 +303,7 @@ export interface ExtractionDefinition {
   prompt: string;
   recordTypes: RecordType[];
   output: ExtractionOutputSettings;
+  chunking: ChunkingSettings;
   /** Why this version was saved. Empty when the person gave none. */
   note: string;
   createdAt: string; // ISO-8601

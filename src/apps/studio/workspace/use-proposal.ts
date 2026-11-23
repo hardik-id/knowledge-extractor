@@ -395,7 +395,8 @@ export function useProposal(
         const open = info.changes.filter((c) => !decided.discarded.includes(changeKey(c)));
         definition.setDraft(
           decided.discarded.length === 0
-            ? info.proposal.definition
+            ? // The assistant cannot change the chunking: the draft keeps its own.
+              { ...info.proposal.definition, chunking: info.current.chunking }
             : applyChanges(info.current, info.proposal.definition, open),
         );
       }

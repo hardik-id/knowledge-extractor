@@ -205,3 +205,37 @@ export async function openTemplatesDialog(page: Page) {
   await expect(dialog).toBeVisible();
   return dialog;
 }
+
+/** The "Chunking" row of the column: a button that says what is chosen, and the strategy and size it opens. */
+export class ChunkingRow {
+  constructor(private readonly page: Page) {}
+
+  /** The header button: its text is "Chunking" and the current choice. */
+  get header() {
+    return this.page.getByRole("button", { name: /^Chunking/ });
+  }
+
+  get strategy() {
+    return this.page.getByRole("combobox", { name: "Strategy" });
+  }
+
+  get size() {
+    return this.page.getByRole("spinbutton", { name: "Size" });
+  }
+
+  /** The words of the closed row after "Chunking". */
+  async expectSummary(text: string) {
+    await expect(this.header).toHaveAccessibleName(`Chunking ${text}`);
+  }
+
+  async open() {
+    if ((await this.header.getAttribute("aria-expanded")) !== "true") await this.header.click();
+    await expect(this.header).toHaveAttribute("aria-expanded", "true");
+    await expect(this.strategy).toBeVisible();
+  }
+
+  async choose(label: "Automatic" | "By heading" | "By paragraph" | "Fixed size") {
+    await this.open();
+    await this.strategy.selectOption({ label });
+  }
+}

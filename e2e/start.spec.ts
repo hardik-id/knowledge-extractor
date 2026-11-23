@@ -66,9 +66,7 @@ test("a template row shows its fields as suggestions; Keep all loads them as an 
   ).toHaveValue("From template: Policy rules");
 });
 
-test("Discard all on a template brings the start panel back", async ({
-  page,
-}) => {
+test("Discard all on a template brings the start panel back", async ({ page }) => {
   await openStart(page);
   const dock = new AssistantDock(page);
   await page.getByRole("button", { name: /^Policy rules/ }).click();

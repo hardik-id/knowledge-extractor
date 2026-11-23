@@ -7,6 +7,7 @@ import type {
   AssistantEvent,
   CellStatus,
   ExtractionChange,
+  ExtractionDefinitionDraft,
   Run,
   StageCell,
   WorkStageId,
@@ -310,6 +311,71 @@ describe("MockBackend", () => {
 
       first.prompt = "changed by the caller";
       assert.equal((await backend.getDefinition(run.id)).prompt, "Other", "returns copies");
+    });
+
+    test("chunking is stored, versioned and restored; a save without it keeps the saved one", async () => {
+      const backend = fastBackend();
+      const run = await backend.createRun(FILES);
+      const first = await backend.getDefinition(run.id);
+      assert.deepEqual(first.chunking, { strategy: "auto", size: null });
+
+      const v2 = await backend.saveDefinition(
+        run.id,
+        { ...first, chunking: { strategy: "paragraph", size: 3000 } },
+        1,
+      );
+      assert.deepEqual(v2.chunking, { strategy: "paragraph", size: 3000 });
+
+      // Older clients do not send the key: the saved setting stays.
+      const without: Partial<typeof v2> = { ...v2 };
+      delete without.chunking;
+      const v3 = await backend.saveDefinition(
+        run.id,
+        { ...without, prompt: "Again" } as unknown as ExtractionDefinitionDraft,
+        2,
+      );
+      assert.deepEqual(v3.chunking, { strategy: "paragraph", size: 3000 });
+
+      // Automatic has no size; a missing size is 4000.
+      const v4 = await backend.saveDefinition(
+        run.id,
+        { ...v3, chunking: { strategy: "fixed", size: null } },
+        3,
+      );
+      assert.deepEqual(v4.chunking, { strategy: "fixed", size: 4000 });
+      const v5 = await backend.saveDefinition(
+        run.id,
+        { ...v4, chunking: { strategy: "auto", size: 2000 } },
+        4,
+      );
+      assert.deepEqual(v5.chunking, { strategy: "auto", size: null });
+
+      assert.deepEqual((await backend.getDefinitionVersion(run.id, 2)).chunking, {
+        strategy: "paragraph",
+        size: 3000,
+      });
+      const restored = await backend.restoreDefinitionVersion(run.id, 2);
+      assert.equal(restored.version, 6);
+      assert.deepEqual(restored.chunking, { strategy: "paragraph", size: 3000 });
+      assert.deepEqual((await backend.getDefinition(run.id)).chunking, restored.chunking);
+    });
+
+    test("a chunk size outside 1000 to 8000, or not whole, is a 422 naming the range", async () => {
+      const backend = fastBackend();
+      const run = await backend.createRun(FILES);
+      const first = await backend.getDefinition(run.id);
+      for (const size of [999, 8001, 1500.5]) {
+        await assert.rejects(
+          backend.saveDefinition(run.id, { ...first, chunking: { strategy: "fixed", size } }, 1),
+          (error) => {
+            assert.ok(isApiError(error));
+            assert.equal(error.status, 422);
+            assert.equal(error.code, "invalid_definition");
+            assert.match(JSON.stringify(error.details), /between 1000 and 8000 characters/);
+            return true;
+          },
+        );
+      }
     });
 
     test("a stale base version is a 409, duplicate or empty keys a 422", async () => {
@@ -977,6 +1043,7 @@ describe("assistant and publishing", () => {
     prompt: "",
     recordTypes: [],
     output: { format: "markdown" as const, template: "" },
+    chunking: { strategy: "auto" as const, size: null },
   });
 
   async function listening(backend: MockBackend, runId: string) {

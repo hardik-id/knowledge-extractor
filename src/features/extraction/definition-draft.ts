@@ -1,10 +1,14 @@
 import { newId } from "@/lib/id";
-import type {
-  ExtractionDefinition,
-  ExtractionDefinitionDraft,
-  FieldDef,
-  OutputFormat,
-  RecordType,
+import {
+  CHUNK_SIZE_DEFAULT,
+  CHUNK_SIZE_MAX,
+  CHUNK_SIZE_MIN,
+  type ChunkingStrategy,
+  type ExtractionDefinition,
+  type ExtractionDefinitionDraft,
+  type FieldDef,
+  type OutputFormat,
+  type RecordType,
 } from "@/services/contracts";
 
 /** The editable part of a definition. */
@@ -12,7 +16,18 @@ export type Draft = ExtractionDefinitionDraft;
 
 export function toDraft(definition: ExtractionDefinition): Draft {
   const { prompt, recordTypes, output } = definition;
-  return structuredClone({ prompt, recordTypes, output });
+  // One shape for the same setting, so an untouched version is never "unsaved": a version from
+  // before chunking, or a stored size on an automatic one, reads as automatic with no size.
+  const chunking = definition.chunking ?? { strategy: "auto", size: null };
+  return structuredClone({
+    prompt,
+    recordTypes,
+    output,
+    chunking:
+      chunking.strategy === "auto"
+        ? { strategy: "auto" as const, size: null }
+        : { strategy: chunking.strategy, size: chunking.size ?? CHUNK_SIZE_DEFAULT },
+  });
 }
 
 export function isDirty(draft: Draft, saved: ExtractionDefinition): boolean {
@@ -128,6 +143,52 @@ export function setTemplate(draft: Draft, template: string): Draft {
   return { ...draft, output: { ...draft.output, template } };
 }
 
+/**
+ * Chooses the chunking strategy. A strategy other than automatic takes the size it has, else 4000;
+ * automatic clears the size.
+ */
+export function setChunkingStrategy(draft: Draft, strategy: ChunkingStrategy): Draft {
+  if (strategy === "auto") return { ...draft, chunking: { strategy, size: null } };
+  return { ...draft, chunking: { strategy, size: draft.chunking.size ?? CHUNK_SIZE_DEFAULT } };
+}
+
+/** Sets the size, or null while the box is empty or not a number (validation says what is wrong). */
+export function setChunkingSize(draft: Draft, size: number | null): Draft {
+  return { ...draft, chunking: { ...draft.chunking, size } };
+}
+
+/** What the size box holds becomes a size: a whole number, or null for an empty or other text. NaN-safe. */
+export function parseChunkSize(text: string): number | null {
+  const t = text.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** The closed row's words: "Automatic", "By paragraph, 4000 characters". */
+export const CHUNKING_LABELS: Record<ChunkingStrategy, string> = {
+  auto: "Automatic",
+  heading: "By heading",
+  paragraph: "By paragraph",
+  fixed: "Fixed size",
+};
+
+export function chunkingSummary(chunking: Draft["chunking"]): string {
+  const label = CHUNKING_LABELS[chunking.strategy];
+  if (chunking.strategy === "auto") return label;
+  return chunking.size == null ? label : `${label}, ${chunking.size} characters`;
+}
+
+/** The problem with the chunk size, or null. Automatic has no size to check. */
+export function chunkSizeError(chunking: Draft["chunking"]): string | null {
+  if (chunking.strategy === "auto") return null;
+  const { size } = chunking;
+  if (size == null || !Number.isInteger(size) || size < CHUNK_SIZE_MIN || size > CHUNK_SIZE_MAX) {
+    return `Enter a whole number from ${CHUNK_SIZE_MIN} to ${CHUNK_SIZE_MAX}.`;
+  }
+  return null;
+}
+
 /** "a, b ,, c" becomes ["a", "b", "c"]. */
 export function parseChoices(text: string): string[] {
   return text
@@ -143,6 +204,8 @@ export interface DraftErrors {
   fields: Record<string, { name?: string; key?: string; choices?: string }>;
   /** Problems with the definition as a whole. */
   general: string[];
+  /** The chunk size, when it is not a whole number from 1000 to 8000. */
+  chunkSize?: string;
 }
 
 export function validateDraft(draft: Draft): DraftErrors {
@@ -166,6 +229,8 @@ export function validateDraft(draft: Draft): DraftErrors {
       if (e.name || e.key || e.choices) errors.fields[f.id] = e;
     }
   }
+  const chunkSize = chunkSizeError(draft.chunking);
+  if (chunkSize) errors.chunkSize = chunkSize;
   return errors;
 }
 
@@ -173,6 +238,7 @@ export function isValid(errors: DraftErrors): boolean {
   return (
     errors.general.length === 0 &&
     Object.keys(errors.types).length === 0 &&
-    Object.keys(errors.fields).length === 0
+    Object.keys(errors.fields).length === 0 &&
+    !errors.chunkSize
   );
 }
