@@ -1,6 +1,7 @@
 import { services } from "@/services";
 import type { StageCell } from "@/services/contracts";
 import type { RunStore } from "@/store/pipeline-store";
+import { refreshAssistant, watchCatchUp } from "./catch-up";
 
 /** Live updates are applied in batches, so a burst of them is one render, not hundreds. */
 const CELL_BATCH_MS = 50;
@@ -37,6 +38,12 @@ export function attachRun(
     if (store().runId === runId) store().applyCells(cells);
   };
 
+  /** What a reconnect and the polling fallback both do: the snapshot (cells, and with them the
+   * extraction results) and the conversation. */
+  const catchUp = async () => {
+    await Promise.all([load(), refreshAssistant(runStore, runId, controller.signal)]);
+  };
+
   // A run created a moment ago already has its snapshot. One found after a reload doesn't.
   if (store().runLoad !== "ready") void load();
 
@@ -60,10 +67,13 @@ export function attachRun(
     onStateChange: (state) => {
       if (store().runId === runId) store().setConnection(state);
     },
-    onOpen: () => void load(),
+    onOpen: () => void catchUp(),
   });
+  // While the socket is down, ask on a timer for as long as something is in progress.
+  const stopPolling = watchCatchUp(runStore, catchUp);
 
   return () => {
+    stopPolling();
     unsubscribe();
     controller.abort();
     if (timer) clearTimeout(timer);

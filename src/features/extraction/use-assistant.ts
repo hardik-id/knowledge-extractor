@@ -5,6 +5,11 @@ import { useAsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
 import type { AssistantMessage, ExtractionDefinitionDraft } from "@/services/contracts";
 import { toastFailure } from "@/features/auth/report-failure";
+import {
+  assistantActivity,
+  mergeAssistantMessages,
+  type AssistantActivity,
+} from "./assistant-activity";
 import { usePipelineStore } from "@/store/pipeline-store";
 
 export interface AssistantState {
@@ -14,6 +19,8 @@ export interface AssistantState {
   retry: () => void;
   /** A reply is being written, or a message is on its way. */
   busy: boolean;
+  /** "working": a reply is awaited and has no text yet; "writing": it is being written. */
+  activity: AssistantActivity;
   /** Resolves true when the message was accepted. */
   send: (text: string) => Promise<boolean>;
   /** Removes the whole conversation. Resolves true when it was cleared. */
@@ -31,6 +38,7 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
   const setAssistantMessages = usePipelineStore((s) => s.setAssistantMessages);
   const putAssistantMessage = usePipelineStore((s) => s.putAssistantMessage);
   const [sending, setSending] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const latest = useRef(messages);
   useEffect(() => {
     latest.current = messages;
@@ -41,24 +49,19 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
     const loaded = await services.extraction.getAssistantMessages(runId, signal);
     if (!signal.aborted) {
       // Live parts may have arrived while this was on its way: keep what is newer.
-      const local = latest.current;
-      const byId = new Map(local.map((m) => [m.id, m]));
-      const merged = loaded.map((m) => {
-        const mine = byId.get(m.id);
-        return mine && mine.status === "done" && m.status === "streaming" ? mine : m;
-      });
-      const known = new Set(loaded.map((m) => m.id));
-      setAssistantMessages([...merged, ...local.filter((m) => !known.has(m.id))]);
+      setAssistantMessages(mergeAssistantMessages(latest.current, loaded));
     }
     return loaded;
   });
 
-  const busy = sending || messages.some((m) => m.status === "streaming");
+  const activity = assistantActivity(messages, sendingMessage);
+  const busy = sending || activity !== "idle" || messages.some((m) => m.status === "streaming");
 
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!runId || !draft || trimmed === "" || busy) return false;
     setSending(true);
+    setSendingMessage(true);
     try {
       const sent = await services.extraction.sendAssistantMessage(runId, trimmed, draft);
       putAssistantMessage(sent);
@@ -68,6 +71,7 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
       return false;
     } finally {
       setSending(false);
+      setSendingMessage(false);
     }
   };
 
@@ -86,5 +90,5 @@ export function useAssistant(draft: ExtractionDefinitionDraft | undefined): Assi
     }
   };
 
-  return { messages, isLoading, error, retry, busy, send, clear };
+  return { messages, isLoading, error, retry, busy, activity, send, clear };
 }

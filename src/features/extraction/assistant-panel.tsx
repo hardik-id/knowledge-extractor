@@ -45,6 +45,8 @@ function suggestionsFor(draft: Draft): { label: string; text: string | null }[] 
 export function Message({ message }: { message: AssistantMessage }) {
   const mine = message.role === "user";
   const streaming = message.status === "streaming";
+  // A reply with nothing yet is shown by the "Assistant is working…" line, not twice.
+  if (streaming && !mine && !message.text && !message.proposal) return null;
   return (
     <div className={cn("flex flex-col gap-1", mine ? "items-end" : "items-start")}>
       <span className="text-caption font-semibold text-ink-muted">
@@ -70,9 +72,19 @@ export function Message({ message }: { message: AssistantMessage }) {
   );
 }
 
+/** The line under the person's message while a reply is awaited and has no text yet. */
+export function AssistantWorking() {
+  return (
+    <p className="flex items-center gap-1 text-small text-ink-muted">
+      <Loader2 aria-hidden className="size-3.5 animate-spin motion-reduce:animate-none" />
+      Assistant is working…
+    </p>
+  );
+}
+
 export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
   const assistant = useAssistant(draft);
-  const { messages, busy } = assistant;
+  const { messages, busy, activity } = assistant;
   const [text, setText] = useState("");
   const [open, setOpen] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -157,6 +169,7 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
                 )}
               </div>
             ))}
+            {activity === "working" && <AssistantWorking />}
           </div>
         )}
 
