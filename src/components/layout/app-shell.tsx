@@ -69,9 +69,12 @@ export function AppShell({
           </Suspense>
           <ThemeToggle />
         </div>
+        {/* Under the header, not at the bottom: Next's development indicator sits bottom left. */}
+        <div className="shrink-0 px-2 pb-1 empty:hidden">
+          <BackendStatusBadge side="bottom" align="start" className="w-full justify-start" />
+        </div>
         <div className="relative min-h-0 flex-1 overflow-y-auto">{nav}</div>
         <div className="flex shrink-0 flex-col gap-1 border-t border-border-subtle p-2 empty:hidden">
-          <BackendStatusBadge side="top" align="start" className="w-full justify-start" />
           <UserMenu />
         </div>
       </aside>

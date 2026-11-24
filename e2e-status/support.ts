@@ -1,4 +1,4 @@
-import { test as base, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { clickUntilOpen } from "../e2e/support/first-click";
 import { STUB_API_ORIGIN } from "../playwright.status.config";
 
@@ -111,22 +111,7 @@ export async function stubApi(context: BrowserContext, options: StubOptions): Pr
 export const badge = (page: Page) => page.getByRole("button", { name: /^Backend status: / });
 export const panel = (page: Page) => page.getByRole("dialog", { name: "Backend status" });
 
-/**
- * `test` with Next's development indicator hidden: it sits over the bottom left corner, where
- * the sidebar's badge is, and takes the clicks.
- */
-export const test = base.extend({
-  page: async ({ page }, run) => {
-    await page.addInitScript(() => {
-      document.addEventListener("DOMContentLoaded", () => {
-        const style = document.createElement("style");
-        style.textContent = "nextjs-portal { display: none !important; }";
-        document.head.append(style);
-      });
-    });
-    await run(page);
-  },
-});
+export { test };
 
 /** Mock mode: a new project with the first document picked, left on the working screen. */
 export async function openMockWorkspace(page: Page) {

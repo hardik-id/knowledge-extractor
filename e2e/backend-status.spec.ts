@@ -21,4 +21,20 @@ test("the badge reads the backend's status and the panel lists its parts", async
   await expect(row("live_updates")).not.toContainText("Stub");
   await expect(row("worker")).not.toContainText("Stub");
   await expect(panel.getByRole("button", { name: "Test connections" })).toBeVisible();
+  // On the scripted stack the test only pings live updates: the rows stay as they are.
+  const before = await panel.locator("li").allInnerTexts();
+  await panel.getByRole("button", { name: "Test connections" }).click();
+  await expect(panel.getByRole("button", { name: "Test connections" })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Testing…" })).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+  await expect(badge).toHaveAccessibleName("Backend status: Stub");
+  await expect(row("assistant")).toContainText("Scripted");
+  await expect(row("storage")).toContainText("Samples");
+  await expect(row("sign_in")).toContainText("Dev token");
+  const after = await panel.locator("li").allInnerTexts();
+  // Same parts in the same order, and the stub rows read the same.
+  expect(after.map((t) => t.split("\n")[0])).toEqual(before.map((t) => t.split("\n")[0]));
+  for (const id of ["assistant", "extraction", "storage", "sign_in"]) {
+    await expect(row(id)).toContainText("Stub, nothing to check");
+  }
 });

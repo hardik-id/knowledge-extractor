@@ -44,7 +44,7 @@ const DEVELOPMENT = process.env.NODE_ENV !== "production";
 
 /**
  * What the backend is made of, as a badge in the top bar that opens a panel: the worst state in
- * one word with an icon, and each part under it. The word hides below 600px, or below 1360px in
+ * one word with an icon, and each part under it. The word hides below 600px, or below 1600px in
  * a crowded bar (`wordFrom`): the icon stays, and the name and the tooltip say the state. Hidden in a production build unless something is a stub or failing.
  * `side` and `align` place the panel where the badge sits.
  */
@@ -56,7 +56,7 @@ export function BackendStatusBadge({
 }: {
   side?: "top" | "bottom";
   align?: "start" | "end";
-  /** Where the word appears: from 600px (`sm`, the default) or from 1360px (`wide`, a crowded bar). */
+  /** Where the word appears: from 600px (`sm`, the default) or from 1600px (`wide`, a crowded bar). */
   wordFrom?: "sm" | "wide";
   className?: string;
 }) {
@@ -87,7 +87,7 @@ export function BackendStatusBadge({
           title={`Backend status: ${word}`}
           data-testid="status-badge"
           className={cn(
-            wordFrom === "sm" ? "px-2 sm:px-2.5" : "px-2 min-[1360px]:px-2.5",
+            wordFrom === "sm" ? "px-2 sm:px-2.5" : "px-2 min-[1600px]:px-2.5",
             tone,
             className,
           )}
@@ -96,7 +96,7 @@ export function BackendStatusBadge({
           <span
             className={cn(
               "hidden whitespace-nowrap text-ink",
-              wordFrom === "sm" ? "sm:inline" : "min-[1360px]:inline",
+              wordFrom === "sm" ? "sm:inline" : "min-[1600px]:inline",
             )}
           >
             {word}

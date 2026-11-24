@@ -26,14 +26,14 @@ test("the working screen's top bar has the badge, without crowding the bar", asy
   await expectNoOverlap(page);
 });
 
-for (const width of [1440, 1280, 960, 390]) {
+for (const width of [1600, 1440, 1280, 960, 390]) {
   test(`no overlap in the project bar at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
     await openMockWorkspace(page);
     await expectNoOverlap(page);
     const box = await badge(page).boundingBox();
     expect(box!.x + box!.width).toBeLessThanOrEqual(width);
-    if (width < 1360) {
+    if (width < 1600) {
       // The word is gone, the name still says the state.
       await expect(badge(page)).toHaveAccessibleName("Backend status: Mock data");
       await expect(badge(page).getByText("Mock data")).toBeHidden();
