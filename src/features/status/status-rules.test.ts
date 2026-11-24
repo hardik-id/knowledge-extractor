@@ -30,6 +30,9 @@ describe("overallState", () => {
     assert.equal(overallState(null), "unknown");
     assert.equal(overallState(undefined), "unknown");
   });
+  test("an empty list of parts is unknown, not live", () => {
+    assert.equal(overallState(status([])), "unknown");
+  });
   test("a failing real part is a problem, even beside stubs", () => {
     const s = status([
       part({ id: "assistant", mode: "stub", state: "stub" }),
@@ -74,10 +77,25 @@ describe("withSocketState", () => {
     assert.equal(next.parts[0].state, "ok");
     assert.equal(next.parts[1], base.parts[1]);
   });
-  test("a dropped socket is failing, so the badge says problem", () => {
-    const next = withSocketState(base, "reconnecting");
+  test("connecting and reconnecting are unknown, never a problem", () => {
+    for (const connection of ["connecting", "reconnecting"] as const) {
+      const next = withSocketState(base, connection);
+      assert.equal(next.parts[0].state, "unknown");
+      assert.equal(overallState(next), "live");
+    }
+    assert.equal(withSocketState(base, "reconnecting").parts[0].label, "Reconnecting");
+  });
+  test("only a socket closed for good is failing", () => {
+    const next = withSocketState(base, "closed");
     assert.equal(next.parts[0].state, "failing");
     assert.equal(overallState(next), "problem");
+  });
+  test("an ended session makes the row unknown, whatever the socket says", () => {
+    for (const connection of ["connecting", "open", "reconnecting", "closed"] as const) {
+      const next = withSocketState(base, connection, true);
+      assert.equal(next.parts[0].state, "unknown");
+      assert.equal(overallState(next), "live");
+    }
   });
 });
 

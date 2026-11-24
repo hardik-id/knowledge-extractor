@@ -147,6 +147,9 @@ function StatusPanel({
       {status === null && (
         <p className="text-body text-ink">This backend does not report its status.</p>
       )}
+      {status && status.parts.length === 0 && (
+        <p className="text-body text-ink">This backend reported no parts.</p>
+      )}
       {status && (
         <>
           <ul className="flex flex-col gap-2">

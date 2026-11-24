@@ -59,9 +59,9 @@ export interface Stub {
 
 export interface StubOptions {
   /** Answer for GET /status: parts, or 404 for a backend that has no such endpoint. */
-  status: Part[] | 404;
+  status: Part[] | 404 | 401;
   /** Answer for POST /status/test; `cached` adds the header. */
-  test?: { parts: Part[]; cached?: boolean; delayMs?: number };
+  test?: { parts: Part[]; cached?: boolean; delayMs?: number; refused?: boolean };
 }
 
 /** Answers the app's calls in http mode. Nothing leaves the browser. */
@@ -72,6 +72,12 @@ export async function stubApi(context: BrowserContext, options: StubOptions): Pr
     const path = new URL(request.url()).pathname.replace(/^\/api\/v1/, "");
     if (path === "/status" && request.method() === "GET") {
       stub.calls.push("GET /status");
+      if (options.status === 401) {
+        return route.fulfill({
+          status: 401,
+          json: { code: "unauthorized", message: "Refused." },
+        });
+      }
       if (options.status === 404) {
         return route.fulfill({ status: 404, json: { code: "not_found", message: "Not found." } });
       }
@@ -80,6 +86,12 @@ export async function stubApi(context: BrowserContext, options: StubOptions): Pr
     if (path === "/status/test" && request.method() === "POST") {
       stub.calls.push("POST /status/test");
       const test = options.test ?? { parts: ALL_REAL };
+      if (test.refused) {
+        return route.fulfill({
+          status: 401,
+          json: { code: "unauthorized", message: "Refused." },
+        });
+      }
       if (test.delayMs) await new Promise((resolve) => setTimeout(resolve, test.delayMs));
       return route.fulfill({
         json: { environment: "local", parts: test.parts },

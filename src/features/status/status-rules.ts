@@ -19,7 +19,8 @@ export const OVERALL_WORD: Record<OverallState, string> = {
 };
 
 export function overallState(status: BackendStatus | null | undefined): OverallState {
-  if (!status) return "unknown";
+  // An empty list says nothing: not "live".
+  if (!status || status.parts.length === 0) return "unknown";
   if (status.parts.some((p) => p.state === "failing")) return "problem";
   if (status.parts.some((p) => p.state === "stub" || p.mode === "stub")) {
     return status.environment === "mock" ? "mock" : "stub";
@@ -72,18 +73,27 @@ export function problemWords(code: string | null): string {
 }
 
 /**
- * When the browser's own socket to a run is up, it is the better answer for "Live updates" than
- * the server's own check, so it replaces that part. No run open (`idle`): the server's row stays.
+ * When the browser's own socket to a run is known, it is the better answer for "Live updates"
+ * than the server's own check, so it replaces that part. No run open (`idle`): the server's row
+ * stays. Only a socket that was closed for good is failing: connecting and reconnecting happen
+ * all the time (a dropped network, a deploy) and are "unknown", and while the session has ended
+ * the socket is blocked on purpose, so nothing turns red.
  */
-export function withSocketState(status: BackendStatus, connection: ConnectionState): BackendStatus {
+export function withSocketState(
+  status: BackendStatus,
+  connection: ConnectionState,
+  sessionEnded = false,
+): BackendStatus {
   if (connection === "idle") return status;
   const own: Record<Exclude<ConnectionState, "idle">, Pick<StatusPart, "label" | "state">> = {
     connecting: { label: "Connecting", state: "unknown" },
     open: { label: "Connected", state: "ok" },
-    reconnecting: { label: "Reconnecting", state: "failing" },
+    reconnecting: { label: "Reconnecting", state: "unknown" },
     closed: { label: "Closed", state: "failing" },
   };
-  const replacement = own[connection];
+  const replacement = sessionEnded
+    ? { label: "Paused until you sign in", state: "unknown" as const }
+    : own[connection];
   return {
     ...status,
     parts: status.parts.map((part) =>

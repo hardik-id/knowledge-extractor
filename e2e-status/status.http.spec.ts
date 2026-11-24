@@ -61,24 +61,57 @@ test("a 404 means the backend does not report: said in the panel, no toast, no e
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
 });
 
-test("it loads once when the app opens and once more each time the panel opens, never on a timer", async ({
+test("one load when the app opens, one more each time the panel opens, never on a timer", async ({
   page,
   context,
 }) => {
   const stub = await stubApi(context, { status: ALL_STUB });
   await page.goto("/studio");
   await expect(badge(page)).toHaveAccessibleName("Backend status: Stub");
-  // The development server runs effects twice, so the first load may be asked for twice.
-  const afterLoad = stub.calls.length;
-  expect(afterLoad).toBeGreaterThanOrEqual(1);
+  // The shell mounts the badge twice (header and sidebar): still one shared read.
+  expect(stub.calls).toEqual(["GET /status"]);
   await page.waitForTimeout(3000);
-  expect(stub.calls).toHaveLength(afterLoad);
+  expect(stub.calls).toEqual(["GET /status"]);
   await badge(page).click();
   await expect(panel(page)).toBeVisible();
-  await expect.poll(() => stub.calls.length).toBe(afterLoad + 1);
+  await expect.poll(() => stub.calls.length).toBe(2);
   await page.keyboard.press("Escape");
   await page.waitForTimeout(1500);
-  expect(stub.calls).toHaveLength(afterLoad + 1);
+  expect(stub.calls).toHaveLength(2);
+  await badge(page).click();
+  await expect.poll(() => stub.calls.length).toBe(3);
+});
+
+test("a backend that reports no parts is unknown, not live", async ({ page, context }) => {
+  await stubApi(context, { status: [] });
+  await page.goto("/studio");
+  await expect(badge(page)).toHaveAccessibleName("Backend status: Status unknown");
+  await badge(page).click();
+  await expect(panel(page)).toContainText("This backend reported no parts.");
+});
+
+test("a refused token on the read says nothing of its own: no toast, no error text", async ({
+  page,
+  context,
+}) => {
+  await stubApi(context, { status: 401 });
+  await page.goto("/studio");
+  await page.waitForTimeout(1500);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+  await expect(page.getByText(/Couldn.t read the backend/)).toHaveCount(0);
+});
+
+test("a refused token on the test says nothing of its own: no toast, no error text", async ({
+  page,
+  context,
+}) => {
+  await stubApi(context, { status: ALL_STUB, test: { parts: ALL_REAL, refused: true } });
+  await page.goto("/studio");
+  await badge(page).click();
+  await panel(page).getByRole("button", { name: "Test connections" }).click();
+  await page.waitForTimeout(1500);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+  await expect(page.getByText(/Couldn.t test the connections/)).toHaveCount(0);
 });
 
 test("Test connections shows a working state, then the new rows", async ({ page, context }) => {
