@@ -11,5 +11,12 @@
     "allowJs": true,
     "types": ["node"]
   },
-  "include": ["./**/*.ts", "../e2e-live/**/*.ts", "../e2e-live/**/*.mjs", "../playwright.config.ts"]
+  "include": [
+    "./**/*.ts",
+    "../e2e-live/**/*.ts",
+    "../e2e-live/**/*.mjs",
+    "../playwright.config.ts",
+    "../playwright.status.config.ts",
+    "../e2e-status/**/*.ts"
+  ]
 }

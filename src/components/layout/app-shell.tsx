@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 import { UserMenu } from "@/features/auth/user-menu";
+import { BackendStatusBadge } from "@/features/status/status-badge";
 import { ConnectionBanner } from "@/features/run/connection-banner";
 import { AppSwitcher } from "./app-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -51,6 +52,7 @@ export function AppShell({
           </Suspense>
           <div className="ml-auto flex items-center gap-2">
             {mobileNav}
+            <BackendStatusBadge />
             <ThemeToggle />
             <UserMenu compact />
           </div>
@@ -68,7 +70,8 @@ export function AppShell({
           <ThemeToggle />
         </div>
         <div className="relative min-h-0 flex-1 overflow-y-auto">{nav}</div>
-        <div className="shrink-0 border-t border-border-subtle p-2 empty:hidden">
+        <div className="flex shrink-0 flex-col gap-1 border-t border-border-subtle p-2 empty:hidden">
+          <BackendStatusBadge side="top" align="start" className="w-full justify-start" />
           <UserMenu />
         </div>
       </aside>

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { createApiClient, createMemoryTokenProvider } from "@/lib/api";
 import { createHttpClient } from "@/lib/api/http-client";
 import {
   createHttpExtractionApi,
   createHttpProjectsApi,
   createHttpRunsApi,
+  createHttpStatusApi,
   createHttpTemplatesApi,
 } from "./index";
 
@@ -209,5 +211,49 @@ describe("templates", () => {
 
     assert.deepEqual(requests[0].body, { name: "N", template_id: "skill" });
     assert.deepEqual(requests[1].body, { name: "N" });
+  });
+});
+
+describe("createHttpStatusApi", () => {
+  const body = {
+    environment: "local",
+    parts: [
+      { id: "worker", mode: "real", label: "Worker", state: "ok", checked_at: null, problem: null },
+    ],
+  };
+  const clientFor = (respond: () => Response) =>
+    createApiClient({
+      baseUrl: "https://api.test/api/v1",
+      tokens: createMemoryTokenProvider({ initialToken: "t" }),
+      fetch: async () => respond(),
+    });
+
+  test("get reads the status", async () => {
+    const api = createHttpStatusApi(clientFor(() => Response.json(body)));
+    assert.equal((await api.get())?.parts[0].id, "worker");
+  });
+
+  test("a 404 means the backend does not report its status: null, not an error", async () => {
+    const api = createHttpStatusApi(
+      clientFor(() => Response.json({ code: "not_found", message: "no" }, { status: 404 })),
+    );
+    assert.equal(await api.get(), null);
+    assert.equal(await api.test(), null);
+  });
+
+  test("any other failure is still an error", async () => {
+    const api = createHttpStatusApi(
+      clientFor(() => Response.json({ code: "error", message: "x" }, { status: 500 })),
+    );
+    await assert.rejects(api.get());
+  });
+
+  test("test says whether the answer came from the store", async () => {
+    const cached = createHttpStatusApi(
+      clientFor(() => Response.json(body, { headers: { "X-Status-Test": "cached" } })),
+    );
+    assert.equal((await cached.test())?.cached, true);
+    const fresh = createHttpStatusApi(clientFor(() => Response.json(body)));
+    assert.equal((await fresh.test())?.cached, false);
   });
 });

@@ -37,10 +37,16 @@ const SHOT = {
 
 /**
  * Times and dates change with every run (and with the clock), so the shot hides them.
- * So does the dev server's own badge ("Cache disabled"), which is not part of the app.
+ * So does the backend status badge (its word depends on the stack),
+ * and the dev server's own badge ("Cache disabled"), which is not part of the app.
  */
 function dates(page: Page): Locator[] {
-  return [page.locator("time"), page.getByTestId("version-line"), page.locator("nextjs-portal")];
+  return [
+    page.locator("time"),
+    page.getByTestId("version-line"),
+    page.getByTestId("status-badge"),
+    page.locator("nextjs-portal"),
+  ];
 }
 
 /** Waits until the web fonts are loaded. */

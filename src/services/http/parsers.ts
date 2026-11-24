@@ -16,6 +16,7 @@ import {
   type DefinitionTemplate,
   type DefinitionVersionSummary,
   type ExtractionChange,
+  type BackendStatus,
   type Project,
   type ProjectPage,
   type ProjectPatch,
@@ -343,6 +344,35 @@ export function parseTemplates(value: unknown): DefinitionTemplate[] {
       definition: parseDefinitionBody(o.definition, `${path}.definition`),
     };
   });
+}
+
+// ── Backend status ──────────────────────────────────────────────────────
+
+const STATUS_MODES = ["stub", "real"] as const;
+const STATUS_STATES = ["stub", "ok", "failing", "unknown"] as const;
+
+/**
+ * `{ environment, parts: [{ id, mode, label, state, checked_at, problem }] }`. A part whose id
+ * is new to this UI is kept. A mode or state this UI does not know is read as "real" and
+ * "unknown" so one new word never hides the whole panel.
+ */
+export function parseBackendStatus(value: unknown): BackendStatus {
+  const o = object(value, "status");
+  return {
+    environment: typeof o.environment === "string" ? o.environment : "",
+    parts: array(o.parts, "status.parts").map((item, i) => {
+      const path = `status.parts[${i}]`;
+      const p = object(item, path);
+      return {
+        id: string(p.id, `${path}.id`),
+        mode: STATUS_MODES.find((m) => m === p.mode) ?? "real",
+        label: string(p.label, `${path}.label`),
+        state: STATUS_STATES.find((s) => s === p.state) ?? "unknown",
+        checkedAt: nullable(p.checked_at, (v) => string(v, `${path}.checked_at`)),
+        problem: nullable(p.problem, (v) => string(v, `${path}.problem`)),
+      };
+    }),
+  };
 }
 
 // ── Projects ────────────────────────────────────────────────────────────

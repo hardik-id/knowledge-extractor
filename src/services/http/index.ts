@@ -10,10 +10,13 @@ import type {
   RunEvents,
   RunsApi,
   Services,
+  StatusApi,
   SourceCatalog,
 } from "../contracts";
+import { isApiError } from "@/lib/api/api-error";
 import {
   parseAssistantEventMessage,
+  parseBackendStatus,
   parseAssistantMessage,
   parseAssistantMessages,
   parseCellMessage,
@@ -60,6 +63,29 @@ export function createHttpSourceCatalog(client: HttpClient): SourceCatalog {
           signal,
         }),
       ),
+  };
+}
+
+/** A 404 means this backend does not report its status: `null`, not an error. */
+export function createHttpStatusApi(client: HttpClient): StatusApi {
+  const orNull = async <T>(read: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await read();
+    } catch (error) {
+      if (isApiError(error) && error.status === 404) return null;
+      throw error;
+    }
+  };
+  return {
+    get: (signal) => orNull(async () => parseBackendStatus(await client.get("status", { signal }))),
+    test: (signal) =>
+      orNull(async () => {
+        const response = await client.request("POST", "status/test", { signal });
+        return {
+          status: parseBackendStatus(await response.json().catch(() => undefined)),
+          cached: response.headers.get("X-Status-Test")?.trim().toLowerCase() === "cached",
+        };
+      }),
   };
 }
 
@@ -335,6 +361,7 @@ export function createHttpRunEvents({
 
 export function createHttpServices(options: HttpRunEventsOptions): Services {
   return {
+    status: createHttpStatusApi(options.client),
     catalog: createHttpSourceCatalog(options.client),
     documents: createHttpDocumentsApi(options.client),
     projects: createHttpProjectsApi(options.client),

@@ -7,6 +7,7 @@ import { AppSwitcher } from "@/components/layout/app-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/features/extraction/review-panes";
+import { BackendStatusBadge } from "@/features/status/status-badge";
 import { UserMenu } from "@/features/auth/user-menu";
 import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 import { STUDIO_HOME } from "./nav-steps";
@@ -64,6 +65,7 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
             />
           )}
           <div className="ml-auto flex items-center gap-x-2 md:order-last md:ml-0">
+            <BackendStatusBadge wordFrom="wide" />
             <ThemeToggle />
             <UserMenu compact />
           </div>

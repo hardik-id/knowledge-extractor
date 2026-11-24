@@ -142,7 +142,13 @@ export const test = base.extend<Fixtures & { watched: Watch }>({
       loadFailures: [],
       // The working screen always asks for the open document's extraction, and the backend
       // answers 404 for one that has not been run yet: the screen shows no records then.
-      expected: [{ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ }],
+      expected: [
+        { status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ },
+        // The status badge asks every page for the backend's status. A backend without that
+        // endpoint answers 404, and the badge says "Status unknown". Remove this once every
+        // backend the suite runs against has `GET /status` (backend #474).
+        { status: 404, method: "GET", path: /^\/status$/ },
+      ],
       expectedUrls: new Set(),
     };
     await run(watched);

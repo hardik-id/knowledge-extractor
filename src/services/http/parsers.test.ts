@@ -19,6 +19,7 @@ import {
   parseProjects,
   parsePublishResult,
   parseRun,
+  parseBackendStatus,
   parseSourceFiles,
   parseTemplates,
   toWireDefinition,
@@ -656,5 +657,50 @@ describe("template parser", () => {
       isInvalidResponse,
     );
     assert.throws(() => parseTemplates({}), isInvalidResponse);
+  });
+});
+
+describe("parseBackendStatus", () => {
+  test("reads the parts in order and keeps one with an id it does not know", () => {
+    const status = parseBackendStatus({
+      environment: "local",
+      parts: [
+        {
+          id: "assistant",
+          mode: "stub",
+          label: "Scripted",
+          state: "stub",
+          checked_at: null,
+          problem: null,
+        },
+        {
+          id: "search_index",
+          mode: "real",
+          label: "Solr",
+          state: "failing",
+          checked_at: "2026-11-24T10:00:00Z",
+          problem: "timeout",
+        },
+      ],
+    });
+    assert.deepEqual(
+      status.parts.map((p) => p.id),
+      ["assistant", "search_index"],
+    );
+    assert.equal(status.parts[1].checkedAt, "2026-11-24T10:00:00Z");
+    assert.equal(status.parts[1].problem, "timeout");
+  });
+
+  test("a mode or state it does not know does not reject the panel", () => {
+    const status = parseBackendStatus({
+      environment: "local",
+      parts: [{ id: "a", mode: "hybrid", label: "A", state: "degraded" }],
+    });
+    assert.equal(status.parts[0].mode, "real");
+    assert.equal(status.parts[0].state, "unknown");
+  });
+
+  test("a body that is not a status is rejected", () => {
+    assert.throws(() => parseBackendStatus({ environment: "x" }));
   });
 });
