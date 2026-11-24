@@ -90,7 +90,7 @@ If the UI and the API are on different origins, the API must:
 
 - allow the UI's origin (`http://localhost:3000` in development, the production host in production);
 - allow the `Authorization` header, and `Content-Type` and `X-Request-ID`, which the UI also sends;
-- expose `ETag`, so the browser lets the UI read it (see studio-api.md, section 3).
+- expose `ETag`, so the browser lets the UI read it (see studio-api.md, section 3), and `X-Status-Test`, which tells the UI that a status test was answered from the store (studio-api.md, section 8).
 
 Do not use `*` as the origin together with credentials. The UI sends no cookies; the token is in the header.
 

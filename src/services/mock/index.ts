@@ -1,4 +1,4 @@
-import type { Services } from "../contracts";
+import type { BackendStatus, Services } from "../contracts";
 import { MockBackend } from "./mock-backend";
 
 declare global {
@@ -8,11 +8,30 @@ declare global {
   }
 }
 
+const MOCK_STATUS: BackendStatus = {
+  environment: "mock",
+  parts: [
+    {
+      id: "data",
+      mode: "stub",
+      label: "Built-in mock, no API",
+      state: "stub",
+      checkedAt: null,
+      problem: null,
+    },
+  ],
+};
+
 /** The service contract, served by the in-browser mock. */
 export function createMockServices(backend: MockBackend = new MockBackend()): Services {
   if (typeof window !== "undefined") window.__mockBackend = backend;
 
   return {
+    status: {
+      // The mock has no API behind it: one stand-in part, and nothing to test.
+      get: async () => MOCK_STATUS,
+      test: async () => ({ status: MOCK_STATUS, cached: false }),
+    },
     catalog: {
       list: (source, query, signal) => backend.listFiles(source, query, signal),
     },

@@ -133,6 +133,45 @@ A document can change in storage at any time, outside the run.
 
 The list is one page, capped by the API, newest first (the Django API returns at most 100 documents) and without a cursor. The UI does not page. A cursor (`next` in the response, `cursor` in the query) can be added later without breaking the call.
 
+## 8. Backend status
+
+The top bar shows what the backend is made of: a badge (worst state wins) that opens a panel with one row per part. `services.status` in `contracts.ts`; the parser is `parseBackendStatus`.
+
+`GET /api/v1/status` (signed in, read only, no outside call):
+
+```json
+{
+  "environment": "local",
+  "parts": [
+    {
+      "id": "assistant",
+      "mode": "stub",
+      "label": "Scripted",
+      "state": "stub",
+      "checked_at": null,
+      "problem": null
+    },
+    {
+      "id": "worker",
+      "mode": "real",
+      "label": "Background worker",
+      "state": "failing",
+      "checked_at": "2026-11-24T10:00:00Z",
+      "problem": "worker_stalled"
+    }
+  ]
+}
+```
+
+- Part ids the UI knows: `assistant`, `extraction`, `storage`, `sign_in`, `live_updates`, `worker`. Any other id is listed under its id in words. Parts keep the order sent.
+- `mode`: `stub` or `real`. `state`: `stub` (nothing to check), `ok`, `failing`, `unknown` (real, not checked yet). A value the UI does not know reads as `real` and `unknown`.
+- `label` is for people: the provider and the model name at most, never an address or a key. `problem` is a short code (`auth_failed`, `not_found`, `rate_limited`, `timeout`, `unreachable`, `bad_request`, `worker_stalled`, `error`), never a message.
+- Badge: red "Problem" when a part is `failing`; amber "Stub" (or "Mock data" with the in-browser mock) when a part is a stub; green "Live" when every part is real and `ok` or `unknown`. In a production build the badge only shows for a stub or a problem.
+- **A 404 is an answer**: "this backend does not report its status". The panel says so, the badge reads "Status unknown", and nothing else is shown (no toast, no error screen).
+- Loaded when the app opens and each time the panel opens; never polled. "Live updates" shows the browser's own socket while a run is open.
+
+`POST /api/v1/status/test` (signed in): checks every real part now and answers the same body. At most one real test per 60 seconds for the deployment; inside that window it answers the stored result with the header `X-Status-Test: cached`, and the panel says "Checked N seconds ago" (from the newest `checked_at`). **If the API is on another origin it must expose `X-Status-Test`** (`Access-Control-Expose-Headers`, see auth-api.md section 5): without it the browser hides the header and a cached answer reads as a new one.
+
 ## Open questions
 
 - **Stale on the server.** Should the API mark the extraction itself (for example a `stale` flag) when it notices a new ETag, or is the UI's comparison enough?

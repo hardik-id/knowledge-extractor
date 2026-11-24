@@ -246,14 +246,19 @@ for (const scheme of ["light", "dark"] as const) {
 test.describe("pictures", () => {
   test.use({ colorScheme: "light", reducedMotion: "reduce", locale: "en-US", timezoneId: "UTC" });
 
-  /** The same masks as visual.spec.ts: dates, the version line and the dev server's own badge. */
+  /** The same masks as visual.spec.ts: dates, the version line, the backend status badge (its word depends on the stack) and the dev server's own badge. */
   async function shot(page: Page, name: string) {
     await page.evaluate(() => document.fonts.ready);
     await expect(page).toHaveScreenshot(name, {
       animations: "disabled",
       caret: "hide",
       maxDiffPixelRatio: 0.002,
-      mask: [page.locator("time"), page.getByTestId("version-line"), page.locator("nextjs-portal")],
+      mask: [
+        page.locator("time"),
+        page.getByTestId("version-line"),
+        page.locator("nextjs-portal"),
+        page.getByTestId("status-badge"),
+      ],
     });
   }
 

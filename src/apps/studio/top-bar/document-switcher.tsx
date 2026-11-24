@@ -85,7 +85,7 @@ export function DocumentSwitcher() {
             variant="outline"
             title={active.name}
             aria-label={`Document: ${active.name}, ${index + 1} of ${runFiles.length}`}
-            className="max-w-[min(15rem,calc(100vw-7rem))] gap-2 px-2 md:max-w-[11rem] min-[1440px]:max-w-[15rem]"
+            className="max-w-[min(15rem,calc(100vw-7rem))] gap-2 px-2 md:max-w-[11rem] min-[1440px]:max-w-[13.5rem]"
           >
             <span className="truncate font-mono text-small">{active.name}</span>
             <span className="text-small whitespace-nowrap text-ink-muted">

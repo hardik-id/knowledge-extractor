@@ -583,7 +583,51 @@ export interface DocumentsApi {
   get(documentId: string, signal?: AbortSignal): Promise<DocumentContent>;
 }
 
+/** What a part of the backend is: a stand-in (`stub`) or the real thing. */
+export type StatusMode = "stub" | "real";
+/** `stub`: a stand-in, nothing to check. `unknown`: real, but not checked or called yet. */
+export type StatusState = "stub" | "ok" | "failing" | "unknown";
+
+/**
+ * One part of the backend (the assistant, extraction, storage, sign-in, live updates, the
+ * worker). `id` is open: a backend may report a part this UI has never heard of.
+ */
+export interface StatusPart {
+  id: string;
+  mode: StatusMode;
+  /** For people: the provider and model name at most, never an address or a key. */
+  label: string;
+  state: StatusState;
+  /** When the state was last learned (a real call or a check), ISO 8601. */
+  checkedAt: string | null;
+  /** A short machine code for a failing part (`auth_failed`, `timeout`, ...), never a message. */
+  problem: string | null;
+}
+
+export interface BackendStatus {
+  environment: string;
+  parts: StatusPart[];
+}
+
+export interface StatusTestResult {
+  status: BackendStatus;
+  /** The backend answered with its stored result (`X-Status-Test: cached`): no new check ran. */
+  cached: boolean;
+}
+
+/**
+ * What the backend is made of right now. Both calls resolve to `null` when the backend does
+ * not report its status (a 404): that is an answer, not an error.
+ */
+export interface StatusApi {
+  /** Reads the stored status. Makes no outside call on the server. */
+  get(signal?: AbortSignal): Promise<BackendStatus | null>;
+  /** Checks every real part now (at most once a minute for the deployment), or answers the stored result. */
+  test(signal?: AbortSignal): Promise<StatusTestResult | null>;
+}
+
 export interface Services {
+  status: StatusApi;
   catalog: SourceCatalog;
   documents: DocumentsApi;
   projects: ProjectsApi;

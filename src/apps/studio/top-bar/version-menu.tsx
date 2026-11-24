@@ -70,7 +70,7 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
           >
             <span
               data-testid="version-line"
-              className={`truncate md:max-w-[7rem] min-[1440px]:max-w-[11rem] 2xl:max-w-none ${dirty ? "font-medium" : ""}`}
+              className={`truncate md:max-w-[7rem] min-[1440px]:max-w-[9rem] 2xl:max-w-none ${dirty ? "font-medium" : ""}`}
             >
               {versionLabel(saved.version, empty, dirty)}
             </span>
