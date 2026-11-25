@@ -20,20 +20,14 @@ import {
 } from "@/services/contracts";
 import {
   PARTS_SHOWN,
+  resultAnnouncement,
+  type CustomWords,
   STALE_HINT,
   STALE_SIZE_HINT,
   generateSplitter,
   partSize,
   partsLabel,
 } from "./custom-chunking";
-
-/** What the person typed, kept by the row so it outlives switching to another strategy and back. */
-export interface CustomWords {
-  instruction: string;
-  sourceUrl: string;
-  /** The applied code these words were typed against: words typed against other code are not kept. */
-  forCode: string | null;
-}
 
 type Generation =
   | { status: "idle" }
@@ -70,6 +64,15 @@ export function CustomChunkingPanel({
   const id = useId();
   const [generation, setGeneration] = useState<Generation>({ status: "idle" });
   const controller = useRef<AbortController | null>(null);
+  const generateButton = useRef<HTMLButtonElement>(null);
+  const appliedText = useRef<HTMLParagraphElement>(null);
+  // Where focus goes once the result is gone (Apply or Discard): the element is there next render.
+  const focusAfter = useRef<"applied" | "generate" | null>(null);
+  useEffect(() => {
+    const target = focusAfter.current;
+    focusAfter.current = null;
+    if (target) (target === "applied" ? appliedText.current : generateButton.current)?.focus();
+  });
 
   // Leaving the project, or the row, abandons the call: its answer goes nowhere.
   useEffect(() => () => controller.current?.abort(), []);
@@ -127,6 +130,7 @@ export function CustomChunkingPanel({
     };
     setDraft((d) => setCustomChunking(d, custom));
     setGeneration({ status: "idle" });
+    focusAfter.current = "applied";
   };
 
   return (
@@ -165,6 +169,7 @@ export function CustomChunkingPanel({
 
       <div className="flex flex-wrap items-center gap-2">
         <Button
+          ref={generateButton}
           type="button"
           variant="secondary"
           disabled={!canGenerate}
@@ -175,7 +180,11 @@ export function CustomChunkingPanel({
           Generate
         </Button>
         <span role="status" className="text-small text-ink-muted">
-          {running ? "Writing and testing the splitting code… this can take a minute" : ""}
+          {running
+            ? "Writing and testing the splitting code… this can take a minute"
+            : generation.status === "done"
+              ? resultAnnouncement(generation.result.documents.length)
+              : ""}
         </span>
       </div>
 
@@ -200,13 +209,20 @@ export function CustomChunkingPanel({
           )}
           sizeChanged={generation.request.size !== size}
           onApply={apply}
-          onDiscard={() => setGeneration({ status: "idle" })}
+          onDiscard={() => {
+            setGeneration({ status: "idle" });
+            focusAfter.current = "generate";
+          }}
         />
       )}
 
       {applied && generation.status !== "done" && (
         <div className="flex flex-col gap-1">
-          <p className="flex gap-1 text-small text-ink">
+          <p
+            ref={appliedText}
+            tabIndex={-1}
+            className="flex gap-1 text-small text-ink outline-offset-2"
+          >
             <CircleCheck aria-hidden className="mt-px size-4 shrink-0 text-success" />
             <span>
               <span className="font-medium">Applied.</span> {applied.summary}

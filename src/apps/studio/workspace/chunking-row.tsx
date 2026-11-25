@@ -11,7 +11,7 @@ import {
   chunkingSummary,
   parseChunkSize,
   setChunkingSize,
-  setChunkingStrategy,
+  chooseChunkingStrategy,
 } from "@/features/extraction/definition-draft";
 import { Problem } from "@/features/extraction/field-table";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
@@ -21,7 +21,8 @@ import {
   CHUNK_SIZE_MIN,
   type ChunkingStrategy,
 } from "@/services/contracts";
-import { CustomChunkingPanel, type CustomWords } from "./custom-chunking-panel";
+import { CustomChunkingPanel } from "./custom-chunking-panel";
+import { NO_MEMORY, memoryFor, rememberApplied, rememberWords } from "./custom-chunking";
 import { useScreenControls } from "./workspace-state";
 
 /**
@@ -40,8 +41,10 @@ export function ChunkingRow({ definition }: { definition: ExtractionDefinitionSt
   // What the size box shows while it is being typed in: "1500.5" or "" are not sizes, yet they stay.
   const [typed, setTyped] = useState<string | null>(null);
   // The description and link typed for Custom: kept while the screen is open, not saved.
-  const [words, setWords] = useState<CustomWords | null>(null);
+  const [memory, setMemory] = useState(NO_MEMORY);
   const runId = usePipelineStore((s) => s.runId);
+  // Tied to the run: another project starts with nothing remembered.
+  const remembered = memoryFor(memory, runId);
 
   // A size that is wrong when the person tries to save or run, or that the server refused: open
   // the row, the problem is in it.
@@ -111,7 +114,12 @@ export function ChunkingRow({ definition }: { definition: ExtractionDefinitionSt
             className="max-w-56"
             onChange={(e) => {
               setTyped(null);
-              setDraft((d) => setChunkingStrategy(d, e.target.value as ChunkingStrategy));
+              const next = e.target.value as ChunkingStrategy;
+              const leaving = draft.chunking.custom;
+              if (strategy === "custom" && next !== "custom" && leaving) {
+                setMemory(rememberApplied(memory, runId, leaving));
+              }
+              setDraft((d) => chooseChunkingStrategy(d, next, remembered.applied));
             }}
           >
             {CHUNKING_STRATEGIES.map((s) => (
@@ -127,8 +135,8 @@ export function ChunkingRow({ definition }: { definition: ExtractionDefinitionSt
             key={runId}
             definition={definition}
             runId={runId}
-            words={words}
-            setWords={setWords}
+            words={remembered.words}
+            setWords={(w) => setMemory(rememberWords(memory, runId, w))}
             sizeProblem={problem ?? ""}
             sizeControl={
               <div className="grid grid-cols-[4rem_minmax(0,1fr)] items-center gap-x-2">

@@ -158,6 +158,22 @@ export function setChunkingStrategy(draft: Draft, strategy: ChunkingStrategy): D
   };
 }
 
+/**
+ * Chooses a strategy the way the row does: like `setChunkingStrategy`, and coming back to Custom
+ * with no code in the draft takes back `remembered`, the code last applied in this session.
+ */
+export function chooseChunkingStrategy(
+  draft: Draft,
+  strategy: ChunkingStrategy,
+  remembered: CustomChunking | null,
+): Draft {
+  const next = setChunkingStrategy(draft, strategy);
+  if (strategy === "custom" && !next.chunking.custom && remembered) {
+    return setCustomChunking(next, remembered);
+  }
+  return next;
+}
+
 /** Puts applied splitting code into the draft (and makes the strategy custom), or takes it out with null. */
 export function setCustomChunking(draft: Draft, custom: CustomChunking | null): Draft {
   const size = draft.chunking.size ?? CHUNK_SIZE_DEFAULT;

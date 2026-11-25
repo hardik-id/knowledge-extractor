@@ -5,6 +5,7 @@ import {
   addField,
   addRecordType,
   chunkingSummary,
+  chooseChunkingStrategy,
   chunkSizeError,
   customCodeError,
   customIsStale,
@@ -277,6 +278,21 @@ describe("chunking", () => {
       assert.deepEqual(setChunkingStrategy(applied, "auto").chunking, {
         strategy: "auto",
         size: null,
+      });
+    });
+
+    test("coming back to Custom takes back the code applied earlier, but saves nothing for other strategies", () => {
+      const applied = setCustomChunking(setChunkingStrategy(draft(), "custom"), code);
+      const away = chooseChunkingStrategy(applied, "paragraph", code);
+      assert.deepEqual(away.chunking, { strategy: "paragraph", size: 4000 });
+      const back = chooseChunkingStrategy(away, "custom", code);
+      assert.deepEqual(back.chunking, { strategy: "custom", size: 4000, custom: code });
+      // Nothing remembered: back to "not generated yet".
+      assert.equal(chooseChunkingStrategy(away, "custom", null).chunking.custom, null);
+      // Remembered code is not put into other strategies.
+      assert.deepEqual(chooseChunkingStrategy(draft(), "fixed", code).chunking, {
+        strategy: "fixed",
+        size: 4000,
       });
     });
 

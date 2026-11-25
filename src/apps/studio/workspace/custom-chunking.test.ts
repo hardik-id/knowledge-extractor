@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ApiError } from "@/lib/api/api-error";
 import type { CustomChunkingResult } from "@/services/contracts";
-import { describeGenerateError, generateSplitter, partSize, partsLabel } from "./custom-chunking";
+import {
+  NO_MEMORY,
+  memoryFor,
+  rememberApplied,
+  rememberWords,
+  resultAnnouncement,
+  describeGenerateError,
+  generateSplitter,
+  partSize,
+  partsLabel,
+} from "./custom-chunking";
 
 const RESULT: CustomChunkingResult = {
   code: "def split(text, size): ...",
@@ -125,4 +135,28 @@ test("part wording", () => {
   assert.equal(partsLabel(1), "1 part");
   assert.equal(partsLabel(4), "4 parts");
   assert.equal(partSize({ start: 10, end: 595 }), 585);
+});
+
+describe("what the row remembers", () => {
+  const applied = { instruction: "i", sourceUrl: null, code: "c", summary: "s" };
+  const words = { instruction: "typed", sourceUrl: "", forCode: null };
+
+  test("it is kept for the same run", () => {
+    const m = rememberApplied(rememberWords(NO_MEMORY, "r1", words), "r1", applied);
+    assert.deepEqual(memoryFor(m, "r1"), { runId: "r1", words, applied });
+  });
+
+  test("another project starts with nothing: typed text and applied code don't leak", () => {
+    const m = rememberApplied(rememberWords(NO_MEMORY, "r1", words), "r1", applied);
+    assert.deepEqual(memoryFor(m, "r2"), { runId: "r2", words: null, applied: null });
+    // Remembering in the new run replaces the old run's memory.
+    const next = rememberWords(m, "r2", { ...words, instruction: "other" });
+    assert.equal(next.applied, null);
+    assert.equal(memoryFor(next, "r1").words, null);
+  });
+
+  test("the status line announces a finished result", () => {
+    assert.equal(resultAnnouncement(1), "Code written, 1 document checked");
+    assert.equal(resultAnnouncement(4), "Code written, 4 documents checked");
+  });
 });

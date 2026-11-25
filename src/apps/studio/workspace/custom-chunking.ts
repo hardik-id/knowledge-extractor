@@ -1,5 +1,6 @@
 import { isApiError } from "@/lib/api/api-error";
 import type {
+  CustomChunking,
   CustomChunkingRequest,
   CustomChunkingResult,
   ExtractionApi,
@@ -69,3 +70,50 @@ export function partSize(part: { start: number; end: number }): number {
 
 export const STALE_HINT = "The description changed since this code was generated.";
 export const STALE_SIZE_HINT = "The size changed since this code was generated.";
+
+/** What the person typed, kept so it outlives switching to another strategy and back. */
+export interface CustomWords {
+  instruction: string;
+  sourceUrl: string;
+  /** The applied code these words were typed against: words typed against other code are not kept. */
+  forCode: string | null;
+}
+
+/**
+ * What the Chunking row remembers while the screen is open, for one run: the typed words, and
+ * the code last applied, so choosing another strategy and coming back doesn't cost a new Generate.
+ * Never saved: the wire form of another strategy stays `custom: null`.
+ */
+export interface CustomMemory {
+  runId: string | null;
+  words: CustomWords | null;
+  applied: CustomChunking | null;
+}
+
+export const NO_MEMORY: CustomMemory = { runId: null, words: null, applied: null };
+
+/** The memory as it is for this run: empty when it was made in another project. */
+export function memoryFor(memory: CustomMemory, runId: string | null): CustomMemory {
+  return memory.runId === runId ? memory : { ...NO_MEMORY, runId };
+}
+
+export function rememberWords(
+  memory: CustomMemory,
+  runId: string | null,
+  words: CustomWords,
+): CustomMemory {
+  return { ...memoryFor(memory, runId), words };
+}
+
+export function rememberApplied(
+  memory: CustomMemory,
+  runId: string | null,
+  applied: CustomChunking,
+): CustomMemory {
+  return { ...memoryFor(memory, runId), applied };
+}
+
+/** The words for a finished Generate, for the status line read out to a screen reader. */
+export function resultAnnouncement(documents: number): string {
+  return `Code written, ${documents} ${documents === 1 ? "document" : "documents"} checked`;
+}
