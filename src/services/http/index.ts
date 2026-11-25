@@ -20,6 +20,7 @@ import {
   parseAssistantMessage,
   parseAssistantMessages,
   parseCellMessage,
+  parseCustomChunkingResult,
   parseDefinition,
   isAssistantClearedMessage,
   isRunChangedMessage,
@@ -51,6 +52,9 @@ import {
  */
 
 const enc = encodeURIComponent;
+
+/** The server writes and tests the code for up to 120 s; give the call a little more. */
+const GENERATE_TIMEOUT_MS = 150_000;
 
 export function createHttpSourceCatalog(client: HttpClient): SourceCatalog {
   return {
@@ -219,6 +223,22 @@ export function createHttpExtractionApi(client: HttpClient): ExtractionApi {
       });
       return parseDefinition(await response.json().catch(() => undefined));
     },
+
+    generateCustomChunking: async (runId, request, signal) =>
+      parseCustomChunkingResult(
+        await client
+          .request("POST", `runs/${enc(runId)}/stages/extract/chunking/generate`, {
+            body: {
+              instruction: request.instruction,
+              source_url: request.sourceUrl,
+              ...(request.size === undefined ? {} : { size: request.size }),
+            },
+            signal,
+            // The server gives up after 120 s; the default 15 s would cut the call short.
+            timeoutMs: GENERATE_TIMEOUT_MS,
+          })
+          .then((r) => r.json().catch(() => undefined)),
+      ),
 
     listDefinitionVersions: async (runId, signal) =>
       parseDefinitionVersions(await client.get(`${definitionPath(runId)}/versions`, { signal })),

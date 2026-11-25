@@ -3,7 +3,7 @@ import { MockBackend } from "./mock-backend";
 
 declare global {
   interface Window {
-    /** Mock mode only. Try `__mockBackend.dropConnection(8000)` `__mockBackend.failNext("transform")`, `__mockBackend.unanchorNext()` (the next extraction gets one value whose quote is not in the text) or `__mockBackend.lastExamplesUsed(runId)`. */
+    /** Mock mode only. Try `__mockBackend.dropConnection(8000)` `__mockBackend.failNext("transform")`, `__mockBackend.failNextChunkingGeneration()` (the next custom chunking Generate fails), `__mockBackend.unanchorNext()` (the next extraction gets one value whose quote is not in the text) or `__mockBackend.lastExamplesUsed(runId)`. */
     __mockBackend?: MockBackend;
   }
 }
@@ -61,6 +61,8 @@ export function createMockServices(backend: MockBackend = new MockBackend()): Se
       getDefinition: (runId, signal) => backend.getDefinition(runId, signal),
       saveDefinition: (runId, draft, baseVersion, note) =>
         backend.saveDefinition(runId, draft, baseVersion, note),
+      generateCustomChunking: (runId, request, signal) =>
+        backend.generateCustomChunking(runId, request, signal),
       listDefinitionVersions: (runId, signal) => backend.listDefinitionVersions(runId, signal),
       getDefinitionVersion: (runId, version, signal) =>
         backend.getDefinitionVersion(runId, version, signal),

@@ -8,6 +8,7 @@ import {
   parseCellMessage,
   isAssistantClearedMessage,
   isRunChangedMessage,
+  parseCustomChunkingResult,
   parseDefinition,
   parseDefinitionVersions,
   parseEtagHeader,
@@ -258,22 +259,109 @@ describe("extraction parsers", () => {
   });
 
   test("chunking: read as the server sends it; absent is automatic; sent on every save", () => {
-    assert.deepEqual(parseDefinition(wireDefinition).chunking, { strategy: "auto", size: null });
+    assert.deepEqual(parseDefinition(wireDefinition).chunking, {
+      strategy: "auto",
+      size: null,
+      custom: null,
+    });
     const wired = { ...wireDefinition, chunking: { strategy: "paragraph", size: 3000 } };
     const d = parseDefinition(wired);
-    assert.deepEqual(d.chunking, { strategy: "paragraph", size: 3000 });
+    assert.deepEqual(d.chunking, { strategy: "paragraph", size: 3000, custom: null });
     const { version, note, createdAt, ...draft } = d;
     assert.ok(version && note !== undefined && createdAt);
-    assert.deepEqual(toWireDefinition(draft).chunking, { strategy: "paragraph", size: 3000 });
+    assert.deepEqual(toWireDefinition(draft).chunking, {
+      strategy: "paragraph",
+      size: 3000,
+      custom: null,
+    });
     const auto = { ...wireDefinition, chunking: { strategy: "auto", size: null } };
     assert.deepEqual(toWireDefinition(parseDefinition(auto)).chunking, {
       strategy: "auto",
       size: null,
+      custom: null,
     });
     const bad = { ...wireDefinition, chunking: { strategy: "sentence", size: null } };
     assert.throws(() => parseDefinition(bad), isInvalidResponse);
     const text = { ...wireDefinition, chunking: { strategy: "fixed", size: "4000" } };
     assert.throws(() => parseDefinition(text), isInvalidResponse);
+  });
+
+  test("custom chunking: the block is read and sent in snake_case; other strategies send null", () => {
+    const block = {
+      instruction: "Split at every level-2 heading",
+      source_url: "https://example.com/page",
+      code: "def split(text, size): ...",
+      summary: "Splits at each level-2 heading.",
+    };
+    const wired = {
+      ...wireDefinition,
+      chunking: { strategy: "custom", size: 4000, custom: block },
+    };
+    const d = parseDefinition(wired);
+    assert.deepEqual(d.chunking, {
+      strategy: "custom",
+      size: 4000,
+      custom: {
+        instruction: block.instruction,
+        sourceUrl: block.source_url,
+        code: block.code,
+        summary: block.summary,
+      },
+    });
+    const { version, note, createdAt, ...draft } = d;
+    assert.ok(version && note !== undefined && createdAt);
+    assert.deepEqual(toWireDefinition(draft).chunking, wired.chunking);
+    // A null link stays null; a missing custom key reads as null; a custom strategy without a block too.
+    const noLink = {
+      ...wired,
+      chunking: { ...wired.chunking, custom: { ...block, source_url: null } },
+    };
+    assert.equal(parseDefinition(noLink).chunking.custom?.sourceUrl, null);
+    const missing = { ...wireDefinition, chunking: { strategy: "custom", size: 4000 } };
+    assert.equal(parseDefinition(missing).chunking.custom, null);
+    // Another strategy never carries a block, even one the server sent.
+    const other = { ...wireDefinition, chunking: { strategy: "fixed", size: 4000, custom: block } };
+    assert.equal(parseDefinition(other).chunking.custom, null);
+    // And a custom block that is not an object of strings is invalid.
+    const broken = { ...wired, chunking: { ...wired.chunking, custom: { ...block, code: 3 } } };
+    assert.throws(() => parseDefinition(broken), isInvalidResponse);
+    // Applied code is not sent for another strategy.
+    const dropped = { ...draft, chunking: { ...draft.chunking, strategy: "fixed" as const } };
+    assert.equal(toWireDefinition(dropped).chunking.custom, null);
+  });
+
+  test("the generate answer is read with camelCase names", () => {
+    const answer = parseCustomChunkingResult({
+      code: "def split(text, size): ...",
+      summary: "Splits at headings.",
+      documents: [
+        {
+          file_id: "f1",
+          name: "adr-001.md",
+          characters: 7123,
+          parts: [{ start: 0, end: 595, starts_with: "## Decision 1" }],
+        },
+      ],
+    });
+    assert.deepEqual(answer.documents, [
+      {
+        fileId: "f1",
+        name: "adr-001.md",
+        characters: 7123,
+        parts: [{ start: 0, end: 595, startsWith: "## Decision 1" }],
+      },
+    ]);
+    assert.equal(answer.summary, "Splits at headings.");
+    assert.throws(() => parseCustomChunkingResult({ code: "x", summary: "y" }), isInvalidResponse);
+    assert.throws(
+      () =>
+        parseCustomChunkingResult({
+          code: "x",
+          summary: "y",
+          documents: [{ file_id: "f", name: "n", characters: 1, parts: [{ start: 0 }] }],
+        }),
+      isInvalidResponse,
+    );
   });
 
   test("a definition with an unknown enum value is invalid", () => {

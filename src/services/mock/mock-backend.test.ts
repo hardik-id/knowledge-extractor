@@ -1306,3 +1306,98 @@ describe("storage documents (Knowledge Studio)", () => {
     assert.equal((await fastBackend(storage).createRun(FILES)).files.length, FILES.length);
   });
 });
+
+describe("MockBackend custom chunking", () => {
+  const draftWith = (chunking: ExtractionDefinitionDraft["chunking"]) => {
+    const { version, note, createdAt, ...rest } = structuredClone(
+      DEFAULT_EXTRACTION_DEFINITION,
+    ) as never as Record<string, unknown>;
+    void version;
+    void note;
+    void createdAt;
+    return { ...rest, chunking } as unknown as ExtractionDefinitionDraft;
+  };
+
+  test("generate answers a splitter and parts that cover each document, none above the size", async () => {
+    const backend = fastBackend();
+    const run = await backend.createRun(MOCK_FILES.slice(0, 1));
+    for (const stage of ["ingest", "transform", "classify", "enrich"] as const) {
+      await runStage(backend, run.id, stage);
+    }
+    const answer = await backend.generateCustomChunking(run.id, {
+      instruction: "Split at headings",
+      sourceUrl: null,
+      size: 1000,
+    });
+    assert.match(answer.code, /def split\(text: str, size: int\)/);
+    assert.ok(answer.summary.length > 0);
+    assert.equal(answer.documents.length, 1);
+    const doc = answer.documents[0]!;
+    assert.ok(doc.parts.length > 0);
+    assert.equal(doc.parts[0]!.start, 0);
+    assert.equal(doc.parts.at(-1)!.end, doc.characters);
+    doc.parts.forEach((part, i) => {
+      assert.ok(part.end > part.start && part.end - part.start <= 1000);
+      if (i > 0) assert.equal(part.start, doc.parts[i - 1]!.end);
+    });
+  });
+
+  test("a refused link says why under source_url; a made-to-fail call fails once", async () => {
+    const backend = fastBackend();
+    const run = await backend.createRun(MOCK_FILES.slice(0, 1));
+    await assert.rejects(
+      backend.generateCustomChunking(run.id, {
+        instruction: "x",
+        sourceUrl: "http://localhost/secret",
+        size: 4000,
+      }),
+      (error) => isApiError(error) && error.status === 422,
+    );
+    backend.failNextChunkingGeneration();
+    await rejectsWithCode(
+      backend.generateCustomChunking(run.id, { instruction: "x", sourceUrl: null }),
+      "custom_chunking_failed",
+      422,
+    );
+    const again = await backend.generateCustomChunking(run.id, {
+      instruction: "x",
+      sourceUrl: null,
+    });
+    assert.ok(again.code);
+  });
+
+  test("a custom configuration needs its code to be saved, and keeps it in versions", async () => {
+    const backend = fastBackend();
+    const run = await backend.createRun(MOCK_FILES.slice(0, 1));
+    await rejectsWithCode(
+      backend.saveDefinition(
+        run.id,
+        draftWith({ strategy: "custom", size: 4000, custom: null }),
+        1,
+      ),
+      "validation_error",
+      422,
+    );
+    const custom = {
+      instruction: "Split at headings",
+      sourceUrl: null,
+      code: "def split(text, size): ...",
+      summary: "Splits.",
+    };
+    const v2 = await backend.saveDefinition(
+      run.id,
+      draftWith({ strategy: "custom", size: 4000, custom }),
+      1,
+    );
+    assert.deepEqual(v2.chunking, { strategy: "custom", size: 4000, custom });
+    // Another strategy drops the block.
+    const v3 = await backend.saveDefinition(
+      run.id,
+      draftWith({ strategy: "fixed", size: 4000, custom }),
+      2,
+    );
+    assert.deepEqual(v3.chunking, { strategy: "fixed", size: 4000 });
+    const restored = await backend.restoreDefinitionVersion(run.id, 2);
+    assert.deepEqual(restored.chunking.custom, custom);
+  });
+});
