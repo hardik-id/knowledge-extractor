@@ -276,13 +276,63 @@ export interface ExtractionOutputSettings {
   template: string;
 }
 
-export const CHUNKING_STRATEGIES = ["auto", "heading", "paragraph", "fixed"] as const;
+export const CHUNKING_STRATEGIES = ["auto", "heading", "paragraph", "fixed", "custom"] as const;
 export type ChunkingStrategy = (typeof CHUNKING_STRATEGIES)[number];
 
 /** How a document is cut into pieces before extraction. `size` (characters) is null for "auto". */
 export interface ChunkingSettings {
   strategy: ChunkingStrategy;
   size: number | null;
+  /**
+   * For "custom": what the person asked for and the splitting code written for it. Null (or
+   * absent) for every other strategy, and for "custom" until code is applied.
+   */
+  custom?: CustomChunking | null;
+}
+
+/** The splitting code of a "custom" chunking, with the words and link it was written from. */
+export interface CustomChunking {
+  /** The person's description, 1 to `CUSTOM_INSTRUCTION_MAX` characters. */
+  instruction: string;
+  /** An optional reference page the description points to. */
+  sourceUrl: string | null;
+  /** Python source of `split(text, size)`. The UI only shows it. */
+  code: string;
+  /** What the code does, in a sentence or two. */
+  summary: string;
+}
+
+export const CUSTOM_INSTRUCTION_MAX = 2000;
+export const CUSTOM_SOURCE_URL_MAX = 2000;
+
+/** What the person asks `generateCustomChunking` for. `size` defaults to 4000 on the server. */
+export interface CustomChunkingRequest {
+  instruction: string;
+  sourceUrl: string | null;
+  size?: number;
+}
+
+/** One part of a document as the generated code cuts it (character offsets, end exclusive). */
+export interface CustomChunkingPart {
+  start: number;
+  end: number;
+  /** The first non-empty line of the part, cut to 80 characters. */
+  startsWith: string;
+}
+
+/** A document the generated code was checked on. */
+export interface CustomChunkingDocument {
+  fileId: string;
+  name: string;
+  characters: number;
+  parts: CustomChunkingPart[];
+}
+
+/** What the server wrote. Nothing is saved: the person applies it to the draft and saves as usual. */
+export interface CustomChunkingResult {
+  code: string;
+  summary: string;
+  documents: CustomChunkingDocument[];
 }
 
 /** What the server takes as a chunk size, in characters. The server's own limit may be lower. */
@@ -293,7 +343,11 @@ export const CHUNK_SIZE_DEFAULT = 4000;
 /** The setting as the server stores it: automatic has no size, any other strategy has one (4000 if none given). */
 export function normalChunking(chunking: ChunkingSettings | null | undefined): ChunkingSettings {
   if (!chunking || chunking.strategy === "auto") return { strategy: "auto", size: null };
-  return { strategy: chunking.strategy, size: chunking.size ?? CHUNK_SIZE_DEFAULT };
+  const size = chunking.size ?? CHUNK_SIZE_DEFAULT;
+  if (chunking.strategy === "custom") {
+    return { strategy: "custom", size, custom: chunking.custom ?? null };
+  }
+  return { strategy: chunking.strategy, size };
 }
 
 export interface ExtractionDefinition {
@@ -460,6 +514,17 @@ export interface ExtractionApi {
     baseVersion: number,
     note?: string,
   ): Promise<ExtractionDefinition>;
+  /**
+   * Asks the server to write and test splitting code for a description. Takes up to two
+   * minutes; nothing is saved. Rejects with `custom_chunking_off` (409),
+   * `custom_chunking_failed` (422), `custom_chunking_timeout` (504), `model_not_configured`
+   * (409), or `validation_error` (422, a refused link under `source_url`).
+   */
+  generateCustomChunking(
+    runId: string,
+    request: CustomChunkingRequest,
+    signal?: AbortSignal,
+  ): Promise<CustomChunkingResult>;
   /** Every saved version, newest first. Versions are never changed or deleted. */
   listDefinitionVersions(runId: string, signal?: AbortSignal): Promise<DefinitionVersionSummary[]>;
   /** One saved version. Rejects with `definition_version_not_found` (404). */

@@ -80,6 +80,55 @@ The UI calls the definition an "extraction configuration". Paths, code and error
 - `GET .../definition/versions/{version}` answers that version in the shape of the definition. An unknown one is 404 `definition_version_not_found`.
 - `POST .../definition/versions/{version}/restore` saves a copy of that version as the newest one, with the note `Restored from version N`, and answers it. Earlier versions stay.
 
+### Chunking
+
+The definition also carries `chunking`: `{ "strategy": "auto" | "heading" | "paragraph" | "fixed" | "custom", "size": 4000, "custom": null }`. `size` (characters, 1000 to 8000) is null for `auto`. Answers always carry the `custom` key; a missing key reads as null.
+
+`custom` is an object only when `strategy` is `custom`, and is dropped for every other strategy:
+
+```json
+"custom": {
+  "instruction": "Split at every level-2 heading ...",
+  "source_url": null,
+  "code": "def split(text, size): ...",
+  "summary": "Splits at each level-2 heading; ..."
+}
+```
+
+`instruction` is the person's words (1 to 2000 characters), `source_url` an optional link (at most 2000), `code` Python source (1 to 20000), `summary` what the code does (at most 1000). `strategy: "custom"` without `custom.code` is 422 with the message `Generate and apply the splitting code first.` (UI: `chunkCode` in `definition-draft.ts`; it blocks save and run).
+
+`POST /runs/{run_id}/stages/extract/chunking/generate` with `{ "instruction", "source_url", "size" }` (`size` optional, default 4000) asks the server to write and test the code. It is synchronous (the server gives up after 120 s; the UI's client allows 150 s) and saves nothing: the UI puts the answer into the draft when the person clicks Apply and saves as usual.
+
+```json
+{
+  "code": "...",
+  "summary": "...",
+  "documents": [
+    {
+      "file_id": "...",
+      "name": "adr-001.md",
+      "characters": 7123,
+      "parts": [{ "start": 0, "end": 595, "starts_with": "## Decision 1" }]
+    }
+  ]
+}
+```
+
+`documents` are at most 5 of the run's documents, each with the parts the final code makes at that size. `starts_with` is the first non-empty line of the part, cut to 80 characters, taken from the document.
+
+| status | code                      | meaning                                                          |
+| ------ | ------------------------- | ---------------------------------------------------------------- |
+| 409    | `custom_chunking_off`     | custom chunking is turned off on this server                     |
+| 409    | `model_not_configured`    | no language model is configured                                  |
+| 422    | `validation_error`        | field problems; a refused link says why under `source_url`       |
+| 422    | `custom_chunking_failed`  | the assistant could not write code that works on these documents |
+| 504    | `custom_chunking_timeout` | writing the code took too long                                   |
+| 502    | (model unreachable)       | the language model could not be reached                          |
+
+The UI shows the server's `message` for these. A run with `strategy: "custom"` executes the saved code per document; a failing document gets `The custom splitting code failed on this document.` (or `... took too long on this document.`, or `Custom chunking is turned off on this server.`). The code defines `split(text, size) -> list[tuple[int, int]]`: ranges in order from 0, end exclusive, no gaps, no overlap, none empty, none longer than `size`, ending at `len(text)`.
+
+In mock mode the generate call waits 1.5 s and answers a fixed splitter (cut at each `## ` heading); `__mockBackend.failNextChunkingGeneration()` makes the next call fail.
+
 ## 2. Running the stage
 
 Extraction runs like every other stage:

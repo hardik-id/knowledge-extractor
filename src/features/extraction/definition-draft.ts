@@ -4,6 +4,8 @@ import {
   CHUNK_SIZE_MAX,
   CHUNK_SIZE_MIN,
   type ChunkingStrategy,
+  type CustomChunking,
+  normalChunking,
   type ExtractionDefinition,
   type ExtractionDefinitionDraft,
   type FieldDef,
@@ -23,10 +25,7 @@ export function toDraft(definition: ExtractionDefinition): Draft {
     prompt,
     recordTypes,
     output,
-    chunking:
-      chunking.strategy === "auto"
-        ? { strategy: "auto" as const, size: null }
-        : { strategy: chunking.strategy, size: chunking.size ?? CHUNK_SIZE_DEFAULT },
+    chunking: normalChunking(chunking),
   });
 }
 
@@ -145,11 +144,53 @@ export function setTemplate(draft: Draft, template: string): Draft {
 
 /**
  * Chooses the chunking strategy. A strategy other than automatic takes the size it has, else 4000;
- * automatic clears the size.
+ * automatic clears the size. `custom` is kept only while the strategy is custom: switching away
+ * drops the code from what is saved.
  */
 export function setChunkingStrategy(draft: Draft, strategy: ChunkingStrategy): Draft {
-  if (strategy === "auto") return { ...draft, chunking: { strategy, size: null } };
-  return { ...draft, chunking: { strategy, size: draft.chunking.size ?? CHUNK_SIZE_DEFAULT } };
+  return {
+    ...draft,
+    chunking: normalChunking({
+      strategy,
+      size: strategy === "auto" ? null : (draft.chunking.size ?? CHUNK_SIZE_DEFAULT),
+      custom: draft.chunking.custom,
+    }),
+  };
+}
+
+/**
+ * Chooses a strategy the way the row does: like `setChunkingStrategy`, and coming back to Custom
+ * with no code in the draft takes back `remembered`, the code last applied in this session.
+ */
+export function chooseChunkingStrategy(
+  draft: Draft,
+  strategy: ChunkingStrategy,
+  remembered: CustomChunking | null,
+): Draft {
+  const next = setChunkingStrategy(draft, strategy);
+  if (strategy === "custom" && !next.chunking.custom && remembered) {
+    return setCustomChunking(next, remembered);
+  }
+  return next;
+}
+
+/** Puts applied splitting code into the draft (and makes the strategy custom), or takes it out with null. */
+export function setCustomChunking(draft: Draft, custom: CustomChunking | null): Draft {
+  const size = draft.chunking.size ?? CHUNK_SIZE_DEFAULT;
+  return { ...draft, chunking: { strategy: "custom", size, custom } };
+}
+
+/** The applied code differs from what the boxes now say: Generate has to be run again. */
+export function customIsStale(
+  applied: CustomChunking | null | undefined,
+  instruction: string,
+  sourceUrl: string,
+): boolean {
+  if (!applied) return false;
+  return (
+    applied.instruction.trim() !== instruction.trim() ||
+    (applied.sourceUrl ?? "") !== sourceUrl.trim()
+  );
 }
 
 /** Sets the size, or null while the box is empty or not a number (validation says what is wrong). */
@@ -171,11 +212,14 @@ export const CHUNKING_LABELS: Record<ChunkingStrategy, string> = {
   heading: "By heading",
   paragraph: "By paragraph",
   fixed: "Fixed size",
+  custom: "Custom",
 };
 
 export function chunkingSummary(chunking: Draft["chunking"]): string {
   const label = CHUNKING_LABELS[chunking.strategy];
   if (chunking.strategy === "auto") return label;
+  if (chunking.strategy === "custom" && !chunking.custom?.code)
+    return `${label}, not generated yet`;
   return chunking.size == null ? label : `${label}, ${chunking.size} characters`;
 }
 
@@ -187,6 +231,14 @@ export function chunkSizeError(chunking: Draft["chunking"]): string | null {
     return `Enter a whole number from ${CHUNK_SIZE_MIN} to ${CHUNK_SIZE_MAX}.`;
   }
   return null;
+}
+
+export const CUSTOM_CODE_MISSING = "Generate and apply the splitting code first.";
+
+/** Custom chunking without applied code can't be saved or run. */
+export function customCodeError(chunking: Draft["chunking"]): string | null {
+  if (chunking.strategy !== "custom") return null;
+  return chunking.custom?.code?.trim() ? null : CUSTOM_CODE_MISSING;
 }
 
 /** "a, b ,, c" becomes ["a", "b", "c"]. */
@@ -206,6 +258,8 @@ export interface DraftErrors {
   general: string[];
   /** The chunk size, when it is not a whole number from 1000 to 8000. */
   chunkSize?: string;
+  /** Custom chunking chosen but no splitting code applied. */
+  chunkCode?: string;
 }
 
 export function validateDraft(draft: Draft): DraftErrors {
@@ -231,6 +285,8 @@ export function validateDraft(draft: Draft): DraftErrors {
   }
   const chunkSize = chunkSizeError(draft.chunking);
   if (chunkSize) errors.chunkSize = chunkSize;
+  const chunkCode = customCodeError(draft.chunking);
+  if (chunkCode) errors.chunkCode = chunkCode;
   return errors;
 }
 
@@ -239,6 +295,7 @@ export function isValid(errors: DraftErrors): boolean {
     errors.general.length === 0 &&
     Object.keys(errors.types).length === 0 &&
     Object.keys(errors.fields).length === 0 &&
-    !errors.chunkSize
+    !errors.chunkSize &&
+    !errors.chunkCode
   );
 }

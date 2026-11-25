@@ -40,7 +40,12 @@ import {
   type ReviewState,
   type TextSpan,
   MAX_DEFINITION_NOTE_LENGTH,
+  CHUNK_SIZE_DEFAULT,
   CHUNK_SIZE_MAX,
+  CUSTOM_INSTRUCTION_MAX,
+  type CustomChunkingDocument,
+  type CustomChunkingRequest,
+  type CustomChunkingResult,
   CHUNK_SIZE_MIN,
   normalChunking,
   type Run,
@@ -285,6 +290,51 @@ function checkSpan(text: string, span: TextSpan) {
   }
 }
 
+const GENERATE_LATENCY_MS = 1500;
+
+/** The code the mock "writes": the same rule as `mockSplit`, in the language the server uses. */
+const MOCK_SPLIT_CODE = `def split(text: str, size: int) -> list[tuple[int, int]]:
+    """Cut at each level-2 heading; cut a longer part every \`size\` characters."""
+    starts = [0]
+    pos = 0
+    for line in text.splitlines(keepends=True):
+        if line.startswith("## ") and pos > 0:
+            starts.append(pos)
+        pos += len(line)
+    ends = starts[1:] + [len(text)]
+    ranges = []
+    for start, end in zip(starts, ends):
+        while end - start > size:
+            ranges.append((start, start + size))
+            start += size
+        if end > start:
+            ranges.append((start, end))
+    return ranges
+`;
+
+/** The mock's splitter: contiguous character ranges from 0 to the end, none longer than `size`. */
+export function mockSplit(text: string, size: number): Array<[number, number]> {
+  if (!text) return [];
+  const starts = [0];
+  let pos = 0;
+  for (const line of text.split(/(?<=\n)/)) {
+    if (line.startsWith("## ") && pos > 0) starts.push(pos);
+    pos += line.length;
+  }
+  const ends = [...starts.slice(1), text.length];
+  const ranges: Array<[number, number]> = [];
+  starts.forEach((s, i) => {
+    let start = s;
+    const end = ends[i]!;
+    while (end - start > size) {
+      ranges.push([start, start + size]);
+      start += size;
+    }
+    if (end > start) ranges.push([start, end]);
+  });
+  return ranges;
+}
+
 export class MockBackend {
   private readonly runs = new Map<string, MockRun>();
   private readonly subscriptions = new Set<Subscription>();
@@ -295,6 +345,7 @@ export class MockBackend {
   private readonly persistentStorageKey: string;
   private readonly failNextStages = new Set<WorkStageId>();
   private unanchorNextExtraction = false;
+  private failNextGenerate: { status: number; code: string; message: string } | null = null;
   private readonly examplesUsed = new Map<string, number>();
   private speed: number;
   private connected = true;
@@ -698,6 +749,16 @@ export class MockBackend {
         });
       }
     }
+    if (draft.chunking?.strategy === "custom" && !draft.chunking.custom?.code?.trim()) {
+      throw new ApiError({
+        status: 422,
+        code: "validation_error",
+        message: "Generate and apply the splitting code first.",
+        details: {
+          errors: [{ path: "chunking", message: "Generate and apply the splitting code first." }],
+        },
+      });
+    }
     const size = draft.chunking?.size;
     if (
       draft.chunking &&
@@ -749,6 +810,85 @@ export class MockBackend {
     await this.wait(LATENCY_MS);
     signal?.throwIfAborted();
     return structuredClone(this.requireVersion(this.requireRun(runId), version));
+  }
+
+  /**
+   * Stands in for the server's agent: waits a moment, then answers with a fixed splitter (cut at
+   * each "## " heading, long parts cut at `size`) and the parts it makes of up to five documents.
+   * `failNextChunkingGenerate` makes the next call fail instead.
+   */
+  async generateCustomChunking(
+    runId: string,
+    request: CustomChunkingRequest,
+    signal?: AbortSignal,
+  ): Promise<CustomChunkingResult> {
+    await this.wait(GENERATE_LATENCY_MS);
+    signal?.throwIfAborted();
+    const run = this.requireRun(runId);
+    const failure = this.failNextGenerate;
+    this.failNextGenerate = null;
+    if (failure) throw new ApiError(failure);
+    const instruction = request.instruction.trim();
+    if (!instruction || instruction.length > CUSTOM_INSTRUCTION_MAX) {
+      throw new ApiError({
+        status: 422,
+        code: "validation_error",
+        message: "The request is not valid.",
+        details: {
+          errors: [
+            {
+              path: "instruction",
+              message: `Describe how to split, in up to ${CUSTOM_INSTRUCTION_MAX} characters.`,
+            },
+          ],
+        },
+      });
+    }
+    if (request.sourceUrl && !/^https:\/\/[^\s/]+/i.test(request.sourceUrl)) {
+      throw new ApiError({
+        status: 422,
+        code: "validation_error",
+        message: "The request is not valid.",
+        details: {
+          errors: [
+            { path: "source_url", message: "Only https links to public pages are allowed." },
+          ],
+        },
+      });
+    }
+    const size = request.size ?? CHUNK_SIZE_DEFAULT;
+    const documents: CustomChunkingDocument[] = [];
+    for (const file of run.files.slice(0, 5)) {
+      const input = this.extractionInput(run, file.id);
+      if (!input) continue;
+      documents.push({
+        fileId: file.id,
+        name: file.name,
+        characters: input.text.length,
+        parts: mockSplit(input.text, size).map(([start, end]) => ({
+          start,
+          end,
+          startsWith: input.text.slice(start, end).trim().split("\n")[0]!.slice(0, 80),
+        })),
+      });
+    }
+    return {
+      code: MOCK_SPLIT_CODE,
+      summary: "Splits at each level-2 heading; a part longer than the size is cut at the size.",
+      documents,
+    };
+  }
+
+  /** Make the next `generateCustomChunking` fail with this answer (default: the agent gave up). */
+  failNextChunkingGeneration(
+    failure: { status: number; code: string; message: string } = {
+      status: 422,
+      code: "custom_chunking_failed",
+      message:
+        "The assistant could not write splitting code that works on these documents. Try describing it differently.",
+    },
+  ): void {
+    this.failNextGenerate = failure;
   }
 
   async restoreDefinitionVersion(runId: string, version: number): Promise<ExtractionDefinition> {

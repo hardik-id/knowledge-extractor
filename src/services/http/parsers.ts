@@ -37,6 +37,8 @@ import {
   type RunFile,
   type StageCell,
   type ChunkingSettings,
+  type CustomChunking,
+  type CustomChunkingResult,
   type StageOutputMeta,
 } from "../contracts";
 
@@ -280,13 +282,55 @@ function bool(value: unknown, path: string): boolean {
 
 function parseChunking(value: unknown, path: string): ChunkingSettings {
   // A version saved before chunking existed: automatic.
-  if (value === undefined || value === null) return { strategy: "auto", size: null };
+  if (value === undefined || value === null) return { strategy: "auto", size: null, custom: null };
   const o = object(value, path);
   const strategy = oneOf(o.strategy, CHUNKING_STRATEGIES, `${path}.strategy`);
-  if (strategy === "auto") return { strategy, size: null };
-  const size = o.size;
-  if (size === null || size === undefined) return { strategy, size: null };
-  return { strategy, size: number(size, `${path}.size`) };
+  if (strategy === "auto") return { strategy, size: null, custom: null };
+  const size = o.size === null || o.size === undefined ? null : number(o.size, `${path}.size`);
+  // Only a custom strategy has a block; a missing key reads as null.
+  const custom =
+    strategy === "custom" && o.custom != null
+      ? parseCustomChunking(o.custom, `${path}.custom`)
+      : null;
+  return { strategy, size, custom };
+}
+
+function parseCustomChunking(value: unknown, path: string): CustomChunking {
+  const o = object(value, path);
+  return {
+    instruction: string(o.instruction, `${path}.instruction`),
+    sourceUrl:
+      o.source_url === null || o.source_url === undefined
+        ? null
+        : string(o.source_url, `${path}.source_url`),
+    code: string(o.code, `${path}.code`),
+    summary: string(o.summary, `${path}.summary`),
+  };
+}
+
+/** The answer of `POST …/extract/chunking/generate`: `{ code, summary, documents: [{ file_id, name, characters, parts: [{ start, end, starts_with }] }] }`. */
+export function parseCustomChunkingResult(value: unknown): CustomChunkingResult {
+  const o = object(value, "chunking generate answer");
+  return {
+    code: string(o.code, "code"),
+    summary: string(o.summary, "summary"),
+    documents: array(o.documents, "documents").map((d, i) => {
+      const doc = object(d, `documents[${i}]`);
+      return {
+        fileId: string(doc.file_id, `documents[${i}].file_id`),
+        name: string(doc.name, `documents[${i}].name`),
+        characters: number(doc.characters, `documents[${i}].characters`),
+        parts: array(doc.parts, `documents[${i}].parts`).map((p, j) => {
+          const part = object(p, `documents[${i}].parts[${j}]`);
+          return {
+            start: number(part.start, `documents[${i}].parts[${j}].start`),
+            end: number(part.end, `documents[${i}].parts[${j}].end`),
+            startsWith: string(part.starts_with, `documents[${i}].parts[${j}].starts_with`),
+          };
+        }),
+      };
+    }),
+  };
 }
 
 function parseDefinitionBody(value: unknown, path: string): ExtractionDefinitionDraft {
@@ -434,7 +478,24 @@ export function toWireDefinition(draft: ExtractionDefinitionDraft) {
       })),
     })),
     output: { format: draft.output.format, template: draft.output.template },
-    chunking: { strategy: draft.chunking.strategy, size: draft.chunking.size },
+    chunking: toWireChunking(draft.chunking),
+  };
+}
+
+/** The wire form of the chunking: `custom` is a block only for the custom strategy, else null. */
+function toWireChunking(chunking: ChunkingSettings) {
+  const custom = chunking.strategy === "custom" ? chunking.custom : null;
+  return {
+    strategy: chunking.strategy,
+    size: chunking.size,
+    custom: custom
+      ? {
+          instruction: custom.instruction,
+          source_url: custom.sourceUrl,
+          code: custom.code,
+          summary: custom.summary,
+        }
+      : null,
   };
 }
 

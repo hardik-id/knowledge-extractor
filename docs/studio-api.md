@@ -106,7 +106,7 @@ A project is a name on a run: the run keeps the documents, the configuration, th
 
 A template is a complete configuration to start from.
 
-- `GET /definition-templates` answers `{ items: [{ id, name, description, definition }], next }`: the default (`adr`) first, then the others by name. `definition` is the configuration as in extraction-api.md (`prompt`, `record_types`, `output`, `chunking`) without `version`. Today: `adr`, `skill`, `blank`, `policy-rule`.
+- `GET /definition-templates` answers `{ items: [{ id, name, description, definition }], next }`: the default (`adr`) first, then the others by name. `definition` is the configuration as in extraction-api.md (`prompt`, `record_types`, `output`, `chunking`, including the `custom` block and the generate call described there) without `version`. Today: `adr`, `skill`, `blank`, `policy-rule`.
 - The UI's mock carries the same four (`src/mocks/templates.ts`); `npm run test:api` compares them with what the backend serves. A template that doesn't exist is 404 `template_not_found`.
 
 ### Changing the documents of a run

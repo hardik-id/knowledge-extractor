@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import type { ExtractionDefinition } from "@/services/contracts";
+import type { CustomChunking, ExtractionDefinition } from "@/services/contracts";
 import {
   addField,
   addRecordType,
   chunkingSummary,
+  chooseChunkingStrategy,
   chunkSizeError,
+  customCodeError,
+  customIsStale,
+  setCustomChunking,
   parseChunkSize,
   setChunkingSize,
   setChunkingStrategy,
@@ -245,5 +249,99 @@ describe("chunking", () => {
     );
     assert.equal(chunkingSummary({ strategy: "fixed", size: 8000 }), "Fixed size, 8000 characters");
     assert.equal(chunkingSummary({ strategy: "fixed", size: null }), "Fixed size");
+  });
+
+  describe("custom chunking", () => {
+    const code: CustomChunking = {
+      instruction: "Split at every level-2 heading",
+      sourceUrl: null,
+      code: "def split(text, size): ...",
+      summary: "Splits at each level-2 heading.",
+    };
+
+    test("choosing Custom keeps the size rule, with no code yet", () => {
+      const d = setChunkingStrategy(draft(), "custom");
+      assert.deepEqual(d.chunking, { strategy: "custom", size: 4000, custom: null });
+      const sized = setChunkingStrategy(
+        setChunkingSize(setChunkingStrategy(draft(), "fixed"), 2500),
+        "custom",
+      );
+      assert.equal(sized.chunking.size, 2500);
+      assert.match(validateDraft(setChunkingSize(d, 200)).chunkSize ?? "", /whole number/);
+    });
+
+    test("switching away drops the code from the draft", () => {
+      const applied = setCustomChunking(setChunkingStrategy(draft(), "custom"), code);
+      assert.deepEqual(applied.chunking.custom, code);
+      const away = setChunkingStrategy(applied, "fixed");
+      assert.deepEqual(away.chunking, { strategy: "fixed", size: 4000 });
+      assert.deepEqual(setChunkingStrategy(applied, "auto").chunking, {
+        strategy: "auto",
+        size: null,
+      });
+    });
+
+    test("coming back to Custom takes back the code applied earlier, but saves nothing for other strategies", () => {
+      const applied = setCustomChunking(setChunkingStrategy(draft(), "custom"), code);
+      const away = chooseChunkingStrategy(applied, "paragraph", code);
+      assert.deepEqual(away.chunking, { strategy: "paragraph", size: 4000 });
+      const back = chooseChunkingStrategy(away, "custom", code);
+      assert.deepEqual(back.chunking, { strategy: "custom", size: 4000, custom: code });
+      // Nothing remembered: back to "not generated yet".
+      assert.equal(chooseChunkingStrategy(away, "custom", null).chunking.custom, null);
+      // Remembered code is not put into other strategies.
+      assert.deepEqual(chooseChunkingStrategy(draft(), "fixed", code).chunking, {
+        strategy: "fixed",
+        size: 4000,
+      });
+    });
+
+    test("the closed row says what is chosen", () => {
+      assert.equal(
+        chunkingSummary({ strategy: "custom", size: 4000, custom: code }),
+        "Custom, 4000 characters",
+      );
+      assert.equal(
+        chunkingSummary({ strategy: "custom", size: 4000, custom: null }),
+        "Custom, not generated yet",
+      );
+    });
+
+    test("without applied code it is an error that blocks save and run", () => {
+      const without = setChunkingStrategy(draft(), "custom");
+      const errors = validateDraft(without);
+      assert.equal(errors.chunkCode, "Generate and apply the splitting code first.");
+      assert.equal(isValid(errors), false);
+      const blank = setCustomChunking(without, { ...code, code: "  " });
+      assert.equal(isValid(validateDraft(blank)), false);
+      const ok = validateDraft(setCustomChunking(without, code));
+      assert.equal(ok.chunkCode, undefined);
+      assert.equal(isValid(ok), true);
+      assert.equal(customCodeError({ strategy: "fixed", size: 4000 }), null);
+    });
+
+    test("saved custom code is not unsaved; applying it is", () => {
+      const withCode = {
+        ...saved,
+        chunking: { strategy: "custom" as const, size: 4000, custom: code },
+      };
+      assert.equal(isDirty(toDraft(withCode), withCode), false);
+      const changed = setCustomChunking(toDraft(withCode), { ...code, code: "other" });
+      assert.equal(isDirty(changed, withCode), true);
+      // A saved fixed version read back with a null block is still not unsaved.
+      const fixed = {
+        ...saved,
+        chunking: { strategy: "fixed" as const, size: 3000, custom: null },
+      };
+      assert.equal(isDirty(toDraft(fixed), fixed), false);
+    });
+
+    test("the applied code is out of date once the words or the link change", () => {
+      assert.equal(customIsStale(null, "anything", ""), false);
+      assert.equal(customIsStale(code, code.instruction, ""), false);
+      assert.equal(customIsStale(code, `  ${code.instruction} `, ""), false);
+      assert.equal(customIsStale(code, "Something else", ""), true);
+      assert.equal(customIsStale(code, code.instruction, "https://example.com"), true);
+    });
   });
 });

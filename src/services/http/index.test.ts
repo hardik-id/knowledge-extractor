@@ -164,6 +164,49 @@ describe("projects, documents, versions and the conversation", () => {
   });
 });
 
+describe("custom chunking generate", () => {
+  test("posts the description to the chunking path, snake_case, with a timeout past the server's 120 s", async () => {
+    const seen: { timeoutMs?: number; method: string; url: string; body?: string }[] = [];
+    const client = createHttpClient({
+      baseUrl: "https://api.test/api/v1",
+      middlewares: [
+        async (request) => {
+          seen.push({
+            timeoutMs: request.timeoutMs,
+            method: request.method,
+            url: request.url,
+            body: request.body,
+          });
+          return new Response(
+            JSON.stringify({
+              code: "def split(text, size): ...",
+              summary: "Splits at headings.",
+              documents: [],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        },
+      ],
+    });
+
+    const result = await createHttpExtractionApi(client).generateCustomChunking("r1", {
+      instruction: "Split at headings",
+      sourceUrl: null,
+      size: 3000,
+    });
+
+    assert.equal(seen[0]!.method, "POST");
+    assert.equal(seen[0]!.url, "https://api.test/api/v1/runs/r1/stages/extract/chunking/generate");
+    assert.deepEqual(JSON.parse(seen[0]!.body!), {
+      instruction: "Split at headings",
+      source_url: null,
+      size: 3000,
+    });
+    assert.ok((seen[0]!.timeoutMs ?? 0) > 120_000);
+    assert.equal(result.summary, "Splits at headings.");
+  });
+});
+
 describe("templates", () => {
   test("the templates are read from /definition-templates", async () => {
     const { client, requests } = recordingClient({
