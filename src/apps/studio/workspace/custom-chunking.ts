@@ -5,6 +5,7 @@ import type {
   CustomChunkingResult,
   ExtractionApi,
 } from "@/services/contracts";
+import { codePointToIndex, indexToCodePoint } from "@/lib/text-spans";
 import { describeApiError } from "@/services/errors";
 
 /** What Generate ends in: the code and its checks, the server's words, or nothing (it was abandoned). */
@@ -66,6 +67,21 @@ export function partsLabel(count: number): string {
 /** Size of a part in characters. */
 export function partSize(part: { start: number; end: number }): number {
   return part.end - part.start;
+}
+
+/**
+ * The whole text of one part, cut from the document as the screen has it. The server counts in
+ * characters (code points), so the positions are converted. Null when this is not the text the
+ * code was checked on (its length differs), because the cut would then show the wrong words.
+ */
+export function partText(
+  text: string,
+  characters: number,
+  part: { start: number; end: number },
+): string | null {
+  if (indexToCodePoint(text, text.length) !== characters) return null;
+  if (!(part.start >= 0 && part.end > part.start && part.end <= characters)) return null;
+  return text.slice(codePointToIndex(text, part.start), codePointToIndex(text, part.end));
 }
 
 export const STALE_HINT = "The description changed since this code was generated.";

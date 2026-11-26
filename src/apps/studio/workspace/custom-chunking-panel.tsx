@@ -10,12 +10,14 @@ import { customIsStale, setCustomChunking } from "@/features/extraction/definiti
 import { Problem } from "@/features/extraction/field-table";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { isSessionEnd } from "@/features/auth/report-failure";
+import { useExtractionInput } from "@/features/run/use-extraction-input";
 import { services } from "@/services";
 import {
   CUSTOM_INSTRUCTION_MAX,
   CUSTOM_SOURCE_URL_MAX,
   type CustomChunking,
   type CustomChunkingDocument,
+  type CustomChunkingPart,
   type CustomChunkingResult,
 } from "@/services/contracts";
 import {
@@ -26,6 +28,7 @@ import {
   STALE_SIZE_HINT,
   generateSplitter,
   partSize,
+  partText,
   partsLabel,
 } from "./custom-chunking";
 
@@ -281,6 +284,11 @@ function GeneratedResult({
 function DocumentParts({ doc }: { doc: CustomChunkingDocument }) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  /** The part whose whole text is shown, one at a time. */
+  const [shown, setShown] = useState<number | null>(null);
+  // The document is fetched on the first click on a part, not for every document listed.
+  const [wanted, setWanted] = useState(false);
+  const input = useExtractionInput(wanted ? doc.fileId : null);
   const Chevron = open ? ChevronDown : ChevronRight;
   return (
     <div>
@@ -299,14 +307,37 @@ function DocumentParts({ doc }: { doc: CustomChunkingDocument }) {
         id={`${id}-parts`}
         hidden={!open}
         aria-label={`Parts of ${doc.name}`}
-        className="ml-5 max-h-48 overflow-y-auto"
+        className="ml-5 max-h-[28rem] overflow-y-auto"
       >
-        {doc.parts.slice(0, PARTS_SHOWN).map((part, i) => (
-          <li key={i} className="flex gap-2 py-0.5 text-caption">
-            <span className="min-w-0 flex-1 truncate text-ink">{part.startsWith}</span>
-            <span className="whitespace-nowrap text-ink-muted">{partSize(part)} characters</span>
-          </li>
-        ))}
+        {doc.parts.slice(0, PARTS_SHOWN).map((part, i) => {
+          const isShown = shown === i;
+          const PartChevron = isShown ? ChevronDown : ChevronRight;
+          return (
+            <li key={i} className="text-caption">
+              <button
+                type="button"
+                aria-expanded={isShown}
+                aria-controls={`${id}-part-${i}`}
+                onClick={() => {
+                  setWanted(true);
+                  setShown(isShown ? null : i);
+                }}
+                className="flex w-full items-center gap-1 rounded-control py-0.5 text-left hover:bg-surface-hover"
+              >
+                <PartChevron aria-hidden className="size-3 shrink-0 text-ink-muted" />
+                <span className="min-w-0 flex-1 truncate text-ink">{part.startsWith}</span>
+                <span className="whitespace-nowrap text-ink-muted">
+                  {partSize(part)} characters
+                </span>
+              </button>
+              {isShown && (
+                <div id={`${id}-part-${i}`} className="mb-1 ml-4">
+                  <PartBody doc={doc} part={part} number={i + 1} input={input} />
+                </div>
+              )}
+            </li>
+          );
+        })}
         {doc.parts.length > PARTS_SHOWN && (
           <li className="py-0.5 text-caption text-ink-muted">
             and {doc.parts.length - PARTS_SHOWN} more
@@ -314,6 +345,44 @@ function DocumentParts({ doc }: { doc: CustomChunkingDocument }) {
         )}
       </ol>
     </div>
+  );
+}
+
+/** The whole text of one part, or why it can't be shown. */
+function PartBody({
+  doc,
+  part,
+  number,
+  input,
+}: {
+  doc: CustomChunkingDocument;
+  part: CustomChunkingPart;
+  number: number;
+  input: ReturnType<typeof useExtractionInput>;
+}) {
+  if (input.data === undefined) {
+    return (
+      <p role="status" className="text-ink-muted">
+        {input.error ? "The document could not be loaded." : "Loading the document…"}
+      </p>
+    );
+  }
+  const text = partText(input.data.text, doc.characters, part);
+  if (text === null) {
+    return (
+      <p role="status" className="text-ink-muted">
+        The document changed since the code was generated. Run Generate again to see this part.
+      </p>
+    );
+  }
+  return (
+    <pre
+      tabIndex={0}
+      aria-label={`Part ${number} of ${doc.name}, whole text`}
+      className="max-h-64 overflow-auto rounded-control border border-border-subtle bg-surface-tint p-2 font-mono whitespace-pre-wrap text-ink"
+    >
+      {text}
+    </pre>
   );
 }
 
