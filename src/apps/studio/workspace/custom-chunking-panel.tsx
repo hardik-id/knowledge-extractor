@@ -330,11 +330,9 @@ function DocumentParts({ doc }: { doc: CustomChunkingDocument }) {
                   {partSize(part)} characters
                 </span>
               </button>
-              {isShown && (
-                <div id={`${id}-part-${i}`} className="mb-1 ml-4">
-                  <PartBody doc={doc} part={part} number={i + 1} input={input} />
-                </div>
-              )}
+              <div id={`${id}-part-${i}`} hidden={!isShown} className="mb-1 ml-4">
+                {isShown && <PartBody doc={doc} part={part} number={i + 1} input={input} />}
+              </div>
             </li>
           );
         })}
@@ -360,10 +358,15 @@ function PartBody({
   number: number;
   input: ReturnType<typeof useExtractionInput>;
 }) {
-  if (input.data === undefined) {
+  // While a newer version loads, `data` can still be the previous one: don't cut from it.
+  if (input.isLoading || input.error || input.data === undefined) {
     return (
       <p role="status" className="text-ink-muted">
-        {input.error ? "The document could not be loaded." : "Loading the document…"}
+        {input.isLoading
+          ? "Loading the document…"
+          : input.error
+            ? "The document could not be loaded."
+            : "The document's text is not available right now."}
       </p>
     );
   }
