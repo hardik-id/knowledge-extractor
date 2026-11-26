@@ -11,6 +11,7 @@ import {
   describeGenerateError,
   generateSplitter,
   partSize,
+  partText,
   partsLabel,
 } from "./custom-chunking";
 
@@ -135,6 +136,27 @@ test("part wording", () => {
   assert.equal(partsLabel(1), "1 part");
   assert.equal(partsLabel(4), "4 parts");
   assert.equal(partSize({ start: 10, end: 595 }), 585);
+});
+
+describe("the whole text of a part", () => {
+  test("it is cut at the part's positions", () => {
+    assert.equal(partText("# One\ntext\n# Two\n", 17, { start: 11, end: 17 }), "# Two\n");
+  });
+
+  test("positions count characters, not UTF-16 units", () => {
+    const text = "a😀b😀c";
+    assert.equal(partText(text, 5, { start: 1, end: 3 }), "😀b");
+    assert.equal(partText(text, 5, { start: 3, end: 5 }), "😀c");
+  });
+
+  test("a document of another length is not cut: the words would be the wrong ones", () => {
+    assert.equal(partText("changed since", 99, { start: 0, end: 5 }), null);
+  });
+
+  test("a part outside the document is not shown", () => {
+    assert.equal(partText("short", 5, { start: 3, end: 9 }), null);
+    assert.equal(partText("short", 5, { start: 3, end: 3 }), null);
+  });
 });
 
 describe("what the row remembers", () => {

@@ -1,7 +1,7 @@
 import { ApiError } from "@/lib/api/api-error";
 import { toMarkdownName } from "@/lib/format";
 import { newId } from "@/lib/id";
-import { codePointToIndex } from "@/lib/text-spans";
+import { codePointToIndex, indexToCodePoint } from "@/lib/text-spans";
 import { DEFAULT_EXTRACTION_DEFINITION } from "@/mocks/extraction";
 import { DEFAULT_TEMPLATE_ID, MOCK_TEMPLATES } from "@/mocks/templates";
 import { MOCK_DOCUMENTS, mockDocumentText } from "@/mocks/documents";
@@ -864,10 +864,11 @@ export class MockBackend {
       documents.push({
         fileId: file.id,
         name: file.name,
-        characters: input.text.length,
+        // The server counts characters (code points), not UTF-16 units.
+        characters: indexToCodePoint(input.text, input.text.length),
         parts: mockSplit(input.text, size).map(([start, end]) => ({
-          start,
-          end,
+          start: indexToCodePoint(input.text, start),
+          end: indexToCodePoint(input.text, end),
           startsWith: input.text.slice(start, end).trim().split("\n")[0]!.slice(0, 80),
         })),
       });
