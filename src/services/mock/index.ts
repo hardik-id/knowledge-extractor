@@ -38,13 +38,13 @@ export function createMockServices(backend: MockBackend = new MockBackend()): Se
     documents: {
       get: (id, signal) => backend.getDocument(id, signal),
     },
-    projects: {
-      list: (signal) => backend.listProjects(signal),
-      listPage: (options) => backend.listProjectsPage(options),
-      create: (input) => backend.createProject(input),
-      get: (projectId, signal) => backend.getProject(projectId, signal),
-      rename: (projectId, patch) => backend.updateProject(projectId, patch),
-      remove: (projectId) => backend.deleteProject(projectId),
+    workspaces: {
+      list: (signal) => backend.listWorkspaces(signal),
+      listPage: (options) => backend.listWorkspacesPage(options),
+      create: (input) => backend.createWorkspace(input),
+      get: (workspaceId, signal) => backend.getWorkspace(workspaceId, signal),
+      rename: (workspaceId, patch) => backend.updateWorkspace(workspaceId, patch),
+      remove: (workspaceId) => backend.deleteWorkspace(workspaceId),
     },
     templates: {
       list: (signal) => backend.listTemplates(signal),

@@ -4,7 +4,7 @@ import { createApiClient, createMemoryTokenProvider } from "@/lib/api";
 import { createHttpClient } from "@/lib/api/http-client";
 import {
   createHttpExtractionApi,
-  createHttpProjectsApi,
+  createHttpWorkspacesApi,
   createHttpRunsApi,
   createHttpStatusApi,
   createHttpTemplatesApi,
@@ -64,8 +64,8 @@ const wireDefinition = {
   chunking: { strategy: "auto" as const, size: null },
 };
 
-describe("projects, documents, versions and the conversation", () => {
-  test("a project is renamed with a PATCH of the changed keys and removed with a DELETE", async () => {
+describe("workspaces, documents, versions and the conversation", () => {
+  test("a workspace is renamed with a PATCH of the changed keys and removed with a DELETE", async () => {
     const { client, requests } = recordingClient({
       id: "p1",
       name: "New",
@@ -76,30 +76,30 @@ describe("projects, documents, versions and the conversation", () => {
       created_at: "t",
       updated_at: "t",
     });
-    const projects = createHttpProjectsApi(client);
+    const workspaces = createHttpWorkspacesApi(client);
 
-    await projects.rename("p1", { name: "New" });
-    await projects.remove("p 1");
+    await workspaces.rename("p1", { name: "New" });
+    await workspaces.remove("p 1");
 
     assert.deepEqual(
       requests.map((r) => [r.method, r.url, r.body]),
       [
-        ["PATCH", "https://api.test/api/v1/projects/p1", { name: "New" }],
-        ["DELETE", "https://api.test/api/v1/projects/p%201", undefined],
+        ["PATCH", "https://api.test/api/v1/workspaces/p1", { name: "New" }],
+        ["DELETE", "https://api.test/api/v1/workspaces/p%201", undefined],
       ],
     );
   });
 
-  test("a page of projects asks for the cursor it was given", async () => {
+  test("a page of workspaces asks for the cursor it was given", async () => {
     const { client, requests } = recordingClient({ items: [], next: null });
-    const projects = createHttpProjectsApi(client);
+    const workspaces = createHttpWorkspacesApi(client);
 
-    await projects.listPage();
-    await projects.listPage({ cursor: "c 1" });
+    await workspaces.listPage();
+    await workspaces.listPage({ cursor: "c 1" });
 
     assert.deepEqual(
       requests.map((r) => r.url),
-      ["https://api.test/api/v1/projects", "https://api.test/api/v1/projects?cursor=c+1"],
+      ["https://api.test/api/v1/workspaces", "https://api.test/api/v1/workspaces?cursor=c+1"],
     );
   });
 
@@ -236,7 +236,7 @@ describe("templates", () => {
     assert.deepEqual(templates[0].definition.recordTypes, []);
   });
 
-  test("a project made from a template sends template_id; without one it sends none", async () => {
+  test("a workspace made from a template sends template_id; without one it sends none", async () => {
     const { client, requests } = recordingClient({
       id: "p1",
       name: "N",
@@ -247,10 +247,10 @@ describe("templates", () => {
       created_at: "t",
       updated_at: "t",
     });
-    const projects = createHttpProjectsApi(client);
+    const workspaces = createHttpWorkspacesApi(client);
 
-    await projects.create({ name: "N", templateId: "skill" });
-    await projects.create({ name: "N" });
+    await workspaces.create({ name: "N", templateId: "skill" });
+    await workspaces.create({ name: "N" });
 
     assert.deepEqual(requests[0].body, { name: "N", template_id: "skill" });
     assert.deepEqual(requests[1].body, { name: "N" });

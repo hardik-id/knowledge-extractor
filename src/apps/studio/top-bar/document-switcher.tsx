@@ -51,7 +51,7 @@ function StateText({ state }: { state: DocumentState | undefined }) {
 
 /**
  * The open document in the top bar: its name, "n of N", previous and next, and a menu of the
- * project's documents with their state. File names come from storage: they are text only.
+ * workspace's documents with their state. File names come from storage: they are text only.
  */
 export function DocumentSwitcher() {
   const runFiles = usePipelineStore((s) => s.runFiles);

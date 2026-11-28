@@ -1,11 +1,11 @@
-import { expectWorkingScreen } from "./workspace";
+import { expectWorkingScreen } from "./working-screen";
 import {
   type APIRequestContext,
   type Page,
   expect,
   request as playwrightRequest,
 } from "@playwright/test";
-import type { ApiProject } from "../fixtures";
+import type { ApiWorkspace } from "../fixtures";
 import { API_BASE_URL } from "../support/env";
 import { clickUntilOpen } from "../support/first-click";
 import type { Person } from "../support/people";
@@ -17,9 +17,9 @@ export const DOCS = {
   decisions: "architecture-decisions-2026.md",
 } as const;
 
-/** Opens a project that has no documents yet: the picker is the whole screen. */
-export async function openDocuments(page: Page, project: ApiProject) {
-  await page.goto(`/studio/projects/${project.id}`);
+/** Opens a workspace that has no documents yet: the picker is the whole screen. */
+export async function openDocuments(page: Page, workspace: ApiWorkspace) {
+  await page.goto(`/studio/workspaces/${workspace.id}`);
   await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
 }
 
@@ -39,7 +39,7 @@ export function documentsSheet(page: Page) {
   return page.getByRole("dialog", { name: "Add or remove documents" });
 }
 
-/** Opens the document picker's sheet from the switcher in the top bar of a project with documents. */
+/** Opens the document picker's sheet from the switcher in the top bar of a workspace with documents. */
 export async function openDocumentsSheet(page: Page) {
   const switcher = page
     .getByRole("group", { name: "Document" })
@@ -60,33 +60,37 @@ export async function saveDocuments(page: Page) {
   await expect(documentsSheet(page)).toBeHidden();
 }
 
-/** A project with the given documents saved, left on its workspace. */
-export async function openExtraction(page: Page, project: ApiProject, names: readonly string[]) {
-  await openDocuments(page, project);
+/** A workspace with the given documents saved, left on its working screen. */
+export async function openExtraction(
+  page: Page,
+  workspace: ApiWorkspace,
+  names: readonly string[],
+) {
+  await openDocuments(page, workspace);
   await pickDocuments(page, names);
   await submitDocumentsButton(page).click();
   await expectWorkingScreen(page);
-  await expect(page).toHaveURL(new RegExp(`/studio/projects/${project.id}$`));
-  await expect(page.getByTestId("project-top-bar").locator("visible=true")).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/studio/workspaces/${workspace.id}$`));
+  await expect(page.getByTestId("workspace-top-bar").locator("visible=true")).toBeVisible();
   await expect(page.getByTestId("version-line")).toBeVisible();
 }
 
-/** Opens the "New project" dialog (the first click after a navigation, see `clickUntilOpen`). */
-export async function openNewProjectDialog(page: Page) {
+/** Opens the "New workspace" dialog (the first click after a navigation, see `clickUntilOpen`). */
+export async function openNewWorkspaceDialog(page: Page) {
   return clickUntilOpen(
     page,
-    page.getByRole("button", { name: "New project" }),
-    page.getByRole("dialog", { name: "New project" }),
+    page.getByRole("button", { name: "New workspace" }),
+    page.getByRole("dialog", { name: "New workspace" }),
   );
 }
 
-/** Makes a project through the "New project" dialog (name only) and waits for it to open. */
-export async function createProjectFromDialog(page: Page, name: string) {
+/** Makes a workspace through the "New workspace" dialog (name only) and waits for it to open. */
+export async function createWorkspaceFromDialog(page: Page, name: string) {
   await page.goto("/studio");
-  const dialog = await openNewProjectDialog(page);
+  const dialog = await openNewWorkspaceDialog(page);
   await dialog.getByLabel("Name").fill(name);
-  await dialog.getByRole("button", { name: "Create project" }).click();
-  await expect(page).toHaveURL(/\/studio\/projects\/[^/]+$/);
+  await dialog.getByRole("button", { name: "Create workspace" }).click();
+  await expect(page).toHaveURL(/\/studio\/workspaces\/[^/]+$/);
 }
 
 /** A document the backend's storage container lists for every person. */
@@ -107,13 +111,13 @@ export const DOCUMENT = {
  */
 export async function apiAs(person: Person | null): Promise<APIRequestContext> {
   return playwrightRequest.newContext({
-    // The trailing slash makes "projects" resolve under /api/v1.
+    // The trailing slash makes "workspaces" resolve under /api/v1.
     baseURL: `${API_BASE_URL}/`,
     extraHTTPHeaders: person ? { authorization: `Bearer ${person.token}` } : {},
   });
 }
 
-/** Puts the test document into the project's run, as the person who owns it. */
+/** Puts the test document into the workspace's run, as the person who owns it. */
 export async function addDocument(person: Person, runId: string) {
   const request = await apiAs(person);
   try {
@@ -124,9 +128,9 @@ export async function addDocument(person: Person, runId: string) {
   }
 }
 
-/** A project's one address: the picker without documents, the workspace with them. */
-export function extractPath(projectId: string) {
-  return `/studio/projects/${projectId}`;
+/** A workspace's one address: the picker without documents, the working screen with them. */
+export function extractPath(workspaceId: string) {
+  return `/studio/workspaces/${workspaceId}`;
 }
 
 /** True when the page scrolls sideways (the document is wider than the window). */
@@ -147,9 +151,9 @@ export async function hasInnerScroll(box: import("@playwright/test").Locator): P
   );
 }
 
-/** A new project from the dialog, with one document picked, opened on the working screen: the start panel. */
-export async function openStart(page: Page, name = "Start project") {
-  await createProjectFromDialog(page, name);
+/** A new workspace from the dialog, with one document picked, opened on the working screen: the start panel. */
+export async function openStart(page: Page, name = "Start workspace") {
+  await createWorkspaceFromDialog(page, name);
   await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
   await pickDocuments(page, [DOCS.roadmap]);
   await submitDocumentsButton(page).click();

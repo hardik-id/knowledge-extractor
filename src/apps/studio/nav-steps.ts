@@ -1,18 +1,18 @@
 /** Knowledge Studio's addresses. Pure, so they can be tested. */
 
-/** The entry: the person's projects. */
+/** The entry: the person's workspaces. */
 export const STUDIO_HOME = "/studio";
 
-/** A project: its documents picker until it has documents, then its workspace. */
-export function projectHref(projectId: string): string {
-  return `${STUDIO_HOME}/projects/${encodeURIComponent(projectId)}`;
+/** A workspace: its documents picker until it has documents, then its working screen. */
+export function workspaceHref(workspaceId: string): string {
+  return `${STUDIO_HOME}/workspaces/${encodeURIComponent(workspaceId)}`;
 }
 
-const PROJECT_PATH = /^\/studio\/projects\/([^/]+)(\/.*)?$/;
+const WORKSPACE_PATH = /^\/studio\/workspaces\/([^/]+)(\/.*)?$/;
 
-/** The project an address belongs to, or null outside a project. */
-export function projectIdFromPath(pathname: string): string | null {
-  const match = PROJECT_PATH.exec(pathname);
+/** The workspace an address belongs to, or null outside a workspace. */
+export function workspaceIdFromPath(pathname: string): string | null {
+  const match = WORKSPACE_PATH.exec(pathname);
   if (!match) return null;
   try {
     return decodeURIComponent(match[1]);

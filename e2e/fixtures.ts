@@ -11,7 +11,7 @@ import { newPerson, type Person } from "./support/people";
 export { expect, newPerson };
 export type { Person };
 
-/** An API answer a test expects to be an error (for example a 404 on a deleted project). */
+/** An API answer a test expects to be an error (for example a 404 on a deleted workspace). */
 export interface ExpectedApiError {
   status: number;
   method?: string;
@@ -19,8 +19,8 @@ export interface ExpectedApiError {
   path?: string | RegExp;
 }
 
-/** A project, as the API answers it (the fields the tests use). */
-export interface ApiProject {
+/** A workspace, as the API answers it (the fields the tests use). */
+export interface ApiWorkspace {
   id: string;
   name: string;
   description: string;
@@ -29,8 +29,8 @@ export interface ApiProject {
 
 /** Sets up data as the test's person, without clicking. */
 export interface Api {
-  createProject(input: { name: string; description?: string }): Promise<ApiProject>;
-  listProjects(): Promise<ApiProject[]>;
+  createWorkspace(input: { name: string; description?: string }): Promise<ApiWorkspace>;
+  listWorkspaces(): Promise<ApiWorkspace[]>;
 }
 
 function createApi(request: APIRequestContext): Api {
@@ -41,11 +41,11 @@ function createApi(request: APIRequestContext): Api {
     return (await response.json()) as T;
   };
   return {
-    async createProject({ name, description = "" }) {
-      return read<ApiProject>(await request.post("projects", { data: { name, description } }));
+    async createWorkspace({ name, description = "" }) {
+      return read<ApiWorkspace>(await request.post("workspaces", { data: { name, description } }));
     },
-    async listProjects() {
-      return (await read<{ items: ApiProject[] }>(await request.get("projects"))).items;
+    async listWorkspaces() {
+      return (await read<{ items: ApiWorkspace[] }>(await request.get("workspaces"))).items;
     },
   };
 }
@@ -127,7 +127,7 @@ export const test = base.extend<Fixtures & { watched: Watch }>({
 
   api: async ({ playwright, person }, run) => {
     const request = await playwright.request.newContext({
-      // The trailing slash makes "projects" resolve under /api/v1.
+      // The trailing slash makes "workspaces" resolve under /api/v1.
       baseURL: `${API_BASE_URL}/`,
       extraHTTPHeaders: { authorization: `Bearer ${person.token}` },
     });

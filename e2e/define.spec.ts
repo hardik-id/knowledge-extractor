@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
-import { ExtractionPage, projectWithDocuments, saveConfiguration } from "./pages/extraction";
-import { openFields } from "./pages/workspace";
+import { ExtractionPage, workspaceWithDocuments, saveConfiguration } from "./pages/extraction";
+import { openFields } from "./pages/working-screen";
 
 const DOCUMENTS = ["platform-adrs.md"];
 
@@ -16,9 +16,9 @@ test("the fields of a record type are one table, and every change survives a rel
   person,
   request,
 }) => {
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
   const extraction = new ExtractionPage(page);
-  await extraction.open(project);
+  await extraction.open(workspace);
 
   await expect(page.getByRole("table", { name: "Fields of ADR" })).toBeVisible();
   await expect(await names(page)).toEqual([
@@ -95,9 +95,9 @@ test("a field without a name shows its message in its row", async ({
   person,
   request,
 }) => {
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
   const extraction = new ExtractionPage(page);
-  await extraction.open(project);
+  await extraction.open(workspace);
 
   await page.getByRole("button", { name: "Add field" }).click();
   await saveConfiguration(page);
@@ -109,8 +109,8 @@ test("a field without a name shows its message in its row", async ({
 });
 
 test("the row menu opens and closes with the keyboard", async ({ api, page, person, request }) => {
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-  await new ExtractionPage(page).open(project);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await new ExtractionPage(page).open(workspace);
 
   const trigger = page.getByRole("button", { name: "More actions for Title" });
   await trigger.focus();
@@ -128,8 +128,8 @@ test("at 390px wide there is no sideways scroll and the controls can be reached"
   request,
 }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-  await new ExtractionPage(page).open(project);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await new ExtractionPage(page).open(workspace);
   await openFields(page);
   const box = page.getByRole("checkbox", { name: "Several values for Decision" });
   await box.scrollIntoViewIfNeeded();
@@ -153,8 +153,8 @@ for (const size of [
     request,
   }) => {
     await page.setViewportSize(size);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-    await new ExtractionPage(page).open(project);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+    await new ExtractionPage(page).open(workspace);
     const table = page.getByRole("table", { name: "Fields of ADR" });
     for (const header of ["Field", "Type", "Exact quote", "Several values"]) {
       await expect(table.getByRole("columnheader", { name: header })).toBeVisible();
@@ -166,8 +166,8 @@ for (const size of [
 
 test("at 390px wide the column headers are not shown", async ({ api, page, person, request }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-  await new ExtractionPage(page).open(project);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await new ExtractionPage(page).open(workspace);
   await openFields(page);
   const table = page.getByRole("table", { name: "Fields of ADR" });
   // Below a table's width the header is only for screen readers: the head is clipped to a point.

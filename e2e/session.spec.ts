@@ -51,8 +51,8 @@ test("a refused token while working: one dialog, then the work is still there", 
   expectApiError,
 }) => {
   expectApiError({ status: 401 });
-  const project = await api.createProject({ name: "Refused while working" });
-  await openExtraction(page, project, [DOCS.roadmap]);
+  const workspace = await api.createWorkspace({ name: "Refused while working" });
+  await openExtraction(page, workspace, [DOCS.roadmap]);
   await editPrompt(page, "Find every renewal date");
   const message = page.getByRole("textbox", { name: "Ask the assistant" });
   await message.fill("also add a field for the owner");
@@ -78,39 +78,39 @@ test("a refused token while working: one dialog, then the work is still there", 
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
 });
 
-test("a refused token on a reload of the project page: the dialog, then the page with its data", async ({
+test("a refused token on a reload of the workspace page: the dialog, then the page with its data", async ({
   api,
   page,
   person,
   expectApiError,
 }) => {
   expectApiError({ status: 401 });
-  const project = await api.createProject({ name: "Refused on reload" });
-  await openExtraction(page, project, [DOCS.roadmap]);
+  const workspace = await api.createWorkspace({ name: "Refused on reload" });
+  await openExtraction(page, workspace, [DOCS.roadmap]);
 
   const restore = refuse(person);
   await page.reload();
 
   await expect(dialog(page)).toBeVisible();
   await expectOnlyTheDialog(page);
-  await expect(page.getByText("This project no longer exists")).toHaveCount(0);
+  await expect(page.getByText("This workspace no longer exists")).toHaveCount(0);
 
   restore();
   await paste(page);
   await expect(dialog(page)).toBeHidden();
-  await expect(page.getByTestId("project-top-bar").locator("visible=true")).toBeVisible();
+  await expect(page.getByTestId("workspace-top-bar").locator("visible=true")).toBeVisible();
   await expect(page.getByTestId("version-line")).toBeVisible();
-  expect(new URL(page.url()).pathname).toBe(extractPath(project.id));
+  expect(new URL(page.url()).pathname).toBe(extractPath(workspace.id));
 });
 
-test("a refused token on the project list: the dialog, then the list", async ({
+test("a refused token on the workspace list: the dialog, then the list", async ({
   api,
   page,
   person,
   expectApiError,
 }) => {
   expectApiError({ status: 401 });
-  await api.createProject({ name: "Listed after the token came back" });
+  await api.createWorkspace({ name: "Listed after the token came back" });
   const restore = refuse(person);
   await page.goto("/studio");
 
@@ -131,7 +131,7 @@ test("a pasted token the API refuses too says so, in the same place", async ({
   expectApiError,
 }) => {
   expectApiError({ status: 401 });
-  await api.createProject({ name: "Second try" });
+  await api.createWorkspace({ name: "Second try" });
   const restore = refuse(person);
   await page.goto("/studio");
   await expect(dialog(page)).toBeVisible();
@@ -158,7 +158,7 @@ for (const scheme of ["light", "dark"] as const) {
       expectApiError,
     }) => {
       expectApiError({ status: 401 });
-      await api.createProject({ name: "Scanned" });
+      await api.createWorkspace({ name: "Scanned" });
       refuse(person);
       await page.goto("/studio");
       await expect(dialog(page)).toBeVisible();

@@ -1,5 +1,5 @@
 import { RecordStripPage } from "./pages/record-strip";
-import { expectWorkingScreen } from "./pages/workspace";
+import { expectWorkingScreen } from "./pages/working-screen";
 import { expectAccessible } from "./support/accessibility";
 import { expect, test } from "./fixtures";
 import {
@@ -15,9 +15,9 @@ import { ExtractionPage } from "./pages/extraction";
 test("the sheet adds a document and removes one", async ({ api, expectApiError, page, person }) => {
   // Taking a document out makes the app look for its reviewed records: there are none.
   expectApiError({ status: 404, method: "GET", path: /\/extraction$/ });
-  const project = await api.createProject({ name: "Sheet project" });
-  await addDocument(person, project.run_id);
-  await page.goto(`/studio/projects/${project.id}`);
+  const workspace = await api.createWorkspace({ name: "Sheet workspace" });
+  await addDocument(person, workspace.run_id);
+  await page.goto(`/studio/workspaces/${workspace.id}`);
   await expectWorkingScreen(page);
 
   const sheet = await openDocumentsSheet(page);
@@ -34,9 +34,9 @@ test("the sheet adds a document and removes one", async ({ api, expectApiError, 
 });
 
 test("cancelling the sheet keeps the documents as they were", async ({ api, page, person }) => {
-  const project = await api.createProject({ name: "Cancelled sheet" });
-  await addDocument(person, project.run_id);
-  await page.goto(`/studio/projects/${project.id}`);
+  const workspace = await api.createWorkspace({ name: "Cancelled sheet" });
+  await addDocument(person, workspace.run_id);
+  await page.goto(`/studio/workspaces/${workspace.id}`);
   await expectWorkingScreen(page);
 
   const sheet = await openDocumentsSheet(page);
@@ -58,9 +58,9 @@ test("removing a document with reviewed records asks first", async ({
 }) => {
   // The document added below was never extracted: "extraction_not_found" is how the API says so.
   expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
-  const project = await api.createProject({ name: "Reviewed removal" });
-  await addDocument(person, project.run_id);
-  await page.goto(`/studio/projects/${project.id}`);
+  const workspace = await api.createWorkspace({ name: "Reviewed removal" });
+  await addDocument(person, workspace.run_id);
+  await page.goto(`/studio/workspaces/${workspace.id}`);
   const extraction = new ExtractionPage(page);
   await expectWorkingScreen(page);
   await extraction.run("Run extraction");
@@ -106,9 +106,9 @@ for (const size of [
       page,
       person,
     }) => {
-      const project = await api.createProject({ name: "Sheet scan" });
-      await addDocument(person, project.run_id);
-      await page.goto(`/studio/projects/${project.id}`);
+      const workspace = await api.createWorkspace({ name: "Sheet scan" });
+      await addDocument(person, workspace.run_id);
+      await page.goto(`/studio/workspaces/${workspace.id}`);
       await expectWorkingScreen(page);
       const sheet = await openDocumentsSheet(page);
       await expect(sheet.getByRole("checkbox", { name: DOCS.roadmap })).toBeVisible();
@@ -121,9 +121,9 @@ for (const size of [
 }
 
 test("Escape closes the sheet and focus returns to the switcher", async ({ api, page, person }) => {
-  const project = await api.createProject({ name: "Sheet focus" });
-  await addDocument(person, project.run_id);
-  await page.goto(`/studio/projects/${project.id}`);
+  const workspace = await api.createWorkspace({ name: "Sheet focus" });
+  await addDocument(person, workspace.run_id);
+  await page.goto(`/studio/workspaces/${workspace.id}`);
   await expectWorkingScreen(page);
   const switcher = page
     .getByRole("group", { name: "Document" })

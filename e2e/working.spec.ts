@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import { ExtractionPage, workspaceWithDocuments } from "./pages/extraction";
 
 const DOCUMENTS = ["platform-adrs.md", "incident-runbook.md"];
 const WORKING = "Assistant is working…";
@@ -17,9 +17,9 @@ test.describe("showing that work is going on", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await new ExtractionPage(page).open(project);
+    await new ExtractionPage(page).open(workspace);
 
     // Hold the API's answer to the send, so the in-between state stays on screen.
     await page.route(/\/extraction\/assistant\/messages$/, async (route) => {
@@ -45,10 +45,10 @@ test.describe("showing that work is going on", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
     await blockLiveUpdates(page);
-    await new ExtractionPage(page).open(project);
+    await new ExtractionPage(page).open(workspace);
     await expect(page.getByText("Live updates are paused")).toBeVisible();
 
     await dock.ask("add a field for the approver");
@@ -63,7 +63,7 @@ test.describe("showing that work is going on", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
     // The socket opens but delivers nothing, and the conversation is fetched without any reply.
     await page.routeWebSocket(/\/ws\/runs\//, () => {});
@@ -79,7 +79,7 @@ test.describe("showing that work is going on", () => {
         : { ...body, results: withoutReplies(body.results ?? []) };
       await route.fulfill({ response, json });
     });
-    await new ExtractionPage(page).open(project);
+    await new ExtractionPage(page).open(workspace);
 
     await dock.ask("add a field for the approver");
     await expect(dock.conversation.getByText(WORKING)).toBeVisible();
@@ -99,9 +99,9 @@ test.describe("showing that work is going on", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const extraction = new ExtractionPage(page);
-    await extraction.open(project);
+    await extraction.open(workspace);
 
     await page.route(/\/stages\/extract\/executions$/, async (route) => {
       if (route.request().method() !== "POST") return route.fallback();
@@ -124,10 +124,10 @@ test.describe("showing that work is going on", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const extraction = new ExtractionPage(page);
     await blockLiveUpdates(page);
-    await extraction.open(project);
+    await extraction.open(workspace);
     await expect(page.getByText("Live updates are paused")).toBeVisible();
 
     await extraction.runButton.click();

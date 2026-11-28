@@ -36,11 +36,11 @@ test.describe("the real Microsoft sign-in, from a saved login", () => {
     await context?.close();
   });
 
-  test("shows the name, loads the projects with the real token, and sign-out ends at the sign-in screen", async () => {
+  test("shows the name, loads the workspaces with the real token, and sign-out ends at the sign-in screen", async () => {
     const page = await context.newPage();
-    let projectsStatus: number | null = null;
+    let workspacesStatus: number | null = null;
     page.on("response", (response) => {
-      if (/\/api\/v1\/projects(\?|$)/.test(response.url())) projectsStatus = response.status();
+      if (/\/api\/v1\/workspaces(\?|$)/.test(response.url())) workspacesStatus = response.status();
     });
 
     await page.goto("/studio");
@@ -48,11 +48,11 @@ test.describe("the real Microsoft sign-in, from a saved login", () => {
     const account = page.locator('[data-slot="dropdown-menu-trigger"]');
     await expect(account.first()).toBeVisible({ timeout: 30_000 });
     await expect(account.first()).not.toHaveText("");
-    await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Workspaces", level: 1 })).toBeVisible();
 
     // The list came from the backend with the real token, not an error.
-    await expect(page.getByText("Couldn't load your projects")).toHaveCount(0);
-    expect(projectsStatus).toBe(200);
+    await expect(page.getByText("Couldn't load your workspaces")).toHaveCount(0);
+    expect(workspacesStatus).toBe(200);
 
     await account.first().click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();

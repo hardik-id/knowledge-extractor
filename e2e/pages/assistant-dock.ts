@@ -1,5 +1,5 @@
 import { type Page, expect } from "@playwright/test";
-import { fieldColumn } from "./workspace";
+import { fieldColumn } from "./working-screen";
 
 /** The assistant docked at the bottom of the field column, and the proposal it puts in the table. */
 export class AssistantDock {

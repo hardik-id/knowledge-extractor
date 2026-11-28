@@ -14,18 +14,18 @@ import { isUnauthorized } from "@/lib/api/api-error";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { DocumentsScreen } from "./documents-screen";
-import { ProjectTopBar } from "./project-top-bar";
-import { OneScreen } from "./workspace/one-screen";
+import { WorkspaceTopBar } from "./workspace-top-bar";
+import { OneScreen } from "./working-screen/one-screen";
 import {
   ScreenControlsContext,
   WIDE_QUERY,
   type ScreenControls,
   type ScreenView,
-} from "./workspace/workspace-state";
+} from "./working-screen/screen-state";
 
-/** Inside an open project (see ProjectScope): the working screen once its run has documents, the picker before. */
+/** Inside an open workspace (see WorkspaceScope): the working screen once its run has documents, the picker before. */
 export function ExtractPageContent() {
-  const projectId = usePipelineStore((s) => s.projectId);
+  const workspaceId = usePipelineStore((s) => s.workspaceId);
   const hasDocuments = usePipelineStore((s) => s.runFiles.length > 0);
   const runLoad = usePipelineStore((s) => (s.runId ? s.runLoad : "ready"));
   const loadRun = usePipelineStore((s) => s.loadRun);
@@ -38,14 +38,14 @@ export function ExtractPageContent() {
   });
 
   const waitingForSignIn = runLoad === "error" && isUnauthorized(error) && sessionEnded;
-  if (!projectId || runLoad === "idle" || runLoad === "loading" || waitingForSignIn) {
+  if (!workspaceId || runLoad === "idle" || runLoad === "loading" || waitingForSignIn) {
     return <ExtractSkeleton />;
   }
 
   if (runLoad === "error") {
     return (
       <>
-        <ProjectTopBar />
+        <WorkspaceTopBar />
         <div className="px-5 py-10 sm:px-8">
           <EmptyState
             icon={CloudOff}
@@ -70,7 +70,7 @@ export function ExtractPageContent() {
 
 function ExtractPanel() {
   const extraction = useExtractionRun("configuration");
-  const project = usePipelineStore((s) => s.project);
+  const workspace = usePipelineStore((s) => s.workspace);
   const [view, setView] = useState<ScreenView>("document");
   const [fieldsOpen, setFieldsOpen] = useState(false);
   const [assistantRequested, setAssistantRequested] = useState(false);
@@ -99,8 +99,10 @@ function ExtractPanel() {
   return (
     <ScreenControlsContext.Provider value={controls}>
       <section aria-label="Extraction" className="flex flex-1 flex-col md:min-h-0">
-        <ProjectTopBar extraction={extraction} />
-        <h1 className="sr-only">{project?.name ? `${project.name}: Extraction` : "Extraction"}</h1>
+        <WorkspaceTopBar extraction={extraction} />
+        <h1 className="sr-only">
+          {workspace?.name ? `${workspace.name}: Extraction` : "Extraction"}
+        </h1>
         <FileProblems />
         <OneScreen extraction={extraction} />
       </section>

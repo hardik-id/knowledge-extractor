@@ -102,7 +102,7 @@ export async function stubApi(context: BrowserContext, options: StubOptions): Pr
           : { "Access-Control-Expose-Headers": "X-Status-Test" },
       });
     }
-    if (path === "/projects") return route.fulfill({ json: { items: [], next: null } });
+    if (path === "/workspaces") return route.fulfill({ json: { items: [], next: null } });
     return route.fulfill({ status: 404, json: { code: "not_found", message: "Not found." } });
   });
   return stub;
@@ -113,13 +113,13 @@ export const panel = (page: Page) => page.getByRole("dialog", { name: "Backend s
 
 export { test };
 
-/** Mock mode: a new project with the first document picked, left on the working screen. */
+/** Mock mode: a new workspace with the first document picked, left on the working screen. */
 export async function openMockWorkspace(page: Page) {
   await page.goto("/studio");
-  const dialog = page.getByRole("dialog", { name: "New project" });
-  await clickUntilOpen(page, page.getByRole("button", { name: "New project" }), dialog);
+  const dialog = page.getByRole("dialog", { name: "New workspace" });
+  await clickUntilOpen(page, page.getByRole("button", { name: "New workspace" }), dialog);
   await dialog.getByRole("textbox").first().fill("Status check");
-  await page.getByRole("button", { name: "Create project" }).click();
+  await page.getByRole("button", { name: "Create workspace" }).click();
   await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
   await page.getByRole("checkbox").first().check();
   await page.getByRole("button", { name: /^Use .*documents?$/ }).click();

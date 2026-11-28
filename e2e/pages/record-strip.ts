@@ -1,14 +1,14 @@
 import { type APIRequestContext, type Page, expect } from "@playwright/test";
 import type { Api, Person } from "../fixtures";
 import { clickUntilOpen } from "../support/first-click";
-import { ExtractionPage, projectWithDocuments } from "./extraction";
-import { documentPane, openOneScreen } from "./workspace";
+import { ExtractionPage, workspaceWithDocuments } from "./extraction";
+import { documentPane, openOneScreen } from "./working-screen";
 
 /** The record strip under the document, and the menu of a value opened from its highlight. */
 export class RecordStripPage {
   constructor(readonly page: Page) {}
 
-  /** A project with the document, its extraction run, and the working screen showing highlights. */
+  /** A workspace with the document, its extraction run, and the working screen showing highlights. */
   static async openWithResults(
     page: Page,
     api: Api,
@@ -19,13 +19,13 @@ export class RecordStripPage {
   ) {
     // Before the first run the document has no extraction: the backend answers 404 for it.
     expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
-    const project = await projectWithDocuments(api, person, request, documents);
+    const workspace = await workspaceWithDocuments(api, person, request, documents);
     const extraction = new ExtractionPage(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await extraction.run();
     await extraction.finished();
     await expect(documentPane(page).locator("mark").first()).toBeVisible();
-    return { project, extraction, strip: new RecordStripPage(page) };
+    return { workspace, extraction, strip: new RecordStripPage(page) };
   }
 
   get strip() {

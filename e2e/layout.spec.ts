@@ -1,6 +1,6 @@
 import { type Page } from "@playwright/test";
 import { addDocument, extractPath } from "./pages/studio";
-import { expectWorkingScreen } from "./pages/workspace";
+import { expectWorkingScreen } from "./pages/working-screen";
 import { expect, test } from "./fixtures";
 import { editPrompt } from "./pages/extraction";
 
@@ -11,9 +11,9 @@ function overflow(page: Page): Promise<number> {
   );
 }
 
-/** The height of a project's top bar: 48px when it is one row. */
+/** The height of a workspace's top bar: 48px when it is one row. */
 async function barHeight(page: Page): Promise<number> {
-  return (await page.getByTestId("project-top-bar").boundingBox())?.height ?? 0;
+  return (await page.getByTestId("workspace-top-bar").boundingBox())?.height ?? 0;
 }
 
 for (const size of [
@@ -33,22 +33,23 @@ for (const size of [
     }) => {
       // The document of a file nobody has extracted yet: "extraction_not_found" is how the API says so.
       expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
-      const project = await api.createProject({ name: "Layout project" });
-      await addDocument(person, project.run_id);
+      // A short name: the bar is tight at these widths, and a longer name wraps it (see #264).
+      const workspace = await api.createWorkspace({ name: "Layout test" });
+      await addDocument(person, workspace.run_id);
 
       await page.goto("/studio");
-      await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-      expect(await overflow(page), "the project list").toBeLessThanOrEqual(0);
+      await expect(page.getByRole("heading", { name: "Workspaces", level: 1 })).toBeVisible();
+      expect(await overflow(page), "the workspace list").toBeLessThanOrEqual(0);
 
-      const empty = await api.createProject({ name: "Layout empty project" });
-      await page.goto(`/studio/projects/${empty.id}`);
-      await expect(page.getByTestId("project-top-bar")).toBeVisible();
+      const empty = await api.createWorkspace({ name: "Layout empty test" });
+      await page.goto(`/studio/workspaces/${empty.id}`);
+      await expect(page.getByTestId("workspace-top-bar")).toBeVisible();
       expect(await overflow(page), "the Documents page").toBeLessThanOrEqual(0);
       expect(await barHeight(page), "the top bar on the Documents page is one row").toBeLessThan(
         56,
       );
 
-      await page.goto(extractPath(project.id));
+      await page.goto(extractPath(workspace.id));
       await expectWorkingScreen(page);
       expect(await barHeight(page), "the top bar on the working screen").toBeLessThan(90);
       // With unsaved changes the version text is longer: the bar stays one row.
@@ -71,9 +72,9 @@ test.describe("at 1024 x 768", () => {
   test.use({ viewport: { width: 1024, height: 768 } });
 
   test("the top bar stays short on the working screen", async ({ api, page, person }) => {
-    const project = await api.createProject({ name: "Mid width project" });
-    await addDocument(person, project.run_id);
-    await page.goto(extractPath(project.id));
+    const workspace = await api.createWorkspace({ name: "Mid width workspace" });
+    await addDocument(person, workspace.run_id);
+    await page.goto(extractPath(workspace.id));
     await expectWorkingScreen(page);
     expect(await barHeight(page), "the bar at 1024").toBeLessThan(120);
     expect(await overflow(page), "the page").toBeLessThanOrEqual(0);
@@ -84,17 +85,17 @@ test.describe("at 390 x 844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("the top bar stays a quarter of the screen at most", async ({ api, page, person }) => {
-    const project = await api.createProject({ name: "Phone bar project" });
-    await addDocument(person, project.run_id);
-    await page.goto(extractPath(project.id));
+    const workspace = await api.createWorkspace({ name: "Phone bar workspace" });
+    await addDocument(person, workspace.run_id);
+    await page.goto(extractPath(workspace.id));
     await expectWorkingScreen(page);
     expect(await barHeight(page), "the bar at 390").toBeLessThan(844 * 0.25);
   });
 
   test("scrolling to the end shows the end of the content", async ({ api, page, person }) => {
-    const project = await api.createProject({ name: "Phone layout project" });
-    await addDocument(person, project.run_id);
-    await page.goto(extractPath(project.id));
+    const workspace = await api.createWorkspace({ name: "Phone layout workspace" });
+    await addDocument(person, workspace.run_id);
+    await page.goto(extractPath(workspace.id));
     await expectWorkingScreen(page);
 
     // The last thing in the page, whatever it is, ends no more than ~48px above the document's end.

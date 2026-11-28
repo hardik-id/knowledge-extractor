@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
-import { documentPane, fieldColumn, openOneScreen } from "./pages/workspace";
+import { ExtractionPage, workspaceWithDocuments } from "./pages/extraction";
+import { documentPane, fieldColumn, openOneScreen } from "./pages/working-screen";
 import { scrollsSideways } from "./pages/studio";
 import { expectAccessible } from "./support/accessibility";
 
@@ -23,9 +23,9 @@ test.describe("the assistant in the column", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     const column = fieldColumn(page);
     await expect(page.getByTestId("version-line")).not.toContainText("unsaved changes");
 
@@ -62,9 +62,9 @@ test.describe("the assistant in the column", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("make the status exact text");
     await expect(dock.bar).toContainText("suggested change");
     const line = dock.column.getByRole("listitem").filter({ hasText: /^Change\b/ });
@@ -87,9 +87,9 @@ test.describe("the assistant in the column", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     const column = fieldColumn(page);
     const more = column.getByRole("button", { name: /^More actions for / });
     await expect(more.first()).toBeVisible();
@@ -113,9 +113,9 @@ test.describe("the assistant in the column", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     const column = fieldColumn(page);
     // The first click after the page opened can be thrown away by a rebuild in dev: try until the menu is there.
     const remove = page.getByRole("menuitem", { name: "Remove record type" });
@@ -150,9 +150,9 @@ test.describe("the assistant in the column", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("add a field for the approver");
     await expect(dock.newFieldRows).toHaveCount(1);
     await dock.bar.getByRole("button", { name: "Discard all" }).click();
@@ -171,9 +171,9 @@ test.describe("the assistant in the column", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("add a field for the approver");
     await dock.bar.getByRole("button", { name: "Keep all" }).click();
 
@@ -193,14 +193,14 @@ test.describe("the assistant in the column", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("add a field for the approver");
     await expect(dock.newFieldRows).toHaveCount(1);
 
     await page.reload();
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     // Tabbing into the input leaves the conversation closed; a click opens it.
     await dock.input.click();
     await expect(dock.conversation.getByText("add a field for the approver")).toBeVisible();
@@ -215,9 +215,9 @@ test.describe("the assistant in the column", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     // After a run, the document has highlights: the screen as it is used.
     const extraction = new ExtractionPage(page);
     await extraction.run("Run extraction");
@@ -242,9 +242,9 @@ test.describe("the assistant in the column", () => {
     }, testInfo) => {
       noExtractionYet(expectApiError);
       await page.setViewportSize(size);
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
       const dock = new AssistantDock(page);
-      await openOneScreen(page, project);
+      await openOneScreen(page, workspace);
       if (size.width < 1100)
         await page.getByRole("button", { name: "Fields", exact: true }).click();
       await dock.ask("add a field for the approver");

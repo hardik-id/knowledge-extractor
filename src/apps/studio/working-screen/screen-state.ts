@@ -1,0 +1,157 @@
+import { createContext, useContext } from "react";
+import type { ExtractionRecord, RecordType } from "@/services/contracts";
+
+/** Where a value's menu opens: the highlight it belongs to, in viewport coordinates. */
+export interface ValueAnchor {
+  left: number;
+  top: number;
+  bottom: number;
+  right: number;
+}
+
+/** What the working screen has selected. Nothing here is saved. */
+export interface ScreenSelection {
+  /** The record type shown in the field column; null until chosen (then the first type). */
+  selectedTypeId: string | null;
+  /** The record being looked at; null until chosen (then the first record of the type). */
+  currentRecordId: string | null;
+  /** The field selected in the table. */
+  selectedFieldId: string | null;
+  /** The value whose menu is open, and the highlight it opens at. */
+  openValue: { valueId: string; anchor: ValueAnchor } | null;
+  /** The assistant's pending proposal. A placeholder until item 10 fills it. */
+  proposal: unknown;
+  /** The conversation with the assistant is open in the column. */
+  conversationOpen: boolean;
+}
+
+export const INITIAL_SELECTION: ScreenSelection = {
+  selectedTypeId: null,
+  currentRecordId: null,
+  selectedFieldId: null,
+  openValue: null,
+  proposal: null,
+  conversationOpen: false,
+};
+
+export type ScreenAction =
+  | { type: "selectType"; typeId: string | null }
+  | { type: "setCurrentRecord"; recordId: string | null }
+  | { type: "selectField"; fieldId: string | null }
+  | { type: "openValue"; value: ScreenSelection["openValue"] }
+  | { type: "setProposal"; proposal: unknown }
+  | { type: "setConversationOpen"; open: boolean };
+
+export function screenReducer(state: ScreenSelection, action: ScreenAction): ScreenSelection {
+  switch (action.type) {
+    case "selectType":
+      if (action.typeId === state.selectedTypeId) return state;
+      // Another type has other records and other fields.
+      return {
+        ...state,
+        selectedTypeId: action.typeId,
+        currentRecordId: null,
+        selectedFieldId: null,
+        openValue: null,
+      };
+    case "setCurrentRecord":
+      return state.currentRecordId === action.recordId
+        ? state
+        : { ...state, currentRecordId: action.recordId };
+    case "selectField":
+      return state.selectedFieldId === action.fieldId
+        ? state
+        : { ...state, selectedFieldId: action.fieldId };
+    case "openValue":
+      return { ...state, openValue: action.value };
+    case "setProposal":
+      return { ...state, proposal: action.proposal };
+    case "setConversationOpen":
+      return state.conversationOpen === action.open
+        ? state
+        : { ...state, conversationOpen: action.open };
+  }
+}
+
+/**
+ * The record type in use: the chosen one while it still exists, else the first. Null when there
+ * are none.
+ */
+export function resolveTypeId(
+  selectedTypeId: string | null,
+  recordTypes: readonly Pick<RecordType, "id">[],
+): string | null {
+  if (selectedTypeId && recordTypes.some((t) => t.id === selectedTypeId)) return selectedTypeId;
+  return recordTypes[0]?.id ?? null;
+}
+
+/**
+ * The record being looked at: the chosen one while it still exists, else the first record of the
+ * type. Null when the type has none.
+ */
+export function resolveRecordId(
+  currentRecordId: string | null,
+  records: readonly (Pick<ExtractionRecord, "id" | "recordTypeId"> & {
+    review?: ExtractionRecord["review"];
+  })[],
+  typeId: string | null,
+): string | null {
+  if (currentRecordId && records.some((r) => r.id === currentRecordId)) return currentRecordId;
+  // The first of the strip's own order (rejected records last), so the screen opens on "Record 1".
+  const own = records.filter((r) => r.recordTypeId === typeId);
+  return (own.find((r) => r.review !== "rejected") ?? own[0])?.id ?? null;
+}
+
+export interface ScreenState extends ScreenSelection {
+  /** The open document. */
+  fileId: string | null;
+  setSelectedTypeId: (typeId: string | null) => void;
+  setCurrentRecordId: (recordId: string | null) => void;
+  setSelectedFieldId: (fieldId: string | null) => void;
+  setOpenValue: (value: ScreenSelection["openValue"]) => void;
+  setProposal: (proposal: unknown) => void;
+  setConversationOpen: (open: boolean) => void;
+}
+
+export const ScreenContext = createContext<ScreenState | null>(null);
+
+/** The working screen's selection. Only inside `ScreenProvider`. */
+export function useScreen(): ScreenState {
+  const state = useContext(ScreenContext);
+  if (!state) throw new Error("useScreen is used outside the working screen.");
+  return state;
+}
+
+/** From this width the field column sits beside the document; below it, it is an overlay. */
+export const WIDE_QUERY = "(min-width: 1100px)";
+
+export type ScreenView = "document" | "output";
+
+/**
+ * What the top bar and the working screen share: the "Document | Output" switch, the Fields
+ * overlay of a narrow screen, and the "Assistant" button's request to put the cursor in the
+ * assistant's input. Held above both, by the workspace screen. Null outside it.
+ */
+export interface ScreenControls {
+  view: ScreenView;
+  setView: (view: ScreenView) => void;
+  fieldsOpen: boolean;
+  setFieldsOpen: (open: boolean) => void;
+  /** "Assistant" was pressed and the column has not yet answered it. */
+  assistantRequested: boolean;
+  requestAssistant: () => void;
+  answerAssistantRequest: () => void;
+  /** The record strip is folded to its first line. Held here so it holds across documents. */
+  stripCollapsed: boolean;
+  setStripCollapsed: (collapsed: boolean) => void;
+  /** The Chunking row is open. Held here so it holds across documents. */
+  chunkingOpen: boolean;
+  setChunkingOpen: (open: boolean) => void;
+}
+
+export const ScreenControlsContext = createContext<ScreenControls | null>(null);
+
+/** The top bar's and the screen's shared controls; null when there is no working screen. */
+export function useScreenControls(): ScreenControls | null {
+  return useContext(ScreenControlsContext);
+}

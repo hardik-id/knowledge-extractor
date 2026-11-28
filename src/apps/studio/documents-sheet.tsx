@@ -15,8 +15,8 @@ import { usePipelineStore } from "@/store/pipeline-store";
 import { DocumentsPicker } from "./documents-picker";
 
 /**
- * Add or remove the project's documents from the workspace, in a sheet. Cancelling (or closing)
- * drops the choices made and goes back to the project's documents.
+ * Add or remove the workspace's documents from the working screen, in a sheet. Cancelling (or closing)
+ * drops the choices made and goes back to the workspace's documents.
  */
 export function DocumentsSheet({
   open,
@@ -32,7 +32,7 @@ export function DocumentsSheet({
   const selectedFiles = usePipelineStore((s) => s.selectedFiles);
   const setSelection = usePipelineStore((s) => s.setSelection);
 
-  /** The selection goes back to the project's documents. */
+  /** The selection goes back to the workspace's documents. */
   const reset = () => {
     if (!sameDocuments(selectedFiles, runFiles)) setSelection(selectionFromRun(runFiles));
   };

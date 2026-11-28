@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { badge, openMockWorkspace, panel, test } from "./support";
 
-test("the projects list says the data is the built-in mock", async ({ page }) => {
+test("the workspaces list says the data is the built-in mock", async ({ page }) => {
   await page.goto("/studio");
   await expect(badge(page)).toHaveAccessibleName("Backend status: Mock data");
   await badge(page).click();
@@ -21,13 +21,13 @@ test("the projects list says the data is the built-in mock", async ({ page }) =>
 
 test("the working screen's top bar has the badge, without crowding the bar", async ({ page }) => {
   await openMockWorkspace(page);
-  const bar = page.getByTestId("project-top-bar").locator("visible=true");
+  const bar = page.getByTestId("workspace-top-bar").locator("visible=true");
   await expect(bar.getByRole("button", { name: "Backend status: Mock data" })).toBeVisible();
   await expectNoOverlap(page);
 });
 
 for (const width of [1600, 1440, 1280, 960, 390]) {
-  test(`no overlap in the project bar at ${width}px`, async ({ page }) => {
+  test(`no overlap in the workspace bar at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
     await openMockWorkspace(page);
     await expectNoOverlap(page);
@@ -48,7 +48,7 @@ for (const theme of ["light", "dark"] as const) {
   test(`the panel and the bar pass the accessibility scan (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem("theme", t), theme);
     await openMockWorkspace(page);
-    await expectNoViolations(page, "[data-testid=project-top-bar]");
+    await expectNoViolations(page, "[data-testid=workspace-top-bar]");
     await badge(page).click();
     await expect(panel(page)).toBeVisible();
     await expectNoViolations(page, "[data-testid=status-panel]");
@@ -75,7 +75,7 @@ async function expectNoViolations(page: import("@playwright/test").Page, selecto
 
 /** No two controls of the bar's right side share a pixel. */
 async function expectNoOverlap(page: import("@playwright/test").Page) {
-  const bar = page.getByTestId("project-top-bar").locator("visible=true");
+  const bar = page.getByTestId("workspace-top-bar").locator("visible=true");
   const boxes = await bar.getByRole("button").evaluateAll((buttons) =>
     buttons
       .map((b) => ({

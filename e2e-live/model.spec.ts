@@ -1,6 +1,6 @@
 import { expect, test } from "../e2e/fixtures";
 import { AssistantDock } from "../e2e/pages/assistant-dock";
-import { ExtractionPage, projectWithDocuments } from "../e2e/pages/extraction";
+import { ExtractionPage, workspaceWithDocuments } from "../e2e/pages/extraction";
 import { modelSkipReason } from "./env.mjs";
 
 // A model takes its time: the reply, with its tool calls, can run a minute or more.
@@ -15,12 +15,12 @@ test.describe("the assistant with the real model", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, [
+    const workspace = await workspaceWithDocuments(api, person, request, [
       "architecture-decisions-2026.md",
       "platform-adrs.md",
     ]);
     const extraction = new ExtractionPage(page);
-    await extraction.open(project);
+    await extraction.open(workspace);
 
     const dock = new AssistantDock(page);
     await dock.ask("Extract every architecture decision record from these documents.");

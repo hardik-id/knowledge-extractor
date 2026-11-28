@@ -41,8 +41,8 @@ describe("runStudioFlow", () => {
         requestId: "req-1",
       });
     };
-    const create = services.projects.create;
-    services.projects.create = (input) => {
+    const create = services.workspaces.create;
+    services.workspaces.create = (input) => {
       created++;
       return create(input);
     };
@@ -62,16 +62,16 @@ describe("runStudioFlow", () => {
     assert.equal(created, 0);
   });
 
-  test("deletes the project it created when a later step fails", async () => {
+  test("deletes the workspace it created when a later step fails", async () => {
     const services: Services = mockServices();
     let deleted: string | null = null;
     services.extraction.getDefinition = async () => {
       throw new ApiError({ status: 500, code: "http_500", message: "Server Error" });
     };
-    const remove = services.projects.remove;
-    services.projects.remove = async (projectId) => {
-      deleted = projectId;
-      await remove(projectId);
+    const remove = services.workspaces.remove;
+    services.workspaces.remove = async (workspaceId) => {
+      deleted = workspaceId;
+      await remove(workspaceId);
     };
 
     await assert.rejects(
@@ -79,7 +79,7 @@ describe("runStudioFlow", () => {
       (error: unknown) =>
         error instanceof StudioFlowError && error.step === "9. Read the definition",
     );
-    assert.ok(deleted, "the project was deleted");
+    assert.ok(deleted, "the workspace was deleted");
   });
 
   test("fails when the server breaks the contract", async () => {

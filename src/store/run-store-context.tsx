@@ -8,7 +8,7 @@ import { RunStoreContext } from "./use-run-store";
 /**
  * Gives everything below it the run store of one app, and keeps that store
  * hydrated and in step with its run. `firstHref` is where the person goes
- * when the run is gone; a project's store leaves it out and shows that itself.
+ * when the run is gone; a workspace's store leaves it out and shows that itself.
  */
 export function RunStoreProvider({
   store,

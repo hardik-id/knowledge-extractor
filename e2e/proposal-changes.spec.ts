@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
-import { openOneScreen } from "./pages/workspace";
+import { ExtractionPage, workspaceWithDocuments } from "./pages/extraction";
+import { openOneScreen } from "./pages/working-screen";
 import { scrollsSideways } from "./pages/studio";
 import { expectAccessible } from "./support/accessibility";
 
@@ -23,9 +23,9 @@ test.describe("keeping or discarding one change at a time", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("add a field for the approver");
     await expect(dock.bar).toContainText("2 suggested changes");
     await expect(dock.conversation.getByText("Waiting for you")).toBeVisible();
@@ -66,9 +66,9 @@ test.describe("keeping or discarding one change at a time", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("add a field for the approver");
     const template = dock.bar.getByRole("listitem").filter({ hasText: "Template changed" });
     await template.getByRole("button", { name: "Discard" }).click();
@@ -89,9 +89,9 @@ test.describe("keeping or discarding one change at a time", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("add a field for the approver");
     await dock.newFieldRows.first().getByRole("button", { name: "Discard" }).click();
     await expect(dock.newFieldRows).toHaveCount(0);
@@ -117,9 +117,9 @@ test.describe("keeping or discarding one change at a time", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("make the status exact text");
     const line = dock.column.getByRole("listitem").filter({ hasText: /^Change\b/ });
     await expect(line.first()).toBeVisible();
@@ -137,9 +137,9 @@ test.describe("keeping or discarding one change at a time", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     const fields = dock.column.getByRole("textbox", { name: /^Name of field/ });
     const before = await fields.count();
     await dock.ask("remove the title field");
@@ -160,9 +160,9 @@ test.describe("keeping or discarding one change at a time", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     // Take the record type away first (the first click can be lost to a rebuild in dev).
     const remove = page.getByRole("menuitem", { name: "Remove record type" });
     await expect(async () => {
@@ -193,9 +193,9 @@ test.describe("keeping or discarding one change at a time", () => {
     request,
   }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.ask("add a field for the approver");
     await expect(dock.bar).toContainText("2 suggested changes");
     await dock.newFieldRows.first().getByRole("button", { name: "Discard" }).click();
@@ -208,9 +208,9 @@ test.describe("keeping or discarding one change at a time", () => {
 
   test("works with the keyboard alone", async ({ api, expectApiError, page, person, request }) => {
     noExtractionYet(expectApiError);
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await openOneScreen(page, project);
+    await openOneScreen(page, workspace);
     await dock.input.fill("add a field for the approver");
     await page.keyboard.press("Enter");
     await expect(dock.newFieldRows).toHaveCount(1);
@@ -243,9 +243,9 @@ test.describe("keeping or discarding one change at a time", () => {
     }) => {
       noExtractionYet(expectApiError);
       await page.setViewportSize(size);
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
       const dock = new AssistantDock(page);
-      await openOneScreen(page, project);
+      await openOneScreen(page, workspace);
       if (size.width < 1100)
         await page.getByRole("button", { name: "Fields", exact: true }).click();
       await dock.ask("add a field for the approver");
@@ -268,9 +268,9 @@ for (const scheme of ["light", "dark"] as const) {
       request,
     }) => {
       noExtractionYet(expectApiError);
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
       const dock = new AssistantDock(page);
-      await openOneScreen(page, project);
+      await openOneScreen(page, workspace);
       // After a run, the document has highlights: the screen as it is used.
       const extraction = new ExtractionPage(page);
       await extraction.run("Run extraction");

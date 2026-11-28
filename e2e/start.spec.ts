@@ -3,17 +3,18 @@ import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
 import { openVersionMenu } from "./pages/extraction";
 import { openStart, scrollsSideways } from "./pages/studio";
-import { documentPane, openFields } from "./pages/workspace";
+import { documentPane, openFields } from "./pages/working-screen";
 import { expectAccessible } from "./support/accessibility";
 
 /** The start panel in the field column (or its overlay on a narrow screen). */
 const startPanel = (page: Page) => new AssistantDock(page).column;
 
-test("the dialog creates the project from the blank template and the start panel shows", async ({
+test("the dialog creates the workspace from the blank template and the start panel shows", async ({
   page,
 }) => {
   const created = page.waitForRequest(
-    (request) => request.method() === "POST" && /\/projects$/.test(new URL(request.url()).pathname),
+    (request) =>
+      request.method() === "POST" && /\/workspaces$/.test(new URL(request.url()).pathname),
   );
   await openStart(page);
   expect((await created).postDataJSON()).toMatchObject({ template_id: "blank" });
@@ -31,7 +32,7 @@ test("the dialog creates the project from the blank template and the start panel
   await expect(page.getByRole("tab")).toHaveCount(0);
   await expect(page.getByTestId("version-line")).toHaveText("Nothing saved yet");
   await expect(
-    page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+    page.getByTestId("workspace-top-bar").getByRole("button", { name: /^Run/ }),
   ).toBeDisabled();
 });
 
@@ -49,7 +50,7 @@ test("a template row shows its fields as suggestions; Keep all loads them as an 
   ).toHaveCount(0);
   await expect(page.getByTestId("version-line")).toHaveText("Nothing saved yet");
   await expect(
-    page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+    page.getByTestId("workspace-top-bar").getByRole("button", { name: /^Run/ }),
   ).toBeDisabled();
 
   await dock.bar.getByRole("button", { name: "Keep all" }).click();
@@ -57,7 +58,7 @@ test("a template row shows its fields as suggestions; Keep all loads them as an 
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(6);
   await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
   await expect(
-    page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+    page.getByTestId("workspace-top-bar").getByRole("button", { name: /^Run/ }),
   ).toBeEnabled();
   // The save note starts with the template's name.
   const menu = await openVersionMenu(page);
@@ -80,16 +81,16 @@ test("Discard all on a template brings the start panel back", async ({ page }) =
   await expect(page.getByTestId("version-line")).toHaveText("Nothing saved yet");
 });
 
-test("a template offer does not follow the person into another project", async ({ page }) => {
-  await openStart(page, "Offer project A");
+test("a template offer does not follow the person into another workspace", async ({ page }) => {
+  await openStart(page, "Offer workspace A");
   const dock = new AssistantDock(page);
   await page.getByRole("button", { name: /^Policy rules/ }).click();
   await expect(dock.bar).toContainText("suggested change");
 
-  // A client-side move to Projects, then a second project: nothing suggested there.
-  await page.getByRole("link", { name: "Projects" }).first().click();
-  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  await openStart(page, "Offer project B");
+  // A client-side move to Workspaces, then a second workspace: nothing suggested there.
+  await page.getByRole("link", { name: "Workspaces" }).first().click();
+  await expect(page.getByRole("heading", { name: "Workspaces", level: 1 })).toBeVisible();
+  await openStart(page, "Offer workspace B");
   await expect(dock.bar).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Suggested changes" })).toHaveCount(0);
 });
@@ -126,7 +127,7 @@ test("Add a field yourself makes a record type named Record with one field", asy
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(1);
   await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
   await expect(
-    page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }),
+    page.getByTestId("workspace-top-bar").getByRole("button", { name: /^Run/ }),
   ).toBeEnabled();
 });
 

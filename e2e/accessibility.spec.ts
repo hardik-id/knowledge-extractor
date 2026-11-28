@@ -6,13 +6,13 @@ import {
   openTemplatesDialog,
   openVersionHistory,
   openVersionMenu,
-  projectWithDocuments,
+  workspaceWithDocuments,
 } from "./pages/extraction";
 import {
   DOCS,
   openDocuments,
   openExtraction,
-  openNewProjectDialog,
+  openNewWorkspaceDialog,
   openStart,
 } from "./pages/studio";
 
@@ -32,45 +32,45 @@ for (const scheme of ["light", "dark"] as const) {
     const scan = (page: import("@playwright/test").Page, screen: string) =>
       expectAccessible(page, `${screen} (${scheme})`, EXCEPTIONS);
 
-    test("the project list, empty", async ({ page }) => {
+    test("the workspace list, empty", async ({ page }) => {
       await page.goto("/studio");
-      await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-      await expect(page.getByText("No projects yet")).toBeVisible();
-      await expect(page.getByRole("status", { name: "Loading projects" })).toHaveCount(0);
-      await scan(page, "project list, empty");
+      await expect(page.getByRole("heading", { name: "Workspaces", level: 1 })).toBeVisible();
+      await expect(page.getByText("No workspaces yet")).toBeVisible();
+      await expect(page.getByRole("status", { name: "Loading workspaces" })).toHaveCount(0);
+      await scan(page, "workspace list, empty");
     });
 
-    test("the project list, with projects", async ({ api, page }) => {
-      await api.createProject({ name: "First project", description: "Contracts" });
-      await api.createProject({ name: "Second project" });
+    test("the workspace list, with workspaces", async ({ api, page }) => {
+      await api.createWorkspace({ name: "First workspace", description: "Contracts" });
+      await api.createWorkspace({ name: "Second workspace" });
       await page.goto("/studio");
-      await expect(page.getByText("First project").first()).toBeVisible();
-      await expect(page.getByText("Second project").first()).toBeVisible();
-      await expect(page.getByRole("status", { name: "Loading projects" })).toHaveCount(0);
-      await scan(page, "project list, with projects");
+      await expect(page.getByText("First workspace").first()).toBeVisible();
+      await expect(page.getByText("Second workspace").first()).toBeVisible();
+      await expect(page.getByRole("status", { name: "Loading workspaces" })).toHaveCount(0);
+      await scan(page, "workspace list, with workspaces");
     });
 
-    test("the New project dialog", async ({ page }) => {
+    test("the New workspace dialog", async ({ page }) => {
       await page.goto("/studio");
-      const dialog = await openNewProjectDialog(page);
+      const dialog = await openNewWorkspaceDialog(page);
       await expect(dialog).toBeVisible();
       await expect(dialog.getByLabel("Name")).toBeVisible();
       await expect(dialog.getByRole("radio")).toHaveCount(0);
-      await scan(page, "New project dialog");
+      await scan(page, "New workspace dialog");
     });
 
     test("the Documents page", async ({ api, page }) => {
-      const project = await api.createProject({ name: "Documents project" });
-      await openDocuments(page, project);
+      const workspace = await api.createWorkspace({ name: "Documents workspace" });
+      await openDocuments(page, workspace);
       await expect(page.getByRole("checkbox", { name: DOCS.roadmap })).toBeVisible();
       await scan(page, "Documents page");
     });
 
     for (const name of ["Document", "Output"] as const) {
       test(`the working screen, ${name} view`, async ({ api, page, person, request }) => {
-        const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+        const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
         const extraction = new ExtractionPage(page);
-        await extraction.open(project);
+        await extraction.open(workspace);
         await extraction.runAll();
         await extraction.finished();
         if (name === "Document") {
@@ -84,8 +84,8 @@ for (const scheme of ["light", "dark"] as const) {
     }
 
     test("the working screen before a run", async ({ api, page, person, request }) => {
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-      await new ExtractionPage(page).open(project);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+      await new ExtractionPage(page).open(workspace);
       await scan(page, "working screen before a run");
     });
 
@@ -95,8 +95,8 @@ for (const scheme of ["light", "dark"] as const) {
     });
 
     test("the version history", async ({ api, page, person, request }) => {
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-      await new ExtractionPage(page).open(project);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+      await new ExtractionPage(page).open(workspace);
       await expect(page.getByTestId("version-line")).toBeVisible();
       const history = await openVersionHistory(page);
       await expect(history.getByRole("list", { name: "Versions" })).toBeVisible();
@@ -104,8 +104,8 @@ for (const scheme of ["light", "dark"] as const) {
     });
 
     test("the open version menu and the open Run menu", async ({ api, page, person, request }) => {
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-      await new ExtractionPage(page).open(project);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+      await new ExtractionPage(page).open(workspace);
       const menu = await openVersionMenu(page);
       await expect(page.getByRole("dialog", { name: "Version" })).toBeVisible();
       await expect(menu).toBeVisible();
@@ -117,8 +117,8 @@ for (const scheme of ["light", "dark"] as const) {
     });
 
     test("the templates dialog", async ({ api, page }) => {
-      const project = await api.createProject({ name: "Templates project" });
-      await openExtraction(page, project, [DOCS.roadmap]);
+      const workspace = await api.createWorkspace({ name: "Templates workspace" });
+      await openExtraction(page, workspace, [DOCS.roadmap]);
       const dialog = await openTemplatesDialog(page);
       await dialog.getByRole("radio").nth(1).check();
       await expect(dialog.getByRole("region", { name: "What it would bring" })).toContainText(
@@ -128,9 +128,9 @@ for (const scheme of ["light", "dark"] as const) {
     });
 
     test("the assistant with a proposal showing", async ({ api, page, person, request }) => {
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
       const dock = new AssistantDock(page);
-      await new ExtractionPage(page).open(project);
+      await new ExtractionPage(page).open(workspace);
       await dock.ask("add a field for the approver");
       await expect(dock.bar).toBeVisible();
       await scan(page, "assistant with a proposal");

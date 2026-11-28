@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import { RecordStripPage } from "./pages/record-strip";
-import { documentPane } from "./pages/workspace";
+import { documentPane } from "./pages/working-screen";
 
 const DOCUMENT = "platform-adrs.md";
 const FIRST = "Use feature flags for risky releases";

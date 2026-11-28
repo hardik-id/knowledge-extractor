@@ -148,68 +148,68 @@ export interface RunsApi {
    * while a file of the run is queued or running.
    */
   setDocuments(runId: string, files: SourceFile[]): Promise<Run>;
-  /** Rejects with `run_belongs_to_project` (409) for the run of a project: delete the project instead. */
+  /** Rejects with `run_belongs_to_workspace` (409) for the run of a workspace: delete the workspace instead. */
   deleteRun(runId: string): Promise<void>;
 }
 
-// ── Projects ────────────────────────────────────────────────────────────
+// ── Workspaces ────────────────────────────────────────────────────────────
 
 /** A name on a run: the run with its documents, configuration, conversation and records. */
-export interface Project {
+export interface Workspace {
   id: string;
   name: string;
   description: string;
-  /** The project's run. It exists from the start, empty. Everything inside goes through the run's own calls. */
+  /** The workspace's run. It exists from the start, empty. Everything inside goes through the run's own calls. */
   runId: string;
   documentCount: number;
   /** The latest saved version of the run's extraction configuration, or null before the first. */
   configurationVersion: number | null;
   createdAt: string; // ISO-8601
-  /** The last activity in the project, not only a rename. */
+  /** The last activity in the workspace, not only a rename. */
   updatedAt: string; // ISO-8601
 }
 
-export interface ProjectPage {
-  items: Project[];
+export interface WorkspacePage {
+  items: Workspace[];
   /** An opaque cursor for the next page, or null on the last one. */
   next: string | null;
 }
 
-export interface NewProjectInput {
+export interface NewWorkspaceInput {
   /** Required, not blank, at most 120 characters. */
   name: string;
   description?: string;
-  /** A template's id: the project's configuration starts as version 1 from it. Default: the ADR template. */
+  /** A template's id: the workspace's configuration starts as version 1 from it. Default: the ADR template. */
   templateId?: string;
 }
 
-export interface ProjectPatch {
+export interface WorkspacePatch {
   name?: string;
   description?: string;
 }
 
 /**
- * A project is private to its owner. Codes the UI handles: `project_not_found`
+ * A workspace is private to its owner. Codes the UI handles: `workspace_not_found`
  * (404), `validation_error` (422, a name that is blank or too long),
  * `unknown_template` (422, `create` with a `templateId` that does not exist).
  */
-export interface ProjectsApi {
+export interface WorkspacesApi {
   /** The first page, last activity first. */
-  list(signal?: AbortSignal): Promise<Project[]>;
+  list(signal?: AbortSignal): Promise<Workspace[]>;
   /** One page, last activity first. Pass the `next` of the page before to get the one after it. */
-  listPage(options?: { cursor?: string | null; signal?: AbortSignal }): Promise<ProjectPage>;
-  /** Makes the project and its empty run, with the configuration (version 1, noted "From template: <name>") from the template. */
-  create(input: NewProjectInput): Promise<Project>;
-  get(projectId: string, signal?: AbortSignal): Promise<Project>;
+  listPage(options?: { cursor?: string | null; signal?: AbortSignal }): Promise<WorkspacePage>;
+  /** Makes the workspace and its empty run, with the configuration (version 1, noted "From template: <name>") from the template. */
+  create(input: NewWorkspaceInput): Promise<Workspace>;
+  get(workspaceId: string, signal?: AbortSignal): Promise<Workspace>;
   /** Changes the name and/or the description. */
-  rename(projectId: string, patch: ProjectPatch): Promise<Project>;
-  /** Deletes the project, its run and everything on it. */
-  remove(projectId: string): Promise<void>;
+  rename(workspaceId: string, patch: WorkspacePatch): Promise<Workspace>;
+  /** Deletes the workspace, its run and everything on it. */
+  remove(workspaceId: string): Promise<void>;
 }
 
 // ── Templates ───────────────────────────────────────────────────────────
 
-/** A complete configuration to start a project from: prompt, record types with fields, output. */
+/** A complete configuration to start a workspace from: prompt, record types with fields, output. */
 export interface DefinitionTemplate {
   id: string;
   name: string;
@@ -695,7 +695,7 @@ export interface Services {
   status: StatusApi;
   catalog: SourceCatalog;
   documents: DocumentsApi;
-  projects: ProjectsApi;
+  workspaces: WorkspacesApi;
   templates: TemplatesApi;
   runs: RunsApi;
   extraction: ExtractionApi;

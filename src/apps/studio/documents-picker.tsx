@@ -43,7 +43,7 @@ interface DocumentsPickerProps {
 
 /**
  * The document picker: the file browser, the count and the one action that sends the selection
- * to the project's run. The run keeps its configuration, conversation and the records of
+ * to the workspace's run. The run keeps its configuration, conversation and the records of
  * documents that stay. Nothing is sent while choosing. Documents taken out lose their records,
  * so when a person worked on those records they are asked first.
  */

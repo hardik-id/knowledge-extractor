@@ -19,10 +19,22 @@ const nextConfig: NextConfig = {
   async redirects() {
     const redirects = [
       { source: "/", destination: FIRST_APP.href, permanent: false },
-      // The extraction workspace used to have its own address.
+      // The extraction page used to have its own address.
+      {
+        source: "/studio/workspaces/:id/extract",
+        destination: "/studio/workspaces/:id",
+        permanent: false,
+      },
+      // Workspaces were called projects: the old addresses open the same workspace.
       {
         source: "/studio/projects/:id/extract",
-        destination: "/studio/projects/:id",
+        destination: "/studio/workspaces/:id",
+        permanent: false,
+      },
+      { source: "/studio/projects", destination: "/studio", permanent: false },
+      {
+        source: "/studio/projects/:path*",
+        destination: "/studio/workspaces/:path*",
         permanent: false,
       },
     ];

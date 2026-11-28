@@ -1,6 +1,6 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import { ExtractionPage, workspaceWithDocuments } from "./pages/extraction";
 import { openDocuments } from "./pages/studio";
 
 /**
@@ -47,15 +47,15 @@ for (const scheme of ["light", "dark"] as const) {
     test.use({ colorScheme: scheme });
 
     test("the Documents page", async ({ api, page }) => {
-      const project = await api.createProject({ name: "Focus project" });
-      await openDocuments(page, project);
+      const workspace = await api.createWorkspace({ name: "Focus workspace" });
+      await openDocuments(page, workspace);
       await expect(page.getByRole("checkbox").first()).toBeVisible();
       expect(await withoutRing(page, 14)).toEqual([]);
     });
 
     test("the working screen", async ({ api, page, person, request }) => {
-      const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
-      await new ExtractionPage(page).open(project);
+      const workspace = await workspaceWithDocuments(api, person, request, ["platform-adrs.md"]);
+      await new ExtractionPage(page).open(workspace);
       await expect(page.getByTestId("version-line")).toBeVisible();
       expect(await withoutRing(page, 30)).toEqual([]);
     });
@@ -66,8 +66,8 @@ for (const scheme of ["light", "dark"] as const) {
       person,
       request,
     }) => {
-      const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
-      await new ExtractionPage(page).open(project);
+      const workspace = await workspaceWithDocuments(api, person, request, ["platform-adrs.md"]);
+      await new ExtractionPage(page).open(workspace);
       await page.getByRole("button", { name: "Output", exact: true }).click();
       const radio = page.getByRole("radio", { name: "Markdown" });
       await radio.focus();

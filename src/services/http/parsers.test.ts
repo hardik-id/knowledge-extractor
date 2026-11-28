@@ -15,9 +15,9 @@ import {
   parseExecution,
   parseExtractionChangedMessage,
   parseFileExtraction,
-  parseProject,
-  parseProjectPage,
-  parseProjects,
+  parseWorkspace,
+  parseWorkspacePage,
+  parseWorkspaces,
   parsePublishResult,
   parseRun,
   parseBackendStatus,
@@ -610,8 +610,8 @@ describe("storage documents", () => {
   });
 });
 
-describe("project and version parsers", () => {
-  const wireProject = {
+describe("workspace and version parsers", () => {
+  const wireWorkspace = {
     id: "p1",
     name: "Architecture decisions",
     description: "",
@@ -622,8 +622,8 @@ describe("project and version parsers", () => {
     updated_at: "2026-02-02T10:00:00Z",
   };
 
-  test("a project comes out in the UI's shape; no configuration version is null", () => {
-    assert.deepEqual(parseProject(wireProject), {
+  test("a workspace comes out in the UI's shape; no configuration version is null", () => {
+    assert.deepEqual(parseWorkspace(wireWorkspace), {
       id: "p1",
       name: "Architecture decisions",
       description: "",
@@ -634,24 +634,24 @@ describe("project and version parsers", () => {
       updatedAt: "2026-02-02T10:00:00Z",
     });
     assert.equal(
-      parseProject({ ...wireProject, configuration_version: 2 }).configurationVersion,
+      parseWorkspace({ ...wireWorkspace, configuration_version: 2 }).configurationVersion,
       2,
     );
   });
 
-  test("the list of projects reads its items; a project without a run is invalid", () => {
-    assert.equal(parseProjects({ items: [wireProject], next: null }).length, 1);
+  test("the list of workspaces reads its items; a workspace without a run is invalid", () => {
+    assert.equal(parseWorkspaces({ items: [wireWorkspace], next: null }).length, 1);
     assert.throws(
-      () => parseProjects({ items: [{ ...wireProject, run_id: 4 }] }),
+      () => parseWorkspaces({ items: [{ ...wireWorkspace, run_id: 4 }] }),
       isInvalidResponse,
     );
-    assert.throws(() => parseProjects([wireProject]), isInvalidResponse);
+    assert.throws(() => parseWorkspaces([wireWorkspace]), isInvalidResponse);
   });
 
-  test("a page of projects keeps its cursor", () => {
-    assert.equal(parseProjectPage({ items: [wireProject], next: "abc" }).next, "abc");
-    assert.equal(parseProjectPage({ items: [wireProject], next: null }).next, null);
-    assert.throws(() => parseProjectPage({ items: [], next: 4 }), isInvalidResponse);
+  test("a page of workspaces keeps its cursor", () => {
+    assert.equal(parseWorkspacePage({ items: [wireWorkspace], next: "abc" }).next, "abc");
+    assert.equal(parseWorkspacePage({ items: [wireWorkspace], next: null }).next, null);
+    assert.throws(() => parseWorkspacePage({ items: [], next: 4 }), isInvalidResponse);
   });
 
   test("the list of versions reads its items", () => {

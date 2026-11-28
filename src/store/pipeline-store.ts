@@ -5,10 +5,10 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { createFilesSlice } from "./slices/files-slice";
 import { createNavigationSlice } from "./slices/navigation-slice";
 import {
-  clearProjectConveniences,
-  createNoProjectSlice,
-  createProjectSlice,
-} from "./slices/project-slice";
+  clearWorkspaceConveniences,
+  createNoWorkspaceSlice,
+  createWorkspaceSlice,
+} from "./slices/workspace-slice";
 import { createRunSlice } from "./slices/run-slice";
 import type { PipelineState } from "./types";
 
@@ -32,7 +32,7 @@ export function createRunStore(storageKey: string): RunStore {
         ...createNavigationSlice(...a),
         ...createFilesSlice(...a),
         ...createRunSlice(...a),
-        ...createNoProjectSlice(...a),
+        ...createNoWorkspaceSlice(...a),
       }),
       {
         name: storageKey,
@@ -59,12 +59,12 @@ export function createRunStore(storageKey: string): RunStore {
 }
 
 /**
- * Makes a store that opens one project at a time (see `createProjectSlice`).
- * The address names the project, so nothing of the run is kept in the
+ * Makes a store that opens one workspace at a time (see `createWorkspaceSlice`).
+ * The address names the workspace, so nothing of the run is kept in the
  * browser: the persisted state is empty, and only the active document and
- * source tab are kept, per project, under `<storageKey>:<project id>`.
+ * source tab are kept, per workspace, under `<storageKey>:<workspace id>`.
  */
-export function createProjectRunStore(storageKey: string): RunStore {
+export function createWorkspaceRunStore(storageKey: string): RunStore {
   const store: RunStore = createStore<PipelineState>()(
     persist(
       (...a) => {
@@ -73,7 +73,7 @@ export function createProjectRunStore(storageKey: string): RunStore {
           ...createFilesSlice(...a),
           ...createRunSlice(...a),
         };
-        return { ...base, ...createProjectSlice(storageKey, base)(...a) };
+        return { ...base, ...createWorkspaceSlice(storageKey, base)(...a) };
       },
       {
         name: storageKey,
@@ -96,13 +96,13 @@ export { usePipelineStore, useRunStoreApi } from "./use-run-store";
 
 /** The pipeline app's run. The key is the one used before there were several apps. */
 export const pipelineRunStore = createRunStore("knowledge-extractor:run");
-const STUDIO_STORAGE_KEY = "knowledge-studio:project";
-/** Knowledge Studio's: the project the address names, and its run. */
-export const studioRunStore = createProjectRunStore(STUDIO_STORAGE_KEY);
+const STUDIO_STORAGE_KEY = "knowledge-studio:workspace";
+/** Knowledge Studio's: the workspace the address names, and its run. */
+export const studioRunStore = createWorkspaceRunStore(STUDIO_STORAGE_KEY);
 
 /**
  * Puts both run stores back to their initial state and removes what they
- * saved in sessionStorage (for Studio, every project's conveniences too). Never calls the backend: the person may have no
+ * saved in sessionStorage (for Studio, every workspace's conveniences too). Never calls the backend: the person may have no
  * valid token, and the server's runs are not ours to delete here.
  *
  * `hasHydrated` keeps its current value. If the stores were never hydrated
@@ -119,5 +119,5 @@ export function resetAllRunStores(): void {
     // After the reset: the reset itself writes the initial state to storage.
     store.persist.clearStorage();
   }
-  clearProjectConveniences(STUDIO_STORAGE_KEY);
+  clearWorkspaceConveniences(STUDIO_STORAGE_KEY);
 }
