@@ -10,7 +10,7 @@ import { AssistantDock } from "./assistant-dock";
 import { configurationSummary } from "./configuration-summary";
 import { ChunkingRow } from "./chunking-row";
 import { PromptLine } from "./prompt-line";
-import { focusAssistantInput, type ProposalInfo } from "./use-proposal";
+import { focusAssistantInputWhenMounted, type ProposalInfo } from "./use-proposal";
 import { ProposalBar, ProposalLines, ProposedFieldRows, ProposedTypes } from "./proposal-table";
 import { RecordTypeBar } from "./record-type-bar";
 import { useFieldSelection } from "./use-field-selection";
@@ -61,14 +61,14 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
   }, [suggestion, setConfigurationOpen]);
 
   // "Assistant" in the top bar: put the cursor in the input. Below 1100px the column has just
-  // mounted in its overlay, so wait for it to settle.
+  // mounted in its overlay, so wait until the input is there.
   const requested = controls?.assistantRequested ?? false;
   const answer = controls?.answerAssistantRequest;
   useEffect(() => {
     if (!requested) return;
     answer?.();
-    // Not cleared on cleanup: answering the request re-runs this effect at once.
-    setTimeout(focusAssistantInput, 300);
+    // Not cancelled on cleanup: answering the request re-runs this effect at once.
+    focusAssistantInputWhenMounted();
   }, [requested, answer]);
 
   if (!draft) return null;

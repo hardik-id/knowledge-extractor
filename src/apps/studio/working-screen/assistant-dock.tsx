@@ -142,7 +142,10 @@ export function AssistantDock({
         </div>
       )}
       <form
-        className="flex shrink-0 items-center gap-2 border-t border-border-subtle py-2 pr-3 pl-4"
+        className={`flex shrink-0 items-center gap-2 border-t border-border-subtle py-2 pr-3 pl-4 ${
+          // Next's development indicator sits at the bottom left of a phone-wide overlay.
+          process.env.NODE_ENV === "development" ? "max-sm:pl-[190px]" : ""
+        }`}
         onSubmit={(e) => {
           e.preventDefault();
           void submit();

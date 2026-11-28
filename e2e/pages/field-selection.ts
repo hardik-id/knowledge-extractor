@@ -12,7 +12,7 @@ export class FieldSelectionPage {
 
   /** The column beside the document, or the overlay's sheet at narrow widths. */
   get column(): Locator {
-    return this.page.getByRole("complementary", { name: "Assistant" });
+    return this.page.getByRole("complementary", { name: "Conversation and configuration" });
   }
 
   get sheet(): Locator {

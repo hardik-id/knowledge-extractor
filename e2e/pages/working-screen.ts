@@ -39,7 +39,7 @@ export async function expectWorkingScreen(page: Page) {
 
 /** The column beside the document (from 1100px wide): the Configuration row and the assistant. */
 export function fieldColumn(page: Page) {
-  return page.getByRole("complementary", { name: "Assistant" });
+  return page.getByRole("complementary", { name: "Conversation and configuration" });
 }
 
 /** The document pane. */

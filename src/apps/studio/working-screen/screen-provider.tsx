@@ -33,7 +33,7 @@ export function ScreenProvider({
   // A template offer belongs to this screen: it must not outlive the workspace or document.
   useEffect(() => () => offerProposal(null), []);
   // Closed until the browser says otherwise (read after the first paint, so the server and the
-  // client draw the same). It only ever opens here: a person or a problem that opened it first wins.
+  // client draw the same; a person who left it open sees it open a moment later, on purpose). It only ever opens here: a person or a problem that opened it first wins.
   useEffect(() => {
     if (readConfigurationOpen()) dispatch({ type: "setConfigurationOpen", open: true });
   }, []);

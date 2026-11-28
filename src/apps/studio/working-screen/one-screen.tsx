@@ -143,7 +143,7 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
       </main>
       {wide ? (
         <aside
-          aria-label="Assistant"
+          aria-label="Conversation and configuration"
           className="flex min-h-0 min-w-[480px] flex-[0_1_560px] flex-col border-l border-border-subtle"
         >
           <FieldColumn definition={definition} />

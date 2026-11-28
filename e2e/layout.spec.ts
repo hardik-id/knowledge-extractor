@@ -53,7 +53,7 @@ for (const size of [
 
       await page.goto(extractPath(workspace.id));
       await expectWorkingScreen(page);
-      expect(await barHeight(page), "the top bar on the working screen").toBeLessThan(90);
+      expect(await barHeight(page), "the top bar on the working screen is one row").toBeLessThan(56);
       // With unsaved changes the version text is longer: the bar stays one row.
       await editPrompt(page, "Something else to extract");
       await expect(page.getByTestId("version-line")).toContainText("unsaved changes");
