@@ -145,6 +145,8 @@ describe("parseEnv apps", () => {
 
   test("an unknown id or an empty list fails and names the variable", () => {
     assert.throws(() => parseEnv({ apps: "nope" }), /NEXT_PUBLIC_APPS.*"nope"/);
+    // Access is in every deployment: it is not one to choose.
+    assert.throws(() => parseEnv({ apps: "studio,access" }), /NEXT_PUBLIC_APPS.*"access"/);
     assert.throws(() => parseEnv({ apps: "studio," }), /NEXT_PUBLIC_APPS/);
     assert.throws(() => parseEnv({ apps: "" }), /NEXT_PUBLIC_APPS/);
     assert.throws(() => parseEnv({ apps: "  " }), /NEXT_PUBLIC_APPS/);

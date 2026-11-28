@@ -31,6 +31,7 @@ const nextConfig: NextConfig = {
         destination: "/studio/workspaces/:id",
         permanent: false,
       },
+      { source: "/access", destination: "/access/members", permanent: false },
       { source: "/studio/projects", destination: "/studio", permanent: false },
       {
         source: "/studio/projects/:path*",

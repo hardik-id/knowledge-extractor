@@ -4,7 +4,7 @@
  * `NEXT_PUBLIC_*` values into the browser bundle.
  */
 
-import { APP_IDS, type AppId } from "../apps/app-ids";
+import { APP_IDS, type OfferableAppId } from "../apps/app-ids";
 
 export type BackendMode = "mock" | "http";
 
@@ -29,7 +29,7 @@ export interface Env {
   devAccessToken: string | null;
   authMode: AuthMode;
   /** The apps the shell offers, in order. Every app when the setting is left out. */
-  apps: AppId[];
+  apps: OfferableAppId[];
   /** Set only when the auth mode is `entra`. */
   entra: EntraSettings | null;
 }
@@ -60,13 +60,13 @@ function requireUrl(name: string, value: string, protocols: string[]): string {
   return value.replace(/\/+$/, "");
 }
 
-function parseApps(value: string | undefined): AppId[] {
+function parseApps(value: string | undefined): OfferableAppId[] {
   if (value === undefined || value.trim() === "") {
     // An empty value is left-out only for an unset variable; a set-but-blank one is an empty list.
     if (value === undefined) return [...APP_IDS];
     throw new Error(`NEXT_PUBLIC_APPS is empty: list at least one of ${APP_IDS.join(", ")}.`);
   }
-  const apps: AppId[] = [];
+  const apps: OfferableAppId[] = [];
   for (const part of value.split(",")) {
     const id = part.trim();
     if (!(APP_IDS as readonly string[]).includes(id)) {
@@ -74,7 +74,7 @@ function parseApps(value: string | undefined): AppId[] {
         `NEXT_PUBLIC_APPS has an unknown app "${id}": use ${APP_IDS.join(", ")}, comma-separated.`,
       );
     }
-    if (!apps.includes(id as AppId)) apps.push(id as AppId);
+    if (!apps.includes(id as OfferableAppId)) apps.push(id as OfferableAppId);
   }
   return apps;
 }
