@@ -431,7 +431,7 @@ describe("the mock's person and roles", () => {
     assert.equal(person.platformAdmin, true);
     assert.deepEqual(
       person.tenants.map((t) => [t.name, t.role]),
-      [["Default", "member"]],
+      [["Default", "admin"]],
     );
     const workspace = await services.workspaces.create({ name: "Mine" });
     assert.equal(workspace.tenantId, person.tenants[0].id);
