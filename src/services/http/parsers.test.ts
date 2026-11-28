@@ -1,3 +1,4 @@
+import { stubMeBody } from "../../../e2e-status/me-fixture";
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { isApiError } from "@/lib/api/api-error";
@@ -829,6 +830,11 @@ describe("parsePerson", () => {
     });
     assert.equal(parsePerson({ ...wire, platform_admin: true }).platformAdmin, true);
     assert.deepEqual(parsePerson({ ...wire, tenants: [] }).tenants, []);
+  });
+
+  test("the e2e stub's /me body parses", () => {
+    assert.equal(parsePerson(stubMeBody(true)).platformAdmin, true);
+    assert.equal(parsePerson(stubMeBody(false)).platformAdmin, false);
   });
 
   test("a missing flag, tenants that are not a list or an unknown tenant role is invalid", () => {

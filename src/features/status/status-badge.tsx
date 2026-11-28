@@ -63,6 +63,7 @@ export function BackendStatusBadge({
   className?: string;
 }) {
   const view = useBackendStatus();
+  useMe(); // the badge is always mounted: who the person is loads when the app opens
   const [open, setOpen] = useState(false);
   const headingId = useId();
 
@@ -128,8 +129,8 @@ function StatusPanel({
   // Read once per opening: the panel is not a clock.
   const [now] = useState(() => Date.now());
   const { status } = view;
-  const { person } = useMe();
-  const mayTest = mayTestConnections(person);
+  const { person, failed: meFailed } = useMe();
+  const mayTest = mayTestConnections(meFailed ? undefined : person);
   return (
     <div className="flex flex-col gap-3 p-3">
       <h2 id={headingId} className="text-section font-semibold text-ink-heading">
@@ -161,6 +162,11 @@ function StatusPanel({
               <PartRow key={part.id} part={part} now={now} />
             ))}
           </ul>
+          {status.environment !== "mock" && meFailed && (
+            <p className="text-small text-ink-muted">
+              Couldn&apos;t check whether you may test the connections.
+            </p>
+          )}
           {status.environment !== "mock" && mayTest && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <Button variant="secondary" disabled={view.testing} onClick={view.test}>

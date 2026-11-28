@@ -72,4 +72,35 @@ describe("createMeStore", () => {
     session.resume();
     assert.equal(calls.length, 0);
   });
+
+  test("a resume forgets the previous person, and a failed read leaves nobody", async () => {
+    const { read, calls } = manualRead();
+    const session = createSessionSignal();
+    const store = createMeStore(read, session);
+    store.ensureLoaded();
+    calls[0].resolve({ ...person("Admin"), platformAdmin: true });
+    await tick();
+    session.end();
+    session.resume();
+    assert.equal(store.getSnapshot().person, undefined);
+    calls[1].reject(new ApiError({ status: 500, code: "server_error", message: "no" }));
+    await tick();
+    assert.equal(store.getSnapshot().person, undefined);
+    assert.equal(store.getSnapshot().failed, true);
+  });
+
+  test("a failed read is tried again on the next ensureLoaded", async () => {
+    const { read, calls } = manualRead();
+    const store = createMeStore(read, createSessionSignal());
+    store.ensureLoaded();
+    calls[0].reject(new ApiError({ status: 500, code: "server_error", message: "no" }));
+    await tick();
+    store.ensureLoaded();
+    assert.equal(calls.length, 2);
+    calls[1].resolve(person("Ada"));
+    await tick();
+    assert.equal(store.getSnapshot().person?.name, "Ada");
+    store.ensureLoaded();
+    assert.equal(calls.length, 2);
+  });
 });

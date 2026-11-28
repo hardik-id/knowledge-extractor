@@ -1,5 +1,6 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { clickUntilOpen } from "../e2e/support/first-click";
+import { stubMeBody } from "./me-fixture";
 import { STUB_API_ORIGIN } from "../playwright.status.config";
 
 export const SHOTS = process.env.STATUS_SHOTS ?? "";
@@ -73,15 +74,7 @@ export async function stubApi(context: BrowserContext, options: StubOptions): Pr
     const request = route.request();
     const path = new URL(request.url()).pathname.replace(/^\/api\/v1/, "");
     if (path === "/me" && request.method() === "GET") {
-      return route.fulfill({
-        json: {
-          id: 1,
-          name: "Stub person",
-          preferred_username: "stub@example.com",
-          platform_admin: options.platformAdmin ?? true,
-          tenants: [{ id: "tenant-1", name: "Default", role: "member" }],
-        },
-      });
+      return route.fulfill({ json: stubMeBody(options.platformAdmin ?? true) });
     }
     if (path === "/status" && request.method() === "GET") {
       stub.calls.push("GET /status");

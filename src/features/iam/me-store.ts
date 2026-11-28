@@ -12,7 +12,7 @@ export interface MeSnapshot {
 export interface MeStore {
   getSnapshot(): MeSnapshot;
   subscribe(listener: () => void): () => void;
-  /** Reads who the person is once, when the app opens; later calls do nothing. */
+  /** Reads who the person is once, when the app opens; later calls do nothing, except to try again after a failed read. */
   ensureLoaded(): void;
 }
 
@@ -47,13 +47,17 @@ export function createMeStore(
       },
       (error: unknown) => {
         if (mine !== round || isAbortError(error) || isUnauthorized(error)) return;
-        set({ failed: true });
+        // Unknown, not the previous person: a failed read must not leave their roles on screen.
+        set({ person: undefined, failed: true });
       },
     );
   };
 
   session.onResume(() => {
-    if (started) load();
+    if (!started) return;
+    // Someone else may have signed in: forget the previous person until the API says who this is.
+    set({ person: undefined });
+    load();
   });
 
   return {
@@ -65,7 +69,7 @@ export function createMeStore(
       };
     },
     ensureLoaded: () => {
-      if (started) return;
+      if (started && !snapshot.failed) return;
       started = true;
       load();
     },
