@@ -35,7 +35,6 @@ export function SuggestionCard({
     <div
       role="group"
       aria-label="Suggestion"
-      data-testid="suggestion-card"
       className="flex max-w-[92%] flex-col gap-2 rounded-panel border border-border-subtle bg-surface-tint px-3 py-2"
     >
       {open && info && (

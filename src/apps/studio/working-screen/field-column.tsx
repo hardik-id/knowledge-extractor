@@ -53,8 +53,11 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
   // "Review" on a card: open Configuration (without changing what the person chose to remember)
   // and put the focus in the table, on the first change when there is one.
   const [reviewing, setReviewing] = useState(0);
+  const handled = useRef(0);
   useEffect(() => {
-    if (reviewing === 0 || !configurationOpen) return;
+    // One-shot: a later opening of Configuration by any other route must not move the focus.
+    if (reviewing === handled.current || !configurationOpen) return;
+    handled.current = reviewing;
     let frames = 0;
     let frame = 0;
     const step = () => {

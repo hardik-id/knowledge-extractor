@@ -205,6 +205,13 @@ test("Review opens Configuration with the focus in the table", async ({
   await expect(dock.bar).toBeVisible();
   const table = page.getByRole("region", { name: "Field list" });
   await expect.poll(() => table.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  // Closing and reopening Configuration later does not pull the focus into the table again.
+  const row = configurationRow(page);
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "false");
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  await expect(row).toBeFocused();
   // Each change has keep or discard exactly as before.
   await dock.newFieldRows.first().getByRole("button", { name: "Keep" }).click();
   await expect(dock.card).toContainText("1 kept, 1 waiting");

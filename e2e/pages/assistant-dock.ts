@@ -29,7 +29,7 @@ export class AssistantDock {
 
   /** The card of a suggestion in the conversation (the newest one). */
   get card() {
-    return this.conversation.getByTestId("suggestion-card").last();
+    return this.conversation.getByRole("group", { name: "Suggestion" }).last();
   }
 
   /** The lines of a change with its own Keep (in the table or the bar), not the lines of the card. */
