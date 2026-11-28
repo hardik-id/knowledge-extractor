@@ -121,7 +121,7 @@ test.describe("keeping or discarding one change at a time", () => {
     const dock = new AssistantDock(page);
     await openOneScreen(page, workspace);
     await dock.ask("make the status exact text");
-    const line = dock.column.getByRole("listitem").filter({ hasText: /^Change\b/ });
+    const line = dock.changeLines.filter({ hasText: /^Change\b/ });
     await expect(line.first()).toBeVisible();
     await line.first().getByRole("button", { name: "Keep" }).click();
     await expect(line).toHaveCount(0);
@@ -143,7 +143,7 @@ test.describe("keeping or discarding one change at a time", () => {
     const fields = dock.column.getByRole("textbox", { name: /^Name of field/ });
     const before = await fields.count();
     await dock.ask("remove the title field");
-    const line = dock.column.getByRole("listitem").filter({ hasText: /^Remove\b/ });
+    const line = dock.changeLines.filter({ hasText: /^Remove\b/ });
     await expect(line).toBeVisible();
     await expect(line.getByRole("button", { name: "Keep", exact: true })).toHaveCount(0);
     await line.getByRole("button", { name: "Keep removal" }).click();

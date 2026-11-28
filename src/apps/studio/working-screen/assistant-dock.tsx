@@ -23,21 +23,30 @@ import { useAssistant } from "@/features/extraction/use-assistant";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { describeApiError } from "@/services/errors";
 import { StartPanel } from "../start/start-panel";
-import { resetOutcomes, useProposalSync } from "./use-proposal";
+import { useScreen } from "./screen-state";
+import { SuggestionCard } from "./suggestion-card";
+import { resetOutcomes, useProposalSync, type ProposalInfo } from "./use-proposal";
 
 /**
  * The assistant in the column, always open: its header with the menu, the conversation filling the
  * height (oldest message first, the newest in view) and the input at the bottom. With nothing
  * configured the conversation starts with the start content (ask, templates, add a field).
- * Its proposals are shown in the table, not here.
+ * A suggestion is a card under the assistant's message; a template chosen at the start is a card
+ * at the end of the conversation.
  */
 export function AssistantDock({
   definition,
   starting,
+  onDecided,
+  onReview,
 }: {
   definition: ExtractionDefinitionState;
   /** Nothing saved, drafted or suggested: the conversation opens with the start content. */
   starting: boolean;
+  /** Said to screen readers when a decision is made on a card. */
+  onDecided?: (said: string) => void;
+  /** "Review" on a card: open Configuration and put the focus in the table. */
+  onReview: () => void;
 }) {
   const assistant = useAssistant(definition.draft ?? undefined);
   const { messages, busy, activity } = assistant;
@@ -46,6 +55,10 @@ export function AssistantDock({
     messages,
     !assistant.isLoading && !assistant.error,
   );
+  const { proposal } = useScreen();
+  const waiting = (proposal as ProposalInfo | null)?.messageId ?? null;
+  // A template chosen at the start waits like a suggestion, with no message of its own.
+  const offered = waiting !== null && !messages.some((m) => m.id === waiting);
   const [text, setText] = useState("");
   const [confirming, setConfirming] = useState(false);
   const id = useId();
@@ -113,7 +126,7 @@ export function AssistantDock({
             aria-busy={assistant.isLoading}
             className="flex flex-col gap-3"
           >
-            {messages.length === 0 && !assistant.isLoading && !starting && (
+            {messages.length === 0 && !assistant.isLoading && !starting && !offered && (
               <p className="text-small text-ink-muted">
                 Describe what you want to extract, or ask for a change.
               </p>
@@ -124,19 +137,25 @@ export function AssistantDock({
                 <div key={m.id} className="flex flex-col gap-1">
                   <Message message={m} />
                   {shown && (
-                    <p
-                      className={
-                        shown.outcome === "open"
-                          ? "text-small font-medium text-warning"
-                          : "text-small text-ink-muted"
-                      }
-                    >
-                      {shown.line}
-                    </p>
+                    <SuggestionCard
+                      definition={definition}
+                      waiting={waiting === m.id}
+                      outcome={{ open: shown.outcome === "open", line: shown.line }}
+                      onDecided={onDecided}
+                      onReview={onReview}
+                    />
                   )}
                 </div>
               );
             })}
+            {offered && (
+              <SuggestionCard
+                definition={definition}
+                waiting
+                onDecided={onDecided}
+                onReview={onReview}
+              />
+            )}
             {(activity === "working" || activity === "awaited") && <AssistantWorking />}
           </div>
         </div>
