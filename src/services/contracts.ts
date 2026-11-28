@@ -1,3 +1,4 @@
+import type { AccessApi } from "./access";
 import { STAGE_IDS, type SourceFile, type SourceKind, type StageId } from "@/types/pipeline";
 
 /**
@@ -734,4 +735,6 @@ export interface Services {
   runs: RunsApi;
   extraction: ExtractionApi;
   events: RunEvents;
+  /** Who has access: members, tenants, people, platform admins, activity. See `access.ts`. */
+  access: AccessApi;
 }

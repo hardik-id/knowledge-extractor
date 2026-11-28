@@ -714,3 +714,6 @@ export function parsePublishResult(value: unknown): PublishResult {
     examples: number(o.examples, "publish.examples"),
   };
 }
+
+/** The checks above, for the parsers in other files (`access-parsers.ts`). */
+export { array, bool, invalid, nullable, number, object, oneOf, string };

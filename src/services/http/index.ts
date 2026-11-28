@@ -14,6 +14,7 @@ import type {
   SourceCatalog,
 } from "../contracts";
 import { isApiError } from "@/lib/api/api-error";
+import { createHttpAccessApi } from "./access";
 import {
   parseAssistantEventMessage,
   parseBackendStatus,
@@ -391,5 +392,6 @@ export function createHttpServices(options: HttpRunEventsOptions): Services {
     runs: createHttpRunsApi(options.client),
     extraction: createHttpExtractionApi(options.client),
     events: createHttpRunEvents(options),
+    access: createHttpAccessApi(options.client),
   };
 }
