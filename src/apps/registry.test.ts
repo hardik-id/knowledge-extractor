@@ -18,6 +18,12 @@ describe("appForPath", () => {
     assert.equal(appForPath("/other"), undefined);
   });
 
+  test("matches the Access app, which every deployment has", () => {
+    assert.equal(appForPath("/access")?.id, "access");
+    assert.equal(appForPath("/access/members")?.id, "access");
+    assert.equal(appForPath("/accessible"), undefined);
+  });
+
   test("every app's href belongs to that app", () => {
     for (const app of ALL_APPS) assert.equal(appForPath(app.href)?.id, app.id);
   });
@@ -42,6 +48,18 @@ describe("offered apps", () => {
     assert.equal(isHiddenAppPath("/pipeline", studioOnly), true);
     assert.equal(isHiddenAppPath("/studio", studioOnly), false);
     assert.equal(isHiddenAppPath("/other", studioOnly), false);
+  });
+
+  test("Access is never hidden, whatever the setting offers", () => {
+    assert.equal(isHiddenAppPath("/access/members", studioOnly), false);
+    assert.equal(
+      studioOnly.some((app) => app.id === "access"),
+      false,
+    );
+    assert.equal(
+      offeredApps(parseEnv({}).apps).some((app) => app.id === "access"),
+      false,
+    );
   });
 
   test("the setting's order is the order offered", () => {

@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check, ChevronsUpDown, FlaskConical } from "lucide-react";
 import { APP_ICONS } from "@/apps/icons";
-import { APPS, appForPath } from "@/apps/registry";
+import { mayOpenAccess } from "@/apps/access/access-rules";
+import { ACCESS_APP, APPS, appForPath } from "@/apps/registry";
+import { useMe } from "@/features/iam/use-me";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -34,8 +36,12 @@ export function AppSwitcher({
   markOnly?: boolean;
 }) {
   const current = appForPath(usePathname()) ?? APPS[0];
+  // Access is offered to admins only (the API still checks every call); until the API has said who
+  // the person is, it is not offered.
+  const { person } = useMe();
+  const offered = mayOpenAccess(person) ? [...APPS, ACCESS_APP] : APPS;
   // One app on offer: nothing to switch to, so only the product mark and name.
-  if (APPS.length < 2) {
+  if (offered.length < 2) {
     return (
       <div className="flex min-w-0 items-center gap-2 px-2 text-body font-semibold text-ink-heading">
         <Mark />
@@ -59,7 +65,7 @@ export function AppSwitcher({
         <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[min(22rem,calc(100vw-2rem))]">
-        {APPS.map((app) => {
+        {offered.map((app) => {
           const Icon = APP_ICONS[app.id];
           const isCurrent = app.id === current.id;
           return (
