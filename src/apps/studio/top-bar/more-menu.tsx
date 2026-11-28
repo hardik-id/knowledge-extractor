@@ -11,12 +11,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TemplateDialog } from "@/features/extraction/template-dialog";
 import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
+import { useMay } from "../use-may";
 
 /** The "more" menu of the top bar: Templates, which opens its dialog. */
 export function MoreMenu({ extraction }: { extraction: ExtractionRun }) {
   const [templates, setTemplates] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
-  if (!extraction.definition.saved) return null;
+  const mayEdit = useMay("workspace.edit");
+  // Every item changes the workspace: a menu left with none is not shown.
+  if (!extraction.definition.saved || !mayEdit) return null;
   return (
     <>
       <DropdownMenu modal={false}>

@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { followRefusal } from "@/features/iam/follow-refusal";
 import { isUnauthorized } from "@/lib/api/api-error";
 import { appSession } from "@/lib/auth/session-signal";
 import { describeApiError, type ExtractionNoun } from "@/services/errors";
@@ -12,7 +13,14 @@ export function isSessionEnd(error: unknown): boolean {
 }
 
 /** `toast.error` for a failed call, except when the session has ended (see `isSessionEnd`). */
-export function toastFailure(title: string, error: unknown, noun?: ExtractionNoun): void {
+export function toastFailure(
+  title: string,
+  error: unknown,
+  noun?: ExtractionNoun,
+  /** False for a call that is not about the open workspace (a 403 then says nothing of its role). */
+  inWorkspace = true,
+): void {
   if (isSessionEnd(error)) return;
+  if (inWorkspace) followRefusal(error);
   toast.error(title, { description: describeApiError(error, noun) });
 }

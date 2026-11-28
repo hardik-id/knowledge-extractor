@@ -31,7 +31,14 @@ import { useScreenControls } from "./screen-state";
  * 4000 characters"), open it holds the strategy and, unless it is automatic, the size. Changes go
  * into the draft like any other. Hidden with the prompt line: while there is nothing to extract yet.
  */
-export function ChunkingRow({ definition }: { definition: ExtractionDefinitionState }) {
+export function ChunkingRow({
+  definition,
+  readOnly = false,
+}: {
+  definition: ExtractionDefinitionState;
+  /** Without the right to edit: the line as text, nothing to open. */
+  readOnly?: boolean;
+}) {
   const { draft, setDraft, errors, showErrors, chunkingProblem } = definition;
   const controls = useScreenControls();
   const [localOpen, setLocalOpen] = useState(false);
@@ -55,6 +62,15 @@ export function ChunkingRow({ definition }: { definition: ExtractionDefinitionSt
 
   if (!draft) return null;
   if (!draft.prompt.trim() && draft.recordTypes.length === 0) return null;
+
+  if (readOnly) {
+    return (
+      <div className="flex items-center gap-2 border-b border-border-subtle py-1.5 pr-3 pl-4">
+        <span className="text-small whitespace-nowrap text-ink-muted">Chunking</span>
+        <span className="min-w-0 flex-1 truncate">{chunkingSummary(draft.chunking)}</span>
+      </div>
+    );
+  }
 
   const { strategy, size } = draft.chunking;
   const problem = chunkingProblem || errors.chunkSize;

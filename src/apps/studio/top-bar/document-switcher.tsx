@@ -15,6 +15,7 @@ import { usePipelineStore } from "@/store/pipeline-store";
 import type { DocumentState, DocumentStateKind } from "./document-states";
 import { DocumentsSheet } from "../documents-sheet";
 import { useDocumentStates } from "./use-document-states";
+import { useMay } from "../use-may";
 
 const TONE: Record<DocumentStateKind, string> = {
   "not-run": "text-ink-muted",
@@ -58,6 +59,7 @@ export function DocumentSwitcher() {
   const activeDocId = usePipelineStore((s) => s.activeDocId);
   const setActiveDoc = usePipelineStore((s) => s.setActiveDoc);
   const states = useDocumentStates();
+  const mayEdit = useMay("workspace.edit");
   const [picking, setPicking] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const found = runFiles.findIndex((f) => f.id === activeDocId);
@@ -112,14 +114,18 @@ export function DocumentSwitcher() {
               </DropdownMenuItem>
             );
           })}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="gap-2 px-2.5 py-2 font-medium text-link"
-            onSelect={() => setPicking(true)}
-          >
-            <Plus aria-hidden />
-            Add or remove documents
-          </DropdownMenuItem>
+          {mayEdit && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2 px-2.5 py-2 font-medium text-link"
+                onSelect={() => setPicking(true)}
+              >
+                <Plus aria-hidden />
+                Add or remove documents
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <Button
@@ -140,7 +146,9 @@ export function DocumentSwitcher() {
       >
         <ChevronRight aria-hidden />
       </Button>
-      <DocumentsSheet open={picking} onOpenChange={setPicking} returnFocusTo={trigger} />
+      {mayEdit && (
+        <DocumentsSheet open={picking} onOpenChange={setPicking} returnFocusTo={trigger} />
+      )}
     </div>
   );
 }

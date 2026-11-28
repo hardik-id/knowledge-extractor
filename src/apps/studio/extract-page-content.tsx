@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/pipeline/empty-state";
 import { useExtractionRun } from "@/features/extraction/use-extraction-run";
+import { useFollowRefusal } from "@/features/iam/follow-refusal";
 import { useOnSessionResumed, useSessionEnded } from "@/features/auth/use-session";
 import { CellStatusLabel } from "@/components/pipeline/cell-status-label";
 import { useShallow } from "zustand/react/shallow";
@@ -31,6 +32,8 @@ export function ExtractPageContent() {
   const loadRun = usePipelineStore((s) => s.loadRun);
   const error = usePipelineStore((s) => s.runError);
   const sessionEnded = useSessionEnded();
+  // A refused action means the role changed: read the workspace again.
+  useFollowRefusal();
 
   // The token was refused: the sign-in surface is up, and this loads again once the person is back.
   useOnSessionResumed(() => {

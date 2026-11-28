@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { AssistantWorking, Message } from "@/features/extraction/assistant-panel";
+import { useMay } from "@/features/iam/use-may";
 import { useAssistant } from "@/features/extraction/use-assistant";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { describeApiError } from "@/services/errors";
@@ -55,6 +56,7 @@ export function AssistantDock({
     messages,
     !assistant.isLoading && !assistant.error,
   );
+  const mayEdit = useMay("workspace.edit");
   const { proposal } = useScreen();
   const waiting = (proposal as ProposalInfo | null)?.messageId ?? null;
   // A template chosen at the start waits like a suggestion, with no message of its own.
@@ -86,21 +88,23 @@ export function AssistantDock({
           Assistant
         </h2>
         <span className="flex-1" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="More about the conversation">
-              <MoreHorizontal aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-44 whitespace-nowrap">
-            <DropdownMenuItem
-              disabled={busy || messages.length === 0}
-              onSelect={() => setConfirming(true)}
-            >
-              Clear conversation
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {mayEdit && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="More about the conversation">
+                <MoreHorizontal aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-44 whitespace-nowrap">
+              <DropdownMenuItem
+                disabled={busy || messages.length === 0}
+                onSelect={() => setConfirming(true)}
+              >
+                Clear conversation
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       {assistant.error ? (
         <div className="flex min-h-0 flex-1 flex-col items-start gap-2 px-4 pb-2">
@@ -114,7 +118,7 @@ export function AssistantDock({
         </div>
       ) : (
         <div ref={log} className="min-h-0 flex-1 overflow-y-auto px-4 pb-1">
-          {starting && (
+          {starting && mayEdit && (
             <div className="pt-2 pb-4">
               <StartPanel definition={definition} assistant={assistant} />
             </div>
@@ -126,11 +130,18 @@ export function AssistantDock({
             aria-busy={assistant.isLoading}
             className="flex flex-col gap-3"
           >
-            {messages.length === 0 && !assistant.isLoading && !starting && !offered && (
-              <p className="text-small text-ink-muted">
-                Describe what you want to extract, or ask for a change.
-              </p>
-            )}
+            {messages.length === 0 &&
+              !assistant.isLoading &&
+              !offered &&
+              (mayEdit ? (
+                !starting && (
+                  <p className="text-small text-ink-muted">
+                    Describe what you want to extract, or ask for a change.
+                  </p>
+                )
+              ) : (
+                <p className="text-small text-ink-muted">No conversation yet.</p>
+              ))}
             {messages.map((m) => {
               const shown = m.proposal ? outcomeOf(m) : null;
               return (
@@ -160,28 +171,30 @@ export function AssistantDock({
           </div>
         </div>
       )}
-      <form
-        className={`flex shrink-0 items-center gap-2 border-t border-border-subtle py-2 pr-3 pl-4 ${
-          // Next's development indicator sits at the bottom left: on a phone-wide overlay the
-          // row stays above it, at its full width. A production build has no indicator.
-          process.env.NODE_ENV === "development" ? "max-sm:mb-16" : ""
-        }`}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <Input
-          value={text}
-          disabled={busy}
-          aria-label="Ask the assistant"
-          placeholder={messages.length > 0 ? "Ask for something else" : "Ask the assistant"}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <Button type="submit" variant="outline" disabled={busy || text.trim() === ""}>
-          Send
-        </Button>
-      </form>
+      {mayEdit && (
+        <form
+          className={`flex shrink-0 items-center gap-2 border-t border-border-subtle py-2 pr-3 pl-4 ${
+            // Next's development indicator sits at the bottom left: on a phone-wide overlay the
+            // row stays above it, at its full width. A production build has no indicator.
+            process.env.NODE_ENV === "development" ? "max-sm:mb-16" : ""
+          }`}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+        >
+          <Input
+            value={text}
+            disabled={busy}
+            aria-label="Ask the assistant"
+            placeholder={messages.length > 0 ? "Ask for something else" : "Ask the assistant"}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <Button type="submit" variant="outline" disabled={busy || text.trim() === ""}>
+            Send
+          </Button>
+        </form>
+      )}
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
           <DialogHeader>

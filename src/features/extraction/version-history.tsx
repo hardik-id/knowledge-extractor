@@ -17,6 +17,7 @@ import { services } from "@/services";
 import type { DefinitionVersionSummary, ExtractionDefinition } from "@/services/contracts";
 import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
+import { useMay } from "@/features/iam/use-may";
 import { formatSavedDate, versionLine } from "./version-format";
 import type { ExtractionDefinitionState } from "./use-extraction-definition";
 
@@ -150,6 +151,7 @@ function VersionView({
     services.extraction.getDefinitionVersion(runId, version, signal),
   );
   const [confirming, setConfirming] = useState(false);
+  const mayEdit = useMay("workspace.edit");
 
   const restore = async () => {
     const result = await definition.restore(version);
@@ -182,7 +184,7 @@ function VersionView({
       ) : (
         <ReadOnlyVersion version={data} />
       )}
-      {data && !isLatest && (
+      {data && !isLatest && mayEdit && (
         <div className="space-y-3 border-t border-border-subtle pt-4">
           {confirming && (
             <p role="alert" className="text-body text-ink">

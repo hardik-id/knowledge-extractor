@@ -12,12 +12,15 @@ export interface Person {
  * The one place that gets a token. It asks the running backend to mint a dev token
  * for the person. If the way to get a token changes, change only this function.
  */
-export function mintToken(oid: string): string {
+export function mintToken(oid: string, name?: string): string {
   const cwd = apiDir();
   try {
     return execFileSync(
       "docker",
-      ["compose", "exec", "-T", "api", "python", "manage.py", "mint_dev_token", "--oid", oid],
+      [
+        ...["compose", "exec", "-T", "api", "python", "manage.py", "mint_dev_token", "--oid", oid],
+        ...(name ? ["--name", name] : []),
+      ],
       { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     ).trim();
   } catch (failure) {
@@ -45,4 +48,24 @@ export function platformAdmin(): Person {
 export function newPerson(): Person {
   const oid = randomUUID();
   return { oid, token: mintToken(oid) };
+}
+
+/** A test person with a name and a sign-in name of their own. */
+export interface NamedPerson extends Person {
+  name: string;
+  preferredUsername: string;
+}
+
+/**
+ * A person nobody has used before, with a name of their own ("Ada 3f9c2a1b"). Every other test
+ * person has the development issuer's one name and sign-in name, and the backend finds a person by
+ * sign-in name only when exactly one person has it. Use this where a test adds a person by their
+ * sign-in name or picks them from a list of people. The sign-in name is what the development
+ * issuer makes of the name: its letters and digits in lower case, at `dev.invalid`.
+ */
+export function namedPerson(first = "Person"): NamedPerson {
+  const oid = randomUUID();
+  const name = `${first} ${oid.slice(0, 8)}`;
+  const local = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return { oid, token: mintToken(oid, name), name, preferredUsername: `${local}@dev.invalid` };
 }

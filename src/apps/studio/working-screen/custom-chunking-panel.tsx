@@ -11,6 +11,7 @@ import { Problem } from "@/features/extraction/field-table";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { isSessionEnd } from "@/features/auth/report-failure";
 import { useExtractionInput } from "@/features/run/use-extraction-input";
+import { useMay } from "@/features/iam/use-may";
 import { services } from "@/services";
 import {
   CUSTOM_INSTRUCTION_MAX,
@@ -80,6 +81,7 @@ export function CustomChunkingPanel({
   // Leaving the workspace, or the row, abandons the call: its answer goes nowhere.
   useEffect(() => () => controller.current?.abort(), []);
 
+  const mayRun = useMay("workspace.run");
   if (!draft) return null;
   const applied = draft.chunking.custom ?? null;
   const size = draft.chunking.size;
@@ -171,17 +173,19 @@ export function CustomChunkingPanel({
       {sizeControl}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          ref={generateButton}
-          type="button"
-          variant="secondary"
-          disabled={!canGenerate}
-          aria-disabled={!canGenerate}
-          onClick={generate}
-        >
-          {running && <LoaderCircle aria-hidden className="animate-spin" />}
-          Generate
-        </Button>
+        {mayRun && (
+          <Button
+            ref={generateButton}
+            type="button"
+            variant="secondary"
+            disabled={!canGenerate}
+            aria-disabled={!canGenerate}
+            onClick={generate}
+          >
+            {running && <LoaderCircle aria-hidden className="animate-spin" />}
+            Generate
+          </Button>
+        )}
         <span role="status" className="text-small text-ink-muted">
           {running
             ? "Writing and testing the splitting code… this can take a minute"

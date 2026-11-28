@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useMay } from "@/features/iam/use-may";
 import { FieldTable, Problem } from "@/features/extraction/field-table";
 import { fieldLabels } from "@/features/extraction/labels";
 import { moveField, removeField, updateField } from "@/features/extraction/definition-draft";
@@ -12,6 +13,7 @@ import { ChunkingRow } from "./chunking-row";
 import { PromptLine } from "./prompt-line";
 import { focusAssistantInputWhenMounted, type ProposalInfo } from "./use-proposal";
 import { ProposalBar, ProposalLines, ProposedFieldRows, ProposedTypes } from "./proposal-table";
+import { ReadOnlyFields } from "./read-only-fields";
 import { RecordTypeBar } from "./record-type-bar";
 import { useFieldSelection } from "./use-field-selection";
 import { useScreenControls, useScreen } from "./screen-state";
@@ -23,10 +25,14 @@ import { useScreenControls, useScreen } from "./screen-state";
  * and the assistant keeps at least 240px and 40% of the column.
  */
 export function FieldColumn({ definition }: { definition: ExtractionDefinitionState }) {
-  const { draft, saved, setDraft, errors, showErrors, valid, chunkingProblem } = definition;
+  const { saved, setDraft, errors, showErrors, valid, chunkingProblem } = definition;
   const { selectedTypeId, selectedFieldId, proposal, configurationOpen, setConfigurationOpen } =
     useScreen();
   const controls = useScreenControls();
+  const mayEdit = useMay("workspace.edit");
+  // Someone who may not edit reads what is saved: a draft left from before the role changed is not it.
+  const draft = mayEdit ? definition.draft : (saved ?? definition.draft);
+  const shown = mayEdit || !saved ? definition : { ...definition, draft: saved };
   const scroller = useRef<HTMLDivElement>(null);
   const selection = useFieldSelection();
   const panelId = useId();
@@ -83,7 +89,8 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
 
   if (!draft) return null;
   const type = draft.recordTypes.find((t) => t.id === selectedTypeId);
-  const suggested = (proposal as ProposalInfo | null)?.changes.length ?? 0;
+  // A suggestion is only for someone who may keep or discard it.
+  const suggested = mayEdit ? ((proposal as ProposalInfo | null)?.changes.length ?? 0) : 0;
   const Chevron = configurationOpen ? ChevronDown : ChevronRight;
 
   return (
@@ -107,7 +114,37 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
         data-testid="configuration-panel"
         className="max-h-[calc(100%-max(240px,40%))] min-h-0 shrink overflow-y-auto border-b border-border-subtle"
       >
-        {configurationOpen && (
+        {configurationOpen && !mayEdit && (
+          <div
+            ref={scroller}
+            tabIndex={-1}
+            role="region"
+            aria-label="Field list"
+            className="outline-none"
+          >
+            {!starting && <RecordTypeBar definition={shown} readOnly />}
+            {!starting && <PromptLine definition={shown} readOnly />}
+            {!starting && <ChunkingRow definition={shown} readOnly />}
+            {!type ? (
+              <p className="px-4 py-4 text-ink-muted">No fields yet.</p>
+            ) : type.fields.length === 0 ? (
+              <p className="px-4 py-4 text-small text-ink-muted">
+                No fields. A record is then just the block of text it covers.
+              </p>
+            ) : (
+              <ReadOnlyFields
+                caption={type.name || "this record type"}
+                fields={type.fields}
+                colourDot={(fieldId) =>
+                  (savedLabels.get(fieldId) ?? draftLabels.get(fieldId))!.style
+                }
+                selectedFieldId={selectedFieldId}
+                onSelect={selection.toggle}
+              />
+            )}
+          </div>
+        )}
+        {configurationOpen && mayEdit && (
           <>
             {!starting && <RecordTypeBar definition={definition} />}
             {!starting && <PromptLine definition={definition} />}

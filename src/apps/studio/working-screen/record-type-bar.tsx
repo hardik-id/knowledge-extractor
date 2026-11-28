@@ -30,7 +30,14 @@ type Editing = "name" | "description" | null;
  * when there are several types; and the "Record type options" menu (rename, description, add and
  * remove a record type). Every change goes into the draft.
  */
-export function RecordTypeBar({ definition }: { definition: ExtractionDefinitionState }) {
+export function RecordTypeBar({
+  definition,
+  readOnly = false,
+}: {
+  definition: ExtractionDefinitionState;
+  /** Without the right to edit: the name and the switch between types only, no Add field and no options. */
+  readOnly?: boolean;
+}) {
   const { selectedTypeId, setSelectedTypeId } = useScreen();
   const { draft, setDraft, errors, showErrors } = definition;
   const [editing, setEditing] = useState<Editing>(null);
@@ -133,44 +140,48 @@ export function RecordTypeBar({ definition }: { definition: ExtractionDefinition
             }))}
           />
         )}
-        <Button variant="ghost" size="sm" onClick={onAddField}>
-          <Plus data-icon="inline-start" />
-          Add field
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button ref={trigger} variant="ghost" size="icon-sm" aria-label="Record type options">
-              <MoreHorizontal aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="w-48"
-            onCloseAutoFocus={(e) => {
-              // After "Rename" or "Edit description" the focus belongs to the input just opened.
-              if (!keepFocus.current) return;
-              keepFocus.current = false;
-              e.preventDefault();
-              input.current?.focus();
-            }}
-          >
-            <DropdownMenuItem onSelect={() => edit("name")}>Rename</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => edit("description")}>
-              Edit description
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onAddType}>Add record type</DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => {
-                setEditing(null);
-                setDraft((d) => removeRecordType(d, type.id));
+        {!readOnly && (
+          <Button variant="ghost" size="sm" onClick={onAddField}>
+            <Plus data-icon="inline-start" />
+            Add field
+          </Button>
+        )}
+        {!readOnly && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button ref={trigger} variant="ghost" size="icon-sm" aria-label="Record type options">
+                <MoreHorizontal aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-48"
+              onCloseAutoFocus={(e) => {
+                // After "Rename" or "Edit description" the focus belongs to the input just opened.
+                if (!keepFocus.current) return;
+                keepFocus.current = false;
+                e.preventDefault();
+                input.current?.focus();
               }}
             >
-              Remove record type
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem onSelect={() => edit("name")}>Rename</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => edit("description")}>
+                Edit description
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onAddType}>Add record type</DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => {
+                  setEditing(null);
+                  setDraft((d) => removeRecordType(d, type.id));
+                }}
+              >
+                Remove record type
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       {typeError && <Problem id={`${type.id}-name-err`}>{typeError}</Problem>}
       {editing === "description" && (

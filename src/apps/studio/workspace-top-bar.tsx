@@ -5,12 +5,15 @@ import { Sparkles } from "lucide-react";
 import { Suspense } from "react";
 import { AppSwitcher } from "@/components/layout/app-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/features/extraction/review-panes";
 import { BackendStatusBadge } from "@/features/status/status-badge";
 import { UserMenu } from "@/features/auth/user-menu";
 import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 import { STUDIO_HOME } from "./nav-steps";
+import { useMay } from "./use-may";
+import { usePipelineStore } from "@/store/pipeline-store";
 import { WorkspaceMenu } from "./workspace-menu";
 import { DocumentSwitcher } from "./top-bar/document-switcher";
 import { MoreMenu } from "./top-bar/more-menu";
@@ -26,6 +29,9 @@ import { useScreenControls } from "./working-screen/screen-state";
  */
 export function WorkspaceTopBar({ extraction }: { extraction?: ExtractionRun }) {
   const controls = useScreenControls();
+  const loaded = usePipelineStore((s) => s.workspace !== null);
+  const mayEdit = useMay("workspace.edit");
+  const mayRun = useMay("workspace.run");
   // Nothing to show as output while there is nothing to extract.
   const configured = (extraction?.definition.draft?.recordTypes.length ?? 0) > 0;
   return (
@@ -51,6 +57,12 @@ export function WorkspaceTopBar({ extraction }: { extraction?: ExtractionRun }) 
               /
             </span>
             <WorkspaceMenu />
+            {/* Says why the controls are missing: the person may read this workspace and not change it. */}
+            {loaded && !mayEdit && (
+              <Badge variant="secondary" className="shrink-0">
+                View only
+              </Badge>
+            )}
           </span>
           {extraction && <DocumentSwitcher />}
           {extraction && controls && configured && (
@@ -88,7 +100,7 @@ export function WorkspaceTopBar({ extraction }: { extraction?: ExtractionRun }) 
                     </span>
                   </Button>
                 )}
-                <RunButton extraction={extraction} />
+                {mayRun && <RunButton extraction={extraction} />}
                 <MoreMenu extraction={extraction} />
               </>
             )}

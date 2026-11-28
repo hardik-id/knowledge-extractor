@@ -10,7 +10,14 @@ import type { ExtractionDefinitionState } from "@/features/extraction/use-extrac
  * closes the box. What is typed goes into the draft as it is typed. Hidden while there is nothing
  * to extract yet (no prompt and no record type): the empty screen asks for it instead.
  */
-export function PromptLine({ definition }: { definition: ExtractionDefinitionState }) {
+export function PromptLine({
+  definition,
+  readOnly = false,
+}: {
+  definition: ExtractionDefinitionState;
+  /** Without the right to edit: the text as it is, no button and no box. */
+  readOnly?: boolean;
+}) {
   const { draft, setDraft } = definition;
   const [editing, setEditing] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -33,6 +40,16 @@ export function PromptLine({ definition }: { definition: ExtractionDefinitionSta
   if (!draft) return null;
   const prompt = draft.prompt.trim();
   if (!editing && !prompt && draft.recordTypes.length === 0) return null;
+
+  if (readOnly) {
+    if (!prompt) return null;
+    return (
+      <div className="flex items-baseline gap-2 border-b border-border-subtle py-1.5 pr-3 pl-4">
+        <span className="text-small whitespace-nowrap text-ink-muted">What to extract</span>
+        <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{prompt}</span>
+      </div>
+    );
+  }
 
   if (editing) {
     return (
