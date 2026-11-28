@@ -228,13 +228,16 @@ test.describe("at phone width", () => {
     const row = new ChunkingRow(page);
     await row.choose("Fixed size");
     await expect(row.size).toBeInViewport();
-    const column = fieldColumn(page).or(page.getByRole("dialog", { name: "Fields" }));
-    const table = column.getByRole("region", { name: "Field list" });
-    await expect(table).toBeVisible();
-    const box = (await table.boundingBox())!;
-    // The table keeps real room under the open row, and the page does not scroll sideways.
+    const column = fieldColumn(page).or(page.getByRole("dialog", { name: "Assistant" }));
+    // The open part (it scrolls, the assistant keeps its room under it) stays on the screen.
+    const panel = column.getByTestId("configuration-panel");
+    await expect(panel).toBeVisible();
+    const box = (await panel.boundingBox())!;
     expect(box.height).toBeGreaterThan(150);
     expect(box.y + box.height).toBeLessThanOrEqual(844);
-    await expect(table.getByRole("row").nth(1)).toBeVisible();
+    // The table is reached by scrolling that part.
+    const table = column.getByRole("region", { name: "Field list" });
+    await table.getByRole("row").nth(1).scrollIntoViewIfNeeded();
+    await expect(table.getByRole("row").nth(1)).toBeInViewport();
   });
 });

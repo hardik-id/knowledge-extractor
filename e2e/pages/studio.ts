@@ -1,4 +1,4 @@
-import { expectWorkingScreen } from "./working-screen";
+import { expectWorkingScreen, rememberConfigurationOpen } from "./working-screen";
 import {
   type APIRequestContext,
   type Page,
@@ -60,12 +60,14 @@ export async function saveDocuments(page: Page) {
   await expect(documentsSheet(page)).toBeHidden();
 }
 
-/** A workspace with the given documents saved, left on its working screen. */
+/** A workspace with the given documents saved, left on its working screen with Configuration open. */
 export async function openExtraction(
   page: Page,
   workspace: ApiWorkspace,
   names: readonly string[],
 ) {
+  // Closed on a first visit; the tests that use this go on with what is in it.
+  await rememberConfigurationOpen(page);
   await openDocuments(page, workspace);
   await pickDocuments(page, names);
   await submitDocumentsButton(page).click();
@@ -158,7 +160,7 @@ export async function openStart(page: Page, name = "Start workspace") {
   await pickDocuments(page, [DOCS.roadmap]);
   await submitDocumentsButton(page).click();
   await expectWorkingScreen(page);
-  // Below 1100px the column is an overlay, opened by "Fields": the panel is not on show yet.
+  // Below 1100px the column is an overlay, opened by "Assistant": the panel is not on show yet.
   if ((page.viewportSize()?.width ?? 0) >= 1100) {
     await expect(
       page.getByRole("heading", { name: "What do you want from these documents?" }),

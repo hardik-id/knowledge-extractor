@@ -15,14 +15,14 @@ const withState = (patch: Partial<ScreenSelection>): ScreenSelection => ({
 });
 
 describe("screenReducer", () => {
-  test("starts with nothing chosen and the conversation closed", () => {
+  test("starts with nothing chosen and Configuration closed", () => {
     assert.deepEqual(INITIAL_SELECTION, {
       selectedTypeId: null,
       currentRecordId: null,
       selectedFieldId: null,
       openValue: null,
       proposal: null,
-      conversationOpen: false,
+      configurationOpen: false,
     });
   });
 
@@ -57,11 +57,11 @@ describe("screenReducer", () => {
     assert.equal(state.openValue, null);
   });
 
-  test("keeps the proposal and the conversation", () => {
+  test("keeps the proposal and whether Configuration is open", () => {
     let state = screenReducer(INITIAL_SELECTION, { type: "setProposal", proposal: { n: 1 } });
-    state = screenReducer(state, { type: "setConversationOpen", open: true });
+    state = screenReducer(state, { type: "setConfigurationOpen", open: true });
     assert.deepEqual(state.proposal, { n: 1 });
-    assert.equal(state.conversationOpen, true);
+    assert.equal(state.configurationOpen, true);
   });
 });
 

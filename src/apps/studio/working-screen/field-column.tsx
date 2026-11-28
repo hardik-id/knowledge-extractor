@@ -1,38 +1,42 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FieldTable, Problem } from "@/features/extraction/field-table";
 import { fieldLabels } from "@/features/extraction/labels";
 import { moveField, removeField, updateField } from "@/features/extraction/definition-draft";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
-import { useAssistant } from "@/features/extraction/use-assistant";
-import { StartPanel } from "../start/start-panel";
 import { AssistantDock } from "./assistant-dock";
+import { configurationSummary } from "./configuration-summary";
 import { ChunkingRow } from "./chunking-row";
 import { PromptLine } from "./prompt-line";
-import { focusAssistantInput } from "./use-proposal";
+import { focusAssistantInput, type ProposalInfo } from "./use-proposal";
 import { ProposalBar, ProposalLines, ProposedFieldRows, ProposedTypes } from "./proposal-table";
 import { RecordTypeBar } from "./record-type-bar";
 import { useFieldSelection } from "./use-field-selection";
 import { useScreenControls, useScreen } from "./screen-state";
 
 /**
- * The right column: the record type, the prompt, the field table (today's Define table, edited in
- * the draft) and the assistant at the bottom. The table is the only part that scrolls.
+ * The right column: the "Configuration" row, closed on a first visit, and the assistant under it,
+ * always open. Open, the row shows the record type, the prompt, the chunking and the field table
+ * (today's Define table, edited in the draft) between itself and the assistant; that part scrolls,
+ * and the assistant keeps at least 240px and 40% of the column.
  */
 export function FieldColumn({ definition }: { definition: ExtractionDefinitionState }) {
-  const { draft, saved, setDraft, errors, showErrors } = definition;
-  const { selectedTypeId, selectedFieldId, proposal, setConversationOpen } = useScreen();
+  const { draft, saved, setDraft, errors, showErrors, valid, chunkingProblem } = definition;
+  const { selectedTypeId, selectedFieldId, proposal, configurationOpen, setConfigurationOpen } =
+    useScreen();
   const controls = useScreenControls();
   const scroller = useRef<HTMLDivElement>(null);
   const selection = useFieldSelection();
+  const panelId = useId();
   // Said to screen readers when the bar that held Keep all and Discard all has gone.
   const [decision, setDecision] = useState("");
 
   // The dots match the highlights, which are coloured by the saved fields; a field not saved yet takes its place in the draft.
   const savedLabels = useMemo(() => fieldLabels(saved ?? { recordTypes: [] }), [saved]);
   const draftLabels = useMemo(() => fieldLabels(draft ?? { recordTypes: [] }), [draft]);
-  // Nothing saved, nothing drafted, nothing proposed: the way in is the start panel.
+  // Nothing saved, nothing drafted, nothing proposed: the way in is the start content of the conversation.
   const starting =
     !!saved &&
     !!draft &&
@@ -40,113 +44,143 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
     draft.recordTypes.length === 0 &&
     proposal == null;
 
-  // "Assistant" in the top bar: open the conversation and put the cursor in the input. Below
-  // 1100px the column has just mounted in its overlay, so wait for it to settle.
+  // A save that was refused because of a problem in the configuration: the problems must be seen.
+  const mustShow = (showErrors && !valid) || !!chunkingProblem;
+  useEffect(() => {
+    if (mustShow) setConfigurationOpen(true);
+  }, [mustShow, setConfigurationOpen]);
+
+  // PART 2 (#267) REMOVES THIS RULE: until the suggestion is a card in the conversation, it is
+  // shown in the table, so Configuration opens by itself when a suggestion arrives or a template is
+  // offered. It does not change what the person chose to remember.
+  const suggestion = (proposal as ProposalInfo | null)?.messageId ?? null;
+  const seenSuggestion = useRef<string | null>(null);
+  useEffect(() => {
+    if (suggestion && suggestion !== seenSuggestion.current) setConfigurationOpen(true);
+    seenSuggestion.current = suggestion;
+  }, [suggestion, setConfigurationOpen]);
+
+  // "Assistant" in the top bar: put the cursor in the input. Below 1100px the column has just
+  // mounted in its overlay, so wait for it to settle.
   const requested = controls?.assistantRequested ?? false;
   const answer = controls?.answerAssistantRequest;
   useEffect(() => {
     if (!requested) return;
-    setConversationOpen(true);
     answer?.();
     // Not cleared on cleanup: answering the request re-runs this effect at once.
     setTimeout(focusAssistantInput, 300);
-  }, [requested, answer, setConversationOpen]);
-
-  // Leaving the start panel removes the focused button: move focus to the new content. Focus that
-  // sits elsewhere (the assistant's input) stays where it is.
-  const wasStarting = useRef(false);
-  useEffect(() => {
-    if (wasStarting.current && !starting) {
-      const active = document.activeElement;
-      if (!active || active === document.body || scroller.current?.contains(active))
-        scroller.current?.focus();
-    }
-    wasStarting.current = starting;
-  }, [starting]);
+  }, [requested, answer]);
 
   if (!draft) return null;
   const type = draft.recordTypes.find((t) => t.id === selectedTypeId);
+  const suggested = (proposal as ProposalInfo | null)?.changes.length ?? 0;
+  const Chevron = configurationOpen ? ChevronDown : ChevronRight;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {!starting && <RecordTypeBar definition={definition} />}
-      {!starting && <PromptLine definition={definition} />}
-      {!starting && <ChunkingRow definition={definition} />}
-      <div
-        ref={scroller}
-        tabIndex={-1}
-        role="region"
-        aria-label="Field list"
-        className="min-h-0 flex-1 overflow-y-auto outline-none"
+      <button
+        type="button"
+        aria-expanded={configurationOpen}
+        aria-controls={panelId}
+        onClick={() => setConfigurationOpen(!configurationOpen, true)}
+        className="flex w-full shrink-0 items-center gap-2 border-b border-border-subtle py-1.5 pr-3 pl-4 text-left hover:bg-surface-hover"
       >
-        {starting && (
-          <div className="px-4 py-4">
-            <StartPanelWithAssistant definition={definition} />
-          </div>
-        )}
-        <ProposalBar definition={definition} onDecided={setDecision} />
-        {showErrors && errors.general.length > 0 && (
-          <div role="alert" className="space-y-1 px-4 py-2">
-            {errors.general.map((message) => (
-              <Problem key={message} id={message}>
-                {message}
-              </Problem>
-            ))}
-          </div>
-        )}
-        {starting ? null : !type ? (
-          proposal == null && <p className="px-4 py-4 text-ink-muted">No fields yet.</p>
-        ) : type.fields.length === 0 ? (
+        <span className="font-semibold text-ink-heading">Configuration</span>
+        <span className="min-w-0 flex-1 truncate text-small text-ink-muted">
+          {configurationSummary(draft, suggested)}
+        </span>
+        <Chevron aria-hidden className="size-3.5 shrink-0 text-ink-muted" />
+      </button>
+      <div
+        id={panelId}
+        hidden={!configurationOpen}
+        data-testid="configuration-panel"
+        className="max-h-[calc(100%-max(240px,40%))] min-h-0 shrink overflow-y-auto border-b border-border-subtle"
+      >
+        {configurationOpen && (
           <>
-            <p className="px-4 py-4 text-small text-ink-muted">
-              No fields. A record is then just the block of text it covers.
-            </p>
-            {/* A field the assistant suggests has to show even when there is no table yet. */}
-            <table className="block w-full">
-              <caption className="sr-only">Suggested fields</caption>
-              <tbody className="block">
-                <ProposedFieldRows
-                  typeId={type.id}
-                  definition={definition}
-                  onDecided={setDecision}
+            {!starting && <RecordTypeBar definition={definition} />}
+            {!starting && <PromptLine definition={definition} />}
+            {!starting && <ChunkingRow definition={definition} />}
+            <div
+              ref={scroller}
+              tabIndex={-1}
+              role="region"
+              aria-label="Field list"
+              className="outline-none"
+            >
+              <ProposalBar definition={definition} onDecided={setDecision} />
+              {showErrors && errors.general.length > 0 && (
+                <div role="alert" className="space-y-1 px-4 py-2">
+                  {errors.general.map((message) => (
+                    <Problem key={message} id={message}>
+                      {message}
+                    </Problem>
+                  ))}
+                </div>
+              )}
+              {starting ? (
+                <p className="px-4 py-4 text-ink-muted">No fields yet.</p>
+              ) : !type ? (
+                proposal == null && <p className="px-4 py-4 text-ink-muted">No fields yet.</p>
+              ) : type.fields.length === 0 ? (
+                <>
+                  <p className="px-4 py-4 text-small text-ink-muted">
+                    No fields. A record is then just the block of text it covers.
+                  </p>
+                  {/* A field the assistant suggests has to show even when there is no table yet. */}
+                  <table className="block w-full">
+                    <caption className="sr-only">Suggested fields</caption>
+                    <tbody className="block">
+                      <ProposedFieldRows
+                        typeId={type.id}
+                        definition={definition}
+                        onDecided={setDecision}
+                      />
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <FieldTable
+                  caption={type.name || "this record type"}
+                  fields={type.fields}
+                  errors={errors.fields}
+                  showErrors={showErrors}
+                  onChange={(fieldId, patch) =>
+                    setDraft((d) => updateField(d, type.id, fieldId, patch))
+                  }
+                  onRemove={(fieldId) => setDraft((d) => removeField(d, type.id, fieldId))}
+                  onMove={(fieldId, delta) =>
+                    setDraft((d) => moveField(d, type.id, fieldId, delta))
+                  }
+                  colourDot={(fieldId) =>
+                    (savedLabels.get(fieldId) ?? draftLabels.get(fieldId))!.style
+                  }
+                  descriptionUnderName
+                  selectedFieldId={selectedFieldId}
+                  onRowSelect={selection.toggle}
+                  afterRow={(field) => (
+                    <ProposalLines field={field} definition={definition} onDecided={setDecision} />
+                  )}
+                  extraRows={
+                    <ProposedFieldRows
+                      typeId={type.id}
+                      definition={definition}
+                      onDecided={setDecision}
+                    />
+                  }
                 />
-              </tbody>
-            </table>
+              )}
+              {/* A record type the proposal adds, also while there is no record type yet. */}
+              <ProposedTypes definition={definition} onDecided={setDecision} />
+            </div>
           </>
-        ) : (
-          <FieldTable
-            caption={type.name || "this record type"}
-            fields={type.fields}
-            errors={errors.fields}
-            showErrors={showErrors}
-            onChange={(fieldId, patch) => setDraft((d) => updateField(d, type.id, fieldId, patch))}
-            onRemove={(fieldId) => setDraft((d) => removeField(d, type.id, fieldId))}
-            onMove={(fieldId, delta) => setDraft((d) => moveField(d, type.id, fieldId, delta))}
-            colourDot={(fieldId) => (savedLabels.get(fieldId) ?? draftLabels.get(fieldId))!.style}
-            descriptionUnderName
-            selectedFieldId={selectedFieldId}
-            onRowSelect={selection.toggle}
-            afterRow={(field) => (
-              <ProposalLines field={field} definition={definition} onDecided={setDecision} />
-            )}
-            extraRows={
-              <ProposedFieldRows typeId={type.id} definition={definition} onDecided={setDecision} />
-            }
-          />
         )}
-        {/* A record type the proposal adds, also while there is no record type yet. */}
-        <ProposedTypes definition={definition} onDecided={setDecision} />
       </div>
       <p role="status" className="sr-only">
         {decision}
       </p>
-      <AssistantDock definition={definition} />
+      <AssistantDock definition={definition} starting={starting} />
     </div>
   );
-}
-
-/** The start panel's own conversation hook, so it only exists while the panel does. */
-function StartPanelWithAssistant({ definition }: { definition: ExtractionDefinitionState }) {
-  const assistant = useAssistant(definition.draft ?? undefined);
-  return <StartPanel definition={definition} assistant={assistant} />;
 }

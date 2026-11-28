@@ -35,7 +35,7 @@ export function WorkspaceTopBar({ extraction }: { extraction?: ExtractionRun }) 
         data-testid="workspace-top-bar"
         className="sticky top-0 z-30 shrink-0 border-b border-border-subtle bg-background md:static"
       >
-        <div className="flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1 px-[max(16px,env(safe-area-inset-left))] py-1.5">
+        <div className="flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1 px-[max(16px,env(safe-area-inset-left))] py-1.5 min-[1280px]:flex-nowrap">
           {/* The switcher reads the address, only known at request time under a dynamic route. */}
           <Suspense>
             <AppSwitcher compact markOnly />
@@ -46,7 +46,7 @@ export function WorkspaceTopBar({ extraction }: { extraction?: ExtractionRun }) 
           >
             Workspaces
           </Link>
-          <span className="flex min-w-0 items-center gap-x-2">
+          <span className="flex min-w-0 shrink items-center gap-x-2">
             <span aria-hidden className="text-ink-muted">
               /
             </span>
@@ -70,7 +70,7 @@ export function WorkspaceTopBar({ extraction }: { extraction?: ExtractionRun }) 
             <UserMenu compact />
           </div>
 
-          <div className="contents md:ml-auto md:flex md:flex-wrap md:items-center md:justify-end md:gap-x-2 md:gap-y-1">
+          <div className="contents md:ml-auto md:flex md:flex-wrap md:items-center md:justify-end md:gap-x-2 md:gap-y-1 min-[1280px]:flex-nowrap">
             {extraction && (
               <>
                 <VersionMenu extraction={extraction} />

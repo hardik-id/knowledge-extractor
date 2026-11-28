@@ -1,6 +1,6 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,8 +38,8 @@ function useWide(): boolean {
 
 /**
  * The working screen of a workspace: the document on the left (with the record strip pinned under
- * it), the configuration in a 560px column on the right. Below 1100px the column is a sheet,
- * opened by the "Fields" button above the document. The "Document | Output" switch is in the top bar.
+ * it), the assistant and the closed "Configuration" row in a 560px column on the right. Below
+ * 1100px the column is a sheet, opened by the "Assistant" button above the document. The "Document | Output" switch is in the top bar.
  */
 export function OneScreen({ extraction }: { extraction: ExtractionRun }) {
   const { definition } = extraction;
@@ -115,8 +115,8 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
               size="sm"
               onClick={() => setFieldsOpen(true)}
             >
-              <SlidersHorizontal data-icon="inline-start" />
-              Fields
+              <Sparkles data-icon="inline-start" />
+              Assistant
             </Button>
           </div>
         )}
@@ -143,7 +143,7 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
       </main>
       {wide ? (
         <aside
-          aria-label="Fields"
+          aria-label="Assistant"
           className="flex min-h-0 min-w-[480px] flex-[0_1_560px] flex-col border-l border-border-subtle"
         >
           <FieldColumn definition={definition} />
@@ -151,7 +151,7 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
       ) : (
         <Sheet open={fieldsOpen} onOpenChange={setFieldsOpen}>
           <SheetContent
-            aria-label="Fields"
+            aria-label="Assistant"
             onOpenAutoFocus={(event) => {
               // Opening focuses the sheet itself, not the first field's name (no keyboard, no accidental overwrite).
               event.preventDefault();
@@ -165,9 +165,9 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
             className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[560px]"
           >
             <SheetHeader className="border-b border-border-subtle py-2 pr-12 pl-4">
-              <SheetTitle>Fields</SheetTitle>
+              <SheetTitle>Assistant</SheetTitle>
               <SheetDescription className="sr-only">
-                What to extract and the fields of each record.
+                The conversation with the assistant, and the configuration.
               </SheetDescription>
             </SheetHeader>
             <FieldColumn definition={definition} />

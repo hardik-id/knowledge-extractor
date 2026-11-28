@@ -7,7 +7,7 @@ export class AssistantDock {
 
   /** The column beside the document, or the sheet it becomes on a narrow screen. */
   get column() {
-    return fieldColumn(this.page).or(this.page.getByRole("dialog", { name: "Fields" }));
+    return fieldColumn(this.page).or(this.page.getByRole("dialog", { name: "Assistant" }));
   }
 
   get dock() {

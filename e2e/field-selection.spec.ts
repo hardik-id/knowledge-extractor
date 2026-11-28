@@ -94,9 +94,9 @@ test("Add field adds a row and moves the focus to its name", async ({
   await screen.openEmpty(api, person, request);
   const column = screen.column;
 
-  await expect(column.getByText("6 fields")).toBeVisible();
+  await expect(column.getByText("6 fields", { exact: true })).toBeVisible();
   await column.getByRole("button", { name: "Add field" }).click();
-  await expect(column.getByText("7 fields")).toBeVisible();
+  await expect(column.getByText("7 fields", { exact: true })).toBeVisible();
   await expect(column.getByRole("textbox", { name: "Name of field 7" })).toBeFocused();
   await expect(page.getByText("Unsaved changes").first()).toBeVisible();
 });
@@ -257,7 +257,10 @@ test.describe("at 390x844", () => {
     noExtractionYet(expectApiError);
     const screen = new FieldSelectionPage(page);
     await screen.openWithResults(api, person, request);
-    await page.getByRole("button", { name: "Fields", exact: true }).click();
+    await page
+      .getByRole("main", { name: "Document" })
+      .getByRole("button", { name: "Assistant", exact: true })
+      .click();
     const sheet = screen.sheet;
     await expect(sheet.getByRole("table", { name: "Fields of ADR" })).toBeVisible();
 

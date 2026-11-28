@@ -100,7 +100,7 @@ test("the working screen with records", async ({ api, page, person, request }) =
   const workspace = await api.createWorkspace({ name: "Platform decisions" });
   await addDocuments(request, person, workspace, ["platform-adrs.md"]);
   const extraction = new ExtractionPage(page);
-  await extraction.open(workspace);
+  await extraction.open(workspace, { configuration: "closed" });
   await extraction.run("Run extraction");
   await extraction.finished();
   await expect(new RecordStripPage(page).position).toHaveText("Record 1 of 3");

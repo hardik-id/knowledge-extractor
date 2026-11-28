@@ -2,7 +2,7 @@ import { type APIRequestContext, type Page, expect } from "@playwright/test";
 import { API_BASE_URL, API_ORIGIN } from "../support/env";
 import type { Api, ApiWorkspace, Person } from "../fixtures";
 import { clickUntilOpen } from "../support/first-click";
-import { openOneScreen } from "./working-screen";
+import { openConfiguration, openOneScreen } from "./working-screen";
 
 interface ApiDocument {
   id: string;
@@ -71,8 +71,8 @@ export class ExtractionPage {
   }
 
   /** Opens the workspace's working screen. */
-  async open(workspace: ApiWorkspace) {
-    await openOneScreen(this.page, workspace);
+  async open(workspace: ApiWorkspace, options?: Parameters<typeof openOneScreen>[2]) {
+    await openOneScreen(this.page, workspace, options);
   }
 
   /** The one Run button of the top bar: "Run on this document", "Run on all N documents" or "Run again". */
@@ -158,6 +158,7 @@ export function promptLine(page: Page) {
 
 /** Changes the "What to extract" text, which leaves the configuration with unsaved changes. */
 export async function editPrompt(page: Page, text: string) {
+  await openConfiguration(page);
   await promptLine(page).click();
   const box = page.getByRole("textbox", { name: "What to extract" });
   await box.fill(text);
@@ -229,6 +230,7 @@ export class ChunkingRow {
   }
 
   async open() {
+    await openConfiguration(this.page);
     if ((await this.header.getAttribute("aria-expanded")) !== "true") await this.header.click();
     await expect(this.header).toHaveAttribute("aria-expanded", "true");
     await expect(this.strategy).toBeVisible();
