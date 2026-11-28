@@ -15,6 +15,7 @@ import {
   parseExecution,
   parseExtractionChangedMessage,
   parseFileExtraction,
+  parsePerson,
   parseWorkspace,
   parseWorkspacePage,
   parseWorkspaces,
@@ -616,6 +617,9 @@ describe("workspace and version parsers", () => {
     name: "Architecture decisions",
     description: "",
     run_id: "run_1",
+    tenant_id: "t1",
+    role: "editor",
+    permissions: ["workspace.edit", "workspace.run", "workspace.view"],
     document_count: 3,
     configuration_version: null,
     created_at: "2026-02-01T10:00:00Z",
@@ -628,6 +632,9 @@ describe("workspace and version parsers", () => {
       name: "Architecture decisions",
       description: "",
       runId: "run_1",
+      tenantId: "t1",
+      role: "editor",
+      permissions: ["workspace.edit", "workspace.run", "workspace.view"],
       documentCount: 3,
       configurationVersion: null,
       createdAt: "2026-02-01T10:00:00Z",
@@ -637,6 +644,16 @@ describe("workspace and version parsers", () => {
       parseWorkspace({ ...wireWorkspace, configuration_version: 2 }).configurationVersion,
       2,
     );
+  });
+
+  test("a workspace without a tenant, or with an unknown role or no permissions, is invalid", () => {
+    assert.throws(
+      () => parseWorkspace({ ...wireWorkspace, tenant_id: undefined }),
+      isInvalidResponse,
+    );
+    assert.throws(() => parseWorkspace({ ...wireWorkspace, role: "admin" }), isInvalidResponse);
+    assert.throws(() => parseWorkspace({ ...wireWorkspace, permissions: "x" }), isInvalidResponse);
+    assert.throws(() => parseWorkspace({ ...wireWorkspace, permissions: [3] }), isInvalidResponse);
   });
 
   test("the list of workspaces reads its items; a workspace without a run is invalid", () => {
@@ -790,5 +807,37 @@ describe("parseBackendStatus", () => {
 
   test("a body that is not a status is rejected", () => {
     assert.throws(() => parseBackendStatus({ environment: "x" }));
+  });
+});
+
+describe("parsePerson", () => {
+  const wire = {
+    id: 7,
+    name: "Ada",
+    preferred_username: "ada@example.com",
+    platform_admin: false,
+    tenants: [{ id: "t1", name: "Default", role: "member" }],
+  };
+
+  test("the person comes out in the UI's shape", () => {
+    assert.deepEqual(parsePerson(wire), {
+      id: 7,
+      name: "Ada",
+      preferredUsername: "ada@example.com",
+      platformAdmin: false,
+      tenants: [{ id: "t1", name: "Default", role: "member" }],
+    });
+    assert.equal(parsePerson({ ...wire, platform_admin: true }).platformAdmin, true);
+    assert.deepEqual(parsePerson({ ...wire, tenants: [] }).tenants, []);
+  });
+
+  test("a missing flag, tenants that are not a list or an unknown tenant role is invalid", () => {
+    assert.throws(() => parsePerson({ ...wire, platform_admin: undefined }), isInvalidResponse);
+    assert.throws(() => parsePerson({ ...wire, platform_admin: "yes" }), isInvalidResponse);
+    assert.throws(() => parsePerson({ ...wire, tenants: {} }), isInvalidResponse);
+    assert.throws(
+      () => parsePerson({ ...wire, tenants: [{ id: "t", name: "n", role: "owner" }] }),
+      isInvalidResponse,
+    );
   });
 });

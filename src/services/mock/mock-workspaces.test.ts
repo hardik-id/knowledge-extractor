@@ -6,6 +6,8 @@ import { DEFAULT_EXTRACTION_DEFINITION } from "@/mocks/extraction";
 import { MOCK_FILES } from "@/mocks/files";
 import { MOCK_TEMPLATES } from "@/mocks/templates";
 import type { RunEventHandlers } from "../contracts";
+import { parsePerson, parseWorkspace } from "../http/parsers";
+import { createMockServices } from "./index";
 import { MockBackend } from "./mock-backend";
 
 const DOCS = MOCK_DOCUMENTS.slice(0, 3);
@@ -419,5 +421,51 @@ describe("mock templates", () => {
     await backend.saveDefinition(workspace.runId, { ...v1, prompt: "Changed" }, 1, "");
     const skill = (await backend.listTemplates()).find((t) => t.id === "skill")!;
     assert.notEqual(skill.definition.prompt, "Changed");
+  });
+});
+
+describe("the mock's person and roles", () => {
+  test("the person is a platform admin in the tenant Default, and owns every workspace", async () => {
+    const services = createMockServices(backendOn());
+    const person = await services.me();
+    assert.equal(person.platformAdmin, true);
+    assert.deepEqual(
+      person.tenants.map((t) => [t.name, t.role]),
+      [["Default", "member"]],
+    );
+    const workspace = await services.workspaces.create({ name: "Mine" });
+    assert.equal(workspace.tenantId, person.tenants[0].id);
+    assert.equal(workspace.role, "owner");
+    assert.ok(workspace.permissions.includes("workspace.manage"));
+  });
+
+  test("the mock and the http service agree on the shapes", async () => {
+    const services = createMockServices(backendOn());
+    const workspace = await services.workspaces.create({ name: "Mine" });
+    const wire = {
+      id: workspace.id,
+      name: workspace.name,
+      description: workspace.description,
+      run_id: workspace.runId,
+      tenant_id: workspace.tenantId,
+      role: workspace.role,
+      permissions: workspace.permissions,
+      document_count: workspace.documentCount,
+      configuration_version: workspace.configurationVersion,
+      created_at: workspace.createdAt,
+      updated_at: workspace.updatedAt,
+    };
+    assert.deepEqual(parseWorkspace(wire), workspace);
+    const person = await services.me();
+    assert.deepEqual(
+      parsePerson({
+        id: person.id,
+        name: person.name,
+        preferred_username: person.preferredUsername,
+        platform_admin: person.platformAdmin,
+        tenants: person.tenants,
+      }),
+      person,
+    );
   });
 });

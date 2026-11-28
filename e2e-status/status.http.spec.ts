@@ -24,6 +24,17 @@ test("a scripted backend: the badge says Stub and the panel lists every part", a
   await expect(panel(page).getByRole("button", { name: "Test connections" })).toBeVisible();
 });
 
+test("a person who is not a platform admin sees the parts and no Test connections button", async ({
+  page,
+  context,
+}) => {
+  await stubApi(context, { status: ALL_STUB, platformAdmin: false });
+  await page.goto("/studio");
+  await badge(page).click();
+  await expect(panel(page).locator('[data-part="assistant"]')).toContainText("Scripted");
+  await expect(panel(page).getByRole("button", { name: "Test connections" })).toHaveCount(0);
+});
+
 test("one failing part: Problem, with the reason in words", async ({ page, context }) => {
   await stubApi(context, { status: ONE_FAILING });
   await page.goto("/studio");

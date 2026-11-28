@@ -15,3 +15,27 @@ describe("describeApiError for templates", () => {
     });
   }
 });
+
+describe("describeApiError for roles", () => {
+  const codes = [
+    ["forbidden", 403],
+    ["tenant_not_found", 404],
+    ["user_not_found", 404],
+    ["last_owner", 409],
+    ["last_tenant_admin", 409],
+    ["last_platform_admin", 409],
+    ["already_a_member", 409],
+    ["not_a_tenant_member", 422],
+    ["tenant_name_taken", 409],
+    ["tenant_not_empty", 409],
+    ["default_tenant", 409],
+    ["platform_admin_by_setting", 409],
+  ] as const;
+  for (const [code, status] of codes) {
+    test(`${code} has its own sentence`, () => {
+      const text = describeApiError(new ApiError({ status, code, message: "Server words." }));
+      assert.doesNotMatch(text, /Server words/);
+      assert.match(text, /\.$/);
+    });
+  }
+});

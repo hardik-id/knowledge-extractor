@@ -98,9 +98,17 @@ Errors: 401, 403, 404 as in section 1.
 A workspace is a name on a run: the run keeps the documents, the configuration, the conversation and the records, and goes on through its own endpoints. The UI starts from a workspace.
 
 - `POST /workspaces` with `{ name, description?, template_id? }` makes the workspace and its empty run (no files, no cells) in one transaction, with the configuration already saved as version 1 from the template (default `adr`) and the note "From template: <name>". An unknown `template_id` is 422 `unknown_template` and makes nothing. `GET /workspaces` answers `{ items, next }`, last activity first. `GET /workspaces/{id}`, `PATCH /workspaces/{id}` (`name` and/or `description`) and `DELETE /workspaces/{id}` (the run and everything on it go too).
-- A workspace on the wire: `id`, `name`, `description`, `run_id`, `document_count`, `configuration_version` (the latest saved version; null only for a workspace made before templates), `created_at`, `updated_at` (the last activity, not only a rename).
+- A workspace on the wire: `id`, `name`, `description`, `run_id`, `tenant_id`, `role` (`owner`, `editor` or `viewer`: the signed-in person's role in it), `permissions` (the person's permission names here, sorted, such as `workspace.edit`), `document_count`, `configuration_version` (the latest saved version; null only for a workspace made before templates), `created_at`, `updated_at` (the last activity, not only a rename).
 - `name` is required, at most 120 characters, not blank: otherwise 422 `validation_error`. A workspace that isn't the caller's, or doesn't exist, is 404 `workspace_not_found`.
 - `DELETE /runs/{run_id}` on the run of a workspace is 409 `run_belongs_to_workspace`: delete the workspace.
+
+### The person and what they may do
+
+- `GET /me` answers `{ id, name, preferred_username, platform_admin, tenants: [{ id, name, role }] }`: who the signed-in person is, whether they are a platform admin, and their tenants with their role in each (`admin` or `member`). The UI reads it once when the app opens and again when the session resumes (`features/iam`), and keeps it in memory only: nothing about roles is stored in the browser.
+- The API decides and refuses. A workspace the person has no role in is 404 `workspace_not_found`; one they can see but whose action their role does not give is 403 `forbidden`. The UI only stops offering what would be refused.
+- Permissions the UI uses today: `status.test` (platform admins only) for `POST /status/test`, so "Test connections" is shown only when `platform_admin` is true; the answer is 403 `forbidden` for anyone else. A workspace's `permissions` list says what the person may do in it: `workspace.view` (read), `workspace.edit` (documents, configuration, records, the assistant), `workspace.run` (start an extraction), `workspace.manage` (rename, delete), `workspace.members.manage` (who has access). Owner has all five, editor `view`, `edit` and `run`, viewer `view`. No screen uses them yet.
+- Error codes with their own words in the UI: `forbidden`, `tenant_not_found`, `user_not_found`, `last_owner`, `last_tenant_admin`, `last_platform_admin`, `already_a_member`, `not_a_tenant_member`, `tenant_name_taken`, `tenant_not_empty`, `default_tenant`, `platform_admin_by_setting`.
+- The mock answers the same shapes: one tenant "Default", the person a member of it and a platform admin, and the owner of every workspace.
 
 ### Templates
 

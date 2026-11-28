@@ -17,6 +17,7 @@ import { isApiError } from "@/lib/api/api-error";
 import {
   parseAssistantEventMessage,
   parseBackendStatus,
+  parsePerson,
   parseAssistantMessage,
   parseAssistantMessages,
   parseCellMessage,
@@ -381,6 +382,7 @@ export function createHttpRunEvents({
 
 export function createHttpServices(options: HttpRunEventsOptions): Services {
   return {
+    me: async (signal) => parsePerson(await options.client.get("me", { signal })),
     status: createHttpStatusApi(options.client),
     catalog: createHttpSourceCatalog(options.client),
     documents: createHttpDocumentsApi(options.client),

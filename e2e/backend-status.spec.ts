@@ -1,11 +1,15 @@
-import { expect, test } from "./fixtures";
+import { expect, platformAdmin, test } from "./fixtures";
 
 /**
  * The status badge against the real stack (the compose file's scripted assistant and extractor).
  * Its rules and every shape of the answer are covered without a backend by `npm run
  * test:e2e:status`; this proves the real API's answer is what the badge reads.
  */
-test("the badge reads the backend's status and the panel lists its parts", async ({ page }) => {
+test("the badge reads the backend's status and the panel lists its parts, and a platform admin tests the connections", async ({
+  contextFor,
+}) => {
+  // Only a platform admin may test the connections: the development issuer's default person is one.
+  const page = await (await contextFor(platformAdmin())).newPage();
   await page.goto("/studio");
   const badge = page.getByRole("button", { name: /^Backend status: / });
   await expect(badge).toHaveAccessibleName("Backend status: Stub");
@@ -37,4 +41,17 @@ test("the badge reads the backend's status and the panel lists its parts", async
   for (const id of ["assistant", "extraction", "storage", "sign_in"]) {
     await expect(row(id)).toContainText("Stub, nothing to check");
   }
+});
+
+test("a person who is not a platform admin sees the parts and no Test connections button", async ({
+  page,
+}) => {
+  await page.goto("/studio");
+  const badge = page.getByRole("button", { name: /^Backend status: / });
+  await expect(badge).toHaveAccessibleName("Backend status: Stub");
+  await badge.click();
+  const panel = page.getByRole("dialog", { name: "Backend status" });
+  await expect(panel.locator('[data-part="assistant"]')).toContainText("Scripted");
+  await expect(panel.locator('[data-part="storage"]')).toContainText("Samples");
+  await expect(panel.getByRole("button", { name: "Test connections" })).toHaveCount(0);
 });

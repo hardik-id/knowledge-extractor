@@ -29,6 +29,18 @@ export function mintToken(oid: string): string {
   }
 }
 
+/**
+ * The development issuer's default person. On a development backend they are a platform admin
+ * (the only one the tests have), and every test that uses them shares them: use them only where a
+ * platform admin is needed, and make nothing of theirs that another test would see.
+ */
+export const PLATFORM_ADMIN_OID = "de000000-0000-4000-8000-000000000001";
+
+/** The platform admin of a development backend. */
+export function platformAdmin(): Person {
+  return { oid: PLATFORM_ADMIN_OID, token: mintToken(PLATFORM_ADMIN_OID) };
+}
+
 /** A person nobody has used before. */
 export function newPerson(): Person {
   const oid = randomUUID();

@@ -12,6 +12,8 @@ import {
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { mayTestConnections } from "@/features/iam/permissions";
+import { useMe } from "@/features/iam/use-me";
 import { cn } from "@/lib/utils";
 import type { StatusPart, StatusState } from "@/services/contracts";
 import {
@@ -126,6 +128,8 @@ function StatusPanel({
   // Read once per opening: the panel is not a clock.
   const [now] = useState(() => Date.now());
   const { status } = view;
+  const { person } = useMe();
+  const mayTest = mayTestConnections(person);
   return (
     <div className="flex flex-col gap-3 p-3">
       <h2 id={headingId} className="text-section font-semibold text-ink-heading">
@@ -157,7 +161,7 @@ function StatusPanel({
               <PartRow key={part.id} part={part} now={now} />
             ))}
           </ul>
-          {status.environment !== "mock" && (
+          {status.environment !== "mock" && mayTest && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <Button variant="secondary" disabled={view.testing} onClick={view.test}>
                 {view.testing && <LoaderCircle aria-hidden className="animate-spin" />}
