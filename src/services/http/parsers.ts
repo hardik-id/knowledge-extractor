@@ -17,7 +17,10 @@ import {
   type DefinitionVersionSummary,
   type ExtractionChange,
   type BackendStatus,
+  type Person,
+  type TenantRole,
   type Workspace,
+  type WorkspaceRole,
   type WorkspacePage,
   type WorkspacePatch,
   type PublishResult,
@@ -419,6 +422,31 @@ export function parseBackendStatus(value: unknown): BackendStatus {
   };
 }
 
+// ── The person ────────────────────────────────────────────────────────────
+
+const WORKSPACE_ROLES = ["owner", "editor", "viewer"] as const;
+const TENANT_ROLES = ["admin", "member"] as const;
+
+/** `{ id, name, preferred_username, platform_admin, tenants: [{ id, name, role }] }` */
+export function parsePerson(value: unknown): Person {
+  const o = object(value, "me");
+  return {
+    id: number(o.id, "me.id"),
+    name: string(o.name, "me.name"),
+    preferredUsername: string(o.preferred_username, "me.preferred_username"),
+    platformAdmin: bool(o.platform_admin, "me.platform_admin"),
+    tenants: array(o.tenants, "me.tenants").map((item, i) => {
+      const path = `me.tenants[${i}]`;
+      const t = object(item, path);
+      return {
+        id: string(t.id, `${path}.id`),
+        name: string(t.name, `${path}.name`),
+        role: oneOf<TenantRole>(t.role, TENANT_ROLES, `${path}.role`),
+      };
+    }),
+  };
+}
+
 // ── Workspaces ────────────────────────────────────────────────────────────
 
 export function parseWorkspace(value: unknown, path = "workspace"): Workspace {
@@ -428,6 +456,11 @@ export function parseWorkspace(value: unknown, path = "workspace"): Workspace {
     name: string(o.name, `${path}.name`),
     description: string(o.description, `${path}.description`),
     runId: string(o.run_id, `${path}.run_id`),
+    tenantId: string(o.tenant_id, `${path}.tenant_id`),
+    role: oneOf<WorkspaceRole>(o.role, WORKSPACE_ROLES, `${path}.role`),
+    permissions: array(o.permissions, `${path}.permissions`).map((p, i) =>
+      string(p, `${path}.permissions[${i}]`),
+    ),
     documentCount: number(o.document_count, `${path}.document_count`),
     configurationVersion: nullable(o.configuration_version, (v) =>
       number(v, `${path}.configuration_version`),

@@ -59,6 +59,7 @@ import {
 import { assistantReply } from "./mock-assistant";
 import { mergeExtractedRecords } from "./extraction-merge";
 import { extractRecords } from "./mock-extractor";
+import { MOCK_TENANT, OWNER_PERMISSIONS } from "./mock-person";
 
 /**
  * An in-browser stand-in for the Django API and its WebSocket. It follows the
@@ -1591,6 +1592,9 @@ export class MockBackend {
       name: workspace.name,
       description: workspace.description,
       runId: workspace.runId,
+      tenantId: MOCK_TENANT.id,
+      role: "owner",
+      permissions: [...OWNER_PERMISSIONS],
       documentCount: run?.files.length ?? 0,
       configurationVersion: run?.definition?.version ?? null,
       createdAt: workspace.createdAt,

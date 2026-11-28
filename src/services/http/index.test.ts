@@ -4,6 +4,7 @@ import { createApiClient, createMemoryTokenProvider } from "@/lib/api";
 import { createHttpClient } from "@/lib/api/http-client";
 import {
   createHttpExtractionApi,
+  createHttpServices,
   createHttpWorkspacesApi,
   createHttpRunsApi,
   createHttpStatusApi,
@@ -71,6 +72,9 @@ describe("workspaces, documents, versions and the conversation", () => {
       name: "New",
       description: "",
       run_id: "r1",
+      tenant_id: "t1",
+      role: "owner",
+      permissions: ["workspace.view"],
       document_count: 0,
       configuration_version: null,
       created_at: "t",
@@ -242,6 +246,9 @@ describe("templates", () => {
       name: "N",
       description: "",
       run_id: "r1",
+      tenant_id: "t1",
+      role: "owner",
+      permissions: ["workspace.view"],
       document_count: 0,
       configuration_version: 1,
       created_at: "t",
@@ -298,5 +305,28 @@ describe("createHttpStatusApi", () => {
     assert.equal((await cached.test())?.cached, true);
     const fresh = createHttpStatusApi(clientFor(() => Response.json(body)));
     assert.equal((await fresh.test())?.cached, false);
+  });
+});
+
+describe("the person", () => {
+  test("me() reads GET /me and maps it", async () => {
+    const { client, requests } = recordingClient({
+      id: 3,
+      name: "Ada",
+      preferred_username: "ada@example.com",
+      platform_admin: true,
+      tenants: [{ id: "t1", name: "Default", role: "admin" }],
+    });
+    const services = createHttpServices({ client, wsBaseUrl: "wss://api.test" });
+    const person = await services.me();
+    assert.equal(requests[0].method, "GET");
+    assert.equal(requests[0].url, "https://api.test/api/v1/me");
+    assert.deepEqual(person, {
+      id: 3,
+      name: "Ada",
+      preferredUsername: "ada@example.com",
+      platformAdmin: true,
+      tenants: [{ id: "t1", name: "Default", role: "admin" }],
+    });
   });
 });

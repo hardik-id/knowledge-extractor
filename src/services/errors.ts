@@ -35,6 +35,22 @@ const MESSAGES: Record<string, string> = {
   run_belongs_to_workspace: "This run belongs to a workspace. Delete the workspace instead.",
   definition_version_not_found: "This version of the configuration no longer exists.",
   no_files: "Select at least one file.",
+  forbidden: "You don't have permission to do this. Ask an owner or an admin if you need it.",
+  tenant_not_found: "This tenant no longer exists.",
+  user_not_found:
+    "This person couldn't be found. Check the sign-in name: they need to have signed in once.",
+  last_owner: "A workspace needs at least one owner. Make someone else an owner first.",
+  last_tenant_admin: "A tenant needs at least one admin. Make someone else an admin first.",
+  last_platform_admin:
+    "The application needs at least one platform admin. Make someone else one first.",
+  already_a_member: "This person is already a member.",
+  not_a_tenant_member:
+    "This person isn't in the tenant this workspace belongs to. Add them to the tenant first.",
+  tenant_name_taken: "Another tenant already has this name. Choose a different one.",
+  tenant_not_empty: "This tenant still has workspaces. Delete them first.",
+  default_tenant: "The default tenant can't be deleted.",
+  platform_admin_by_setting:
+    "This person is a platform admin through the server's settings. Change the setting to remove them.",
   mixed_sources: "A run can't mix storage documents with other files. Select one kind only.",
 };
 

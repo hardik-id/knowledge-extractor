@@ -1,5 +1,6 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { clickUntilOpen } from "../e2e/support/first-click";
+import { stubMeBody } from "./me-fixture";
 import { STUB_API_ORIGIN } from "../playwright.status.config";
 
 export const SHOTS = process.env.STATUS_SHOTS ?? "";
@@ -62,6 +63,8 @@ export interface StubOptions {
   status: Part[] | 404 | 401;
   /** Answer for POST /status/test; `cached` adds the header. */
   test?: { parts: Part[]; cached?: boolean; delayMs?: number; refused?: boolean };
+  /** Whether GET /me says the person is a platform admin (default: yes). */
+  platformAdmin?: boolean;
 }
 
 /** Answers the app's calls in http mode. Nothing leaves the browser. */
@@ -70,6 +73,9 @@ export async function stubApi(context: BrowserContext, options: StubOptions): Pr
   await context.route(`${STUB_API_ORIGIN}/**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace(/^\/api\/v1/, "");
+    if (path === "/me" && request.method() === "GET") {
+      return route.fulfill({ json: stubMeBody(options.platformAdmin ?? true) });
+    }
     if (path === "/status" && request.method() === "GET") {
       stub.calls.push("GET /status");
       if (options.status === 401) {

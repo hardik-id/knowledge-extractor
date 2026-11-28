@@ -1,4 +1,5 @@
 import type { BackendStatus, Services } from "../contracts";
+import { MOCK_PERSON } from "./mock-person";
 import { MockBackend } from "./mock-backend";
 
 declare global {
@@ -27,6 +28,7 @@ export function createMockServices(backend: MockBackend = new MockBackend()): Se
   if (typeof window !== "undefined") window.__mockBackend = backend;
 
   return {
+    me: async () => structuredClone(MOCK_PERSON),
     status: {
       // The mock has no API behind it: one stand-in part, and nothing to test.
       get: async () => MOCK_STATUS,

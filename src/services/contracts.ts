@@ -152,6 +152,28 @@ export interface RunsApi {
   deleteRun(runId: string): Promise<void>;
 }
 
+// ── People and roles ─────────────────────────────────────────────────────
+
+export type WorkspaceRole = "owner" | "editor" | "viewer";
+export type TenantRole = "admin" | "member";
+
+/** A tenant the person belongs to, with their role in it. */
+export interface PersonTenant {
+  id: string;
+  name: string;
+  role: TenantRole;
+}
+
+/** The signed-in person, as the API's `GET /me` answers. */
+export interface Person {
+  id: number;
+  name: string;
+  preferredUsername: string;
+  /** May do what only the application's admins may, such as testing the connections. */
+  platformAdmin: boolean;
+  tenants: PersonTenant[];
+}
+
 // ── Workspaces ────────────────────────────────────────────────────────────
 
 /** A name on a run: the run with its documents, configuration, conversation and records. */
@@ -161,6 +183,15 @@ export interface Workspace {
   description: string;
   /** The workspace's run. It exists from the start, empty. Everything inside goes through the run's own calls. */
   runId: string;
+  /** The tenant the workspace belongs to. */
+  tenantId: string;
+  /** The person's role in this workspace. */
+  role: WorkspaceRole;
+  /**
+   * What the person may do here, in the API's names (`workspace.edit`, ...). The API decides and
+   * refuses; this only lets the UI stop offering what would be refused. See `features/iam`.
+   */
+  permissions: string[];
   documentCount: number;
   /** The latest saved version of the run's extraction configuration, or null before the first. */
   configurationVersion: number | null;
@@ -189,7 +220,8 @@ export interface WorkspacePatch {
 }
 
 /**
- * A workspace is private to its owner. Codes the UI handles: `workspace_not_found`
+ * A workspace is seen through the person's role in it (404 when they have none, 403
+ * `forbidden` for an action the role doesn't give). Codes the UI handles: `workspace_not_found`
  * (404), `validation_error` (422, a name that is blank or too long),
  * `unknown_template` (422, `create` with a `templateId` that does not exist).
  */
@@ -692,6 +724,8 @@ export interface StatusApi {
 }
 
 export interface Services {
+  /** Who the signed-in person is and the tenants they belong to (`GET /me`). */
+  me(signal?: AbortSignal): Promise<Person>;
   status: StatusApi;
   catalog: SourceCatalog;
   documents: DocumentsApi;
