@@ -58,7 +58,7 @@ test("a 404 means the backend does not report: said in the panel, no toast, no e
   await expect(panel(page)).toContainText("This backend does not report its status.");
   await expect(panel(page).getByRole("button", { name: "Test connections" })).toHaveCount(0);
   await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Workspaces", level: 1 })).toBeVisible();
 });
 
 test("one load when the app opens, one more each time the panel opens, never on a timer", async ({
@@ -157,6 +157,6 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto("/studio");
     await badge(page).click();
     await expect(panel(page)).toBeVisible();
-    await expectAccessible(page, `projects with the status panel, ${theme}`);
+    await expectAccessible(page, `workspaces with the status panel, ${theme}`);
   });
 }

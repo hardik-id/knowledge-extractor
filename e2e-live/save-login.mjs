@@ -56,7 +56,7 @@ try {
   console.log("Sign in in the browser window. This waits up to 5 minutes.");
   // Signed in: back on the app, with the account menu showing.
   await page
-    .getByRole("heading", { name: "Projects", level: 1 })
+    .getByRole("heading", { name: "Workspaces", level: 1 })
     .waitFor({ state: "visible", timeout: 5 * 60_000 });
 
   // MSAL keeps its cache in sessionStorage, which a storage state does not include.

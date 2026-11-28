@@ -4,7 +4,7 @@ import type {
   AssistantMessage,
   ConnectionState,
   ExecuteStageOptions,
-  Project,
+  Workspace,
   Run,
   RunFile,
   StageCell,
@@ -73,7 +73,7 @@ export interface RunSlice {
   /** Live updates. A lower revision than the one known is ignored. */
   setExtractionRevision: (fileId: string, revision: number) => void;
   /**
-   * Creates a run from the selected files unless there is one. In a project's
+   * Creates a run from the selected files unless there is one. In a workspace's
    * store the run always exists: it makes the selection the run's documents
    * instead, and the run id stays. Rejects with an ApiError.
    */
@@ -94,30 +94,30 @@ export interface RunSlice {
   resetRun: () => void;
 }
 
-/** Whether the project (and its run) has been fetched since it was opened here. */
-export type ProjectLoadState = "idle" | "loading" | "ready" | "gone" | "error";
+/** Whether the workspace (and its run) has been fetched since it was opened here. */
+export type WorkspaceLoadState = "idle" | "loading" | "ready" | "gone" | "error";
 
 /**
- * The project the store is open on. Knowledge Studio only: the pipeline's
- * store never has one. The address names the project, the project names its
+ * The workspace the store is open on. Knowledge Studio only: the pipeline's
+ * store never has one. The address names the workspace, the workspace names its
  * run, and the selection is the run's files, so nothing here is kept in
- * the browser except small conveniences (see `createProjectSlice`).
+ * the browser except small conveniences (see `createWorkspaceSlice`).
  */
-export interface ProjectSlice {
-  projectId: string | null;
-  project: Project | null;
-  projectLoad: ProjectLoadState;
-  /** Why the project failed to load, while `projectLoad` is "error". */
-  projectError: unknown;
+export interface WorkspaceSlice {
+  workspaceId: string | null;
+  workspace: Workspace | null;
+  workspaceLoad: WorkspaceLoadState;
+  /** Why the workspace failed to load, while `workspaceLoad` is "error". */
+  workspaceError: unknown;
   /**
-   * Starts over on this project: fetches it, then its run. Does nothing when
-   * it is already open (or opening). Never rejects: the outcome is `projectLoad`.
+   * Starts over on this workspace: fetches it, then its run. Does nothing when
+   * it is already open (or opening). Never rejects: the outcome is `workspaceLoad`.
    */
-  openProject: (projectId: string) => Promise<void>;
-  /** Shows a changed project (a rename) at once. Ignored unless it is the open one. */
-  setProject: (project: Project) => void;
+  openWorkspace: (workspaceId: string) => Promise<void>;
+  /** Shows a changed workspace (a rename) at once. Ignored unless it is the open one. */
+  setWorkspace: (workspace: Workspace) => void;
 }
 
-export type PipelineState = NavigationSlice & FilesSlice & RunSlice & ProjectSlice;
+export type PipelineState = NavigationSlice & FilesSlice & RunSlice & WorkspaceSlice;
 
 export type SliceCreator<T> = StateCreator<PipelineState, [["zustand/persist", unknown]], [], T>;

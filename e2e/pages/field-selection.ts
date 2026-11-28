@@ -1,6 +1,6 @@
 import { type Locator, type Page, expect } from "@playwright/test";
-import type { ApiProject, Person } from "../fixtures";
-import { ExtractionPage, projectWithDocuments } from "./extraction";
+import type { ApiWorkspace, Person } from "../fixtures";
+import { ExtractionPage, workspaceWithDocuments } from "./extraction";
 import { documentPane, fieldColumn, openOneScreen } from "./working-screen";
 
 /** The faded look of a highlight: its fill and underline in the label colour at a quarter strength. */
@@ -23,31 +23,31 @@ export class FieldSelectionPage {
     return documentPane(this.page);
   }
 
-  /** A project with a document; the screen open before a first run. */
+  /** A workspace with a document; the screen open before a first run. */
   async openEmpty(
-    api: Parameters<typeof projectWithDocuments>[0],
+    api: Parameters<typeof workspaceWithDocuments>[0],
     person: Person,
-    request: Parameters<typeof projectWithDocuments>[2],
-  ): Promise<ApiProject> {
-    const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
-    await openOneScreen(this.page, project);
+    request: Parameters<typeof workspaceWithDocuments>[2],
+  ): Promise<ApiWorkspace> {
+    const workspace = await workspaceWithDocuments(api, person, request, ["platform-adrs.md"]);
+    await openOneScreen(this.page, workspace);
     await expect(fieldColumn(this.page)).toBeVisible();
-    return project;
+    return workspace;
   }
 
   /** The same, after a run: the document has highlights. */
   async openWithResults(
-    api: Parameters<typeof projectWithDocuments>[0],
+    api: Parameters<typeof workspaceWithDocuments>[0],
     person: Person,
-    request: Parameters<typeof projectWithDocuments>[2],
-  ): Promise<ApiProject> {
-    const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
+    request: Parameters<typeof workspaceWithDocuments>[2],
+  ): Promise<ApiWorkspace> {
+    const workspace = await workspaceWithDocuments(api, person, request, ["platform-adrs.md"]);
     const extraction = new ExtractionPage(this.page);
-    await openOneScreen(this.page, project);
+    await openOneScreen(this.page, workspace);
     await extraction.run("Run extraction");
     await extraction.finished();
     await expect(this.document.locator("mark").first()).toBeVisible();
-    return project;
+    return workspace;
   }
 
   /** The row of a field, by its name (found through the field's own checkbox). */

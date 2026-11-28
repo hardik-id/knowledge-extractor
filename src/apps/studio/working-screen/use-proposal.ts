@@ -208,7 +208,7 @@ function useOutcomes(): Record<string, ProposalOutcome> {
 
 /**
  * Run by the assistant dock: finds the newest open proposal among `messages` and puts it into the
- * workspace, where the table reads it. Returns what to say about each message's proposal.
+ * working screen, where the table reads it. Returns what to say about each message's proposal.
  */
 export function useProposalSync(
   draft: Draft | undefined,

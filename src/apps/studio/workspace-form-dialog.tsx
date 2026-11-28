@@ -17,17 +17,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { isSessionEnd } from "@/features/auth/report-failure";
 import { describeApiError } from "@/services/errors";
 
-export interface ProjectFormValues {
+export interface WorkspaceFormValues {
   name: string;
   description: string;
 }
 
-export interface NewProjectValues extends ProjectFormValues {
-  /** Always "blank": a project starts empty (see the start panel). Absent when changing one. */
+export interface NewWorkspaceValues extends WorkspaceFormValues {
+  /** Always "blank": a workspace starts empty (see the start panel). Absent when changing one. */
   templateId?: string;
 }
 
-interface ProjectFormDialogProps {
+interface WorkspaceFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -35,26 +35,26 @@ interface ProjectFormDialogProps {
   submitLabel: string;
   busyLabel: string;
   /** Starting values each time it opens. */
-  initial: ProjectFormValues;
-  /** Making a project, not changing one: it is created from the blank template. */
+  initial: WorkspaceFormValues;
+  /** Making a workspace, not changing one: it is created from the blank template. */
   creating?: boolean;
   /** Rejects with the failure to show; resolves to close the dialog. */
-  onSubmit: (values: NewProjectValues) => Promise<void>;
+  onSubmit: (values: NewWorkspaceValues) => Promise<void>;
 }
 
-/** The name and description of a project, for making one and for changing one. */
-export function ProjectFormDialog({ open, onOpenChange, ...rest }: ProjectFormDialogProps) {
+/** The name and description of a workspace, for making one and for changing one. */
+export function WorkspaceFormDialog({ open, onOpenChange, ...rest }: WorkspaceFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:p-0">
         {/* Mounted only while open, so it starts from `initial` every time. */}
-        <ProjectForm onOpenChange={onOpenChange} {...rest} />
+        <WorkspaceForm onOpenChange={onOpenChange} {...rest} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function ProjectForm({
+function WorkspaceForm({
   onOpenChange,
   title,
   description,
@@ -63,7 +63,7 @@ function ProjectForm({
   initial,
   creating = false,
   onSubmit,
-}: Omit<ProjectFormDialogProps, "open">) {
+}: Omit<WorkspaceFormDialogProps, "open">) {
   const nameId = useId();
   const descriptionId = useId();
   const errorId = useId();
@@ -75,7 +75,7 @@ function ProjectForm({
     event.preventDefault();
     if (busy) return;
     if (!name.trim()) {
-      setError("Give the project a name.");
+      setError("Give the workspace a name.");
       return;
     }
     setBusy(true);

@@ -1,6 +1,6 @@
 import { type APIRequestContext, type Page, expect } from "@playwright/test";
 import { API_BASE_URL, API_ORIGIN } from "../support/env";
-import type { Api, ApiProject, Person } from "../fixtures";
+import type { Api, ApiWorkspace, Person } from "../fixtures";
 import { clickUntilOpen } from "../support/first-click";
 import { openOneScreen } from "./working-screen";
 
@@ -14,11 +14,11 @@ interface ApiDocument {
   modified_at: string;
 }
 
-/** Puts documents (by file name) into the project's run, as the person, without clicking. */
+/** Puts documents (by file name) into the workspace's run, as the person, without clicking. */
 export async function addDocuments(
   request: APIRequestContext,
   person: Person,
-  project: ApiProject,
+  workspace: ApiWorkspace,
   names: string[],
 ) {
   const headers = { authorization: `Bearer ${person.token}` };
@@ -38,28 +38,28 @@ export async function addDocuments(
       modified_at: found.modified_at,
     };
   });
-  const put = await request.put(`${API_BASE_URL}/runs/${project.run_id}/documents`, {
+  const put = await request.put(`${API_BASE_URL}/runs/${workspace.run_id}/documents`, {
     headers,
     data: { items },
   });
   expect(put.ok(), `PUT documents answered ${put.status()}`).toBeTruthy();
 }
 
-/** A new project holding the named documents (the run's files), ready to open in extraction. */
-export async function projectWithDocuments(
+/** A new workspace holding the named documents (the run's files), ready to open in extraction. */
+export async function workspaceWithDocuments(
   api: Api,
   person: Person,
   request: APIRequestContext,
   names: string[],
 ) {
-  const project = await api.createProject({ name: "Journey project" });
-  await addDocuments(request, person, project, names);
-  return project;
+  const workspace = await api.createWorkspace({ name: "Journey workspace" });
+  await addDocuments(request, person, workspace, names);
+  return workspace;
 }
 
-/** The extraction workspace of a project. */
+/** The extraction page of a workspace. */
 export class ExtractionPage {
-  /** The run of the open project, noted from the first request the page makes for it. */
+  /** The run of the open workspace, noted from the first request the page makes for it. */
   private runId: string | null = null;
 
   constructor(readonly page: Page) {
@@ -70,14 +70,14 @@ export class ExtractionPage {
     });
   }
 
-  /** Opens the project's working screen. */
-  async open(project: ApiProject) {
-    await openOneScreen(this.page, project);
+  /** Opens the workspace's working screen. */
+  async open(workspace: ApiWorkspace) {
+    await openOneScreen(this.page, workspace);
   }
 
   /** The one Run button of the top bar: "Run on this document", "Run on all N documents" or "Run again". */
   get runButton() {
-    return this.page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ });
+    return this.page.getByTestId("workspace-top-bar").getByRole("button", { name: /^Run/ });
   }
 
   /**

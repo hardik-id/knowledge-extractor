@@ -1,6 +1,6 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
-/** The document switcher in the project top bar. */
+/** The document switcher in the workspace top bar. */
 export class Switcher {
   constructor(readonly page: Page) {}
 

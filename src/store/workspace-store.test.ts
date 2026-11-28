@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 import { MOCK_DOCUMENTS } from "@/mocks/documents";
 import type { MockBackend } from "@/services/mock/mock-backend";
-import type { Project } from "@/services/contracts";
+import type { Workspace } from "@/services/contracts";
 import type { PipelineState } from "./types";
 
 /**
- * Studio's store, opened by project id, against the mock backend. A "tab" is
+ * Studio's store, opened by workspace id, against the mock backend. A "tab" is
  * a store; a new browser context is a new store with empty sessionStorage.
  */
 
@@ -32,11 +32,11 @@ Object.assign(globalThis, {
   localStorage: memoryStorage(),
 });
 
-const KEY = "test-studio:project";
+const KEY = "test-studio:workspace";
 const DOCS = MOCK_DOCUMENTS.slice(0, 3);
 
 type Store = import("./pipeline-store").RunStore;
-let createProjectRunStore: typeof import("./pipeline-store").createProjectRunStore;
+let createWorkspaceRunStore: typeof import("./pipeline-store").createWorkspaceRunStore;
 let createRunStore: typeof import("./pipeline-store").createRunStore;
 let attachRun: typeof import("@/features/run/attach-run").attachRun;
 let services: typeof import("@/services").services;
@@ -54,23 +54,23 @@ async function until(condition: () => boolean, what: string) {
 
 /** A tab: a new store, hydrated, as <StoreHydrator> leaves it. */
 async function newTab(): Promise<Store> {
-  const store = createProjectRunStore(KEY);
+  const store = createWorkspaceRunStore(KEY);
   await store.persist.rehydrate();
   return store;
 }
 
-/** What <RunSync> does once the project's run is known. */
+/** What <RunSync> does once the workspace's run is known. */
 async function attach(store: Store) {
   const runId = store.getState().runId;
-  assert.ok(runId, "the project's run is loaded");
+  assert.ok(runId, "the workspace's run is loaded");
   detachers.push(attachRun(store, runId, { onGone: () => {} }));
   await until(() => store.getState().connection === "open", "the live connection is open");
 }
 
-async function openedOn(project: Project): Promise<Store> {
+async function openedOn(workspace: Workspace): Promise<Store> {
   const store = await newTab();
-  await store.getState().openProject(project.id);
-  assert.equal(store.getState().projectLoad, "ready");
+  await store.getState().openWorkspace(workspace.id);
+  assert.equal(store.getState().workspaceLoad, "ready");
   return store;
 }
 
@@ -78,9 +78,9 @@ const refs = (state: PipelineState) => state.runFiles.map((file) => file.sourceR
 const selectedIds = (state: PipelineState) => state.selectedFiles.map((file) => file.id).sort();
 const ids = (files: readonly { id: string }[]) => files.map((file) => file.id).sort();
 
-describe("a Studio store opened by project id", () => {
+describe("a Studio store opened by workspace id", () => {
   before(async () => {
-    ({ createProjectRunStore, createRunStore } = await import("./pipeline-store"));
+    ({ createWorkspaceRunStore, createRunStore } = await import("./pipeline-store"));
     ({ attachRun } = await import("@/features/run/attach-run"));
     ({ services } = await import("@/services"));
     const mock = window.__mockBackend;
@@ -98,38 +98,38 @@ describe("a Studio store opened by project id", () => {
     while (detachers.length) detachers.pop()?.();
   });
 
-  test("loads the project, then its run; the selection is the run's files", async () => {
-    const project = await services.projects.create({ name: "ADRs" });
+  test("loads the workspace, then its run; the selection is the run's files", async () => {
+    const workspace = await services.workspaces.create({ name: "ADRs" });
     const store = await newTab();
 
-    const opening = store.getState().openProject(project.id);
-    assert.equal(store.getState().projectLoad, "loading");
-    assert.equal(store.getState().projectId, project.id);
+    const opening = store.getState().openWorkspace(workspace.id);
+    assert.equal(store.getState().workspaceLoad, "loading");
+    assert.equal(store.getState().workspaceId, workspace.id);
     await opening;
 
     const state = store.getState();
-    assert.equal(state.projectLoad, "ready");
-    assert.equal(state.project?.name, "ADRs");
-    assert.equal(state.runId, project.runId);
+    assert.equal(state.workspaceLoad, "ready");
+    assert.equal(state.workspace?.name, "ADRs");
+    assert.equal(state.runId, workspace.runId);
     assert.equal(state.runLoad, "ready");
     assert.deepEqual(state.selectedFiles, []);
   });
 
   test("opening extraction makes the selection the run's documents, and the run stays", async () => {
-    const project = await services.projects.create({ name: "Policies" });
-    const store = await openedOn(project);
+    const workspace = await services.workspaces.create({ name: "Policies" });
+    const store = await openedOn(workspace);
 
     store.getState().setSelection(DOCS);
-    assert.equal(store.getState().runId, project.runId, "choosing keeps the project's run");
+    assert.equal(store.getState().runId, workspace.runId, "choosing keeps the workspace's run");
     assert.deepEqual(store.getState().runFiles, [], "and sends nothing yet");
 
     await store.getState().ensureRun();
 
-    assert.equal(store.getState().runId, project.runId);
+    assert.equal(store.getState().runId, workspace.runId);
     assert.deepEqual(refs(store.getState()), ids(DOCS));
     assert.deepEqual(selectedIds(store.getState()), ids(DOCS));
     assert.deepEqual(
-      ids((await services.runs.getRun(project.runId)).files.map((f) => ({ id: f.sourceRef }))),
+      ids((await services.runs.getRun(workspace.runId)).files.map((f) => ({ id: f.sourceRef }))),
       ids(DOCS),
     );
 
@@ -137,7 +137,7 @@ describe("a Studio store opened by project id", () => {
     const kept = store.getState().runFiles.find((file) => file.sourceRef === DOCS[0].id);
     store.getState().toggleFile(DOCS[2]);
     await store.getState().ensureRun();
-    assert.equal(store.getState().runId, project.runId);
+    assert.equal(store.getState().runId, workspace.runId);
     assert.deepEqual(refs(store.getState()), ids(DOCS.slice(0, 2)));
     assert.equal(
       store.getState().runFiles.find((file) => file.sourceRef === DOCS[0].id)?.id,
@@ -146,8 +146,8 @@ describe("a Studio store opened by project id", () => {
   });
 
   test("nothing of the run is kept in the browser: a new context gets the same state", async () => {
-    const project = await services.projects.create({ name: "Contracts" });
-    const first = await openedOn(project);
+    const workspace = await services.workspaces.create({ name: "Contracts" });
+    const first = await openedOn(workspace);
     first.getState().setSelection(DOCS.slice(0, 2));
     await first.getState().ensureRun();
 
@@ -155,17 +155,17 @@ describe("a Studio store opened by project id", () => {
     assert.deepEqual(saved?.state ?? {}, {}, "no run id, no selection");
 
     session.saved.clear(); // a new browser context
-    const second = await openedOn(project);
-    assert.equal(second.getState().runId, project.runId);
+    const second = await openedOn(workspace);
+    assert.equal(second.getState().runId, workspace.runId);
     assert.deepEqual(refs(second.getState()), refs(first.getState()));
     assert.deepEqual(selectedIds(second.getState()), ids(DOCS.slice(0, 2)));
     const fileId = second.getState().runFiles[0].id;
     assert.ok(second.getState().cells[fileId]?.extract, "the run's cells come with it");
   });
 
-  test("two projects in two tabs do not disturb each other", async () => {
-    const a = await services.projects.create({ name: "A" });
-    const b = await services.projects.create({ name: "B" });
+  test("two workspaces in two tabs do not disturb each other", async () => {
+    const a = await services.workspaces.create({ name: "A" });
+    const b = await services.workspaces.create({ name: "B" });
     const tabA = await openedOn(a);
     const tabB = await openedOn(b);
     await attach(tabA);
@@ -184,10 +184,10 @@ describe("a Studio store opened by project id", () => {
   });
 
   test("a change of documents elsewhere fetches the snapshot again (run.changed)", async () => {
-    const project = await services.projects.create({ name: "Shared" });
-    const here = await openedOn(project);
+    const workspace = await services.workspaces.create({ name: "Shared" });
+    const here = await openedOn(workspace);
     await attach(here);
-    const there = await openedOn(project);
+    const there = await openedOn(workspace);
 
     there.getState().setSelection(DOCS.slice(0, 2));
     await there.getState().ensureRun();
@@ -197,113 +197,113 @@ describe("a Studio store opened by project id", () => {
     assert.deepEqual(selectedIds(here.getState()), ids(DOCS.slice(0, 2)), "the selection follows");
   });
 
-  test("an unknown project is gone, not an error", async () => {
+  test("an unknown workspace is gone, not an error", async () => {
     const store = await newTab();
-    await store.getState().openProject("project_does_not_exist");
-    assert.equal(store.getState().projectLoad, "gone");
+    await store.getState().openWorkspace("workspace_does_not_exist");
+    assert.equal(store.getState().workspaceLoad, "gone");
     assert.equal(store.getState().runId, null);
   });
 
   test("a refused token is an error that says so, and loads again once the person is back", async () => {
     const { ApiError } = await import("@/lib/api/api-error");
-    const project = await services.projects.create({ name: "Refused" });
+    const workspace = await services.workspaces.create({ name: "Refused" });
     const store = await newTab();
-    const real = services.projects.get;
-    services.projects.get = async () => {
+    const real = services.workspaces.get;
+    services.workspaces.get = async () => {
       throw new ApiError({ status: 401, code: "http_401", message: "Unauthorized" });
     };
     try {
-      await store.getState().openProject(project.id);
+      await store.getState().openWorkspace(workspace.id);
     } finally {
-      services.projects.get = real;
+      services.workspaces.get = real;
     }
 
     const failed = store.getState();
-    assert.equal(failed.projectLoad, "error");
-    assert.ok(failed.projectError instanceof ApiError);
-    assert.equal(failed.projectError.status, 401, "the cause is kept, so the page can tell");
+    assert.equal(failed.workspaceLoad, "error");
+    assert.ok(failed.workspaceError instanceof ApiError);
+    assert.equal(failed.workspaceError.status, 401, "the cause is kept, so the page can tell");
 
-    await store.getState().openProject(project.id);
-    assert.equal(store.getState().projectLoad, "ready");
-    assert.equal(store.getState().projectError, null);
+    await store.getState().openWorkspace(workspace.id);
+    assert.equal(store.getState().workspaceLoad, "ready");
+    assert.equal(store.getState().workspaceError, null);
   });
 
-  test("a project deleted while open is gone", async () => {
-    const project = await services.projects.create({ name: "Short-lived" });
-    const store = await openedOn(project);
-    await services.projects.remove(project.id);
+  test("a workspace deleted while open is gone", async () => {
+    const workspace = await services.workspaces.create({ name: "Short-lived" });
+    const store = await openedOn(workspace);
+    await services.workspaces.remove(workspace.id);
 
     assert.equal(await store.getState().loadRun(), "gone");
-    assert.equal(store.getState().projectLoad, "gone");
+    assert.equal(store.getState().workspaceLoad, "gone");
   });
 
-  test("the active document and source tab are kept per project, in this tab only", async () => {
-    const a = await services.projects.create({ name: "With a document open" });
-    const b = await services.projects.create({ name: "Another" });
+  test("the active document and source tab are kept per workspace, in this tab only", async () => {
+    const a = await services.workspaces.create({ name: "With a document open" });
+    const b = await services.workspaces.create({ name: "Another" });
     const store = await openedOn(a);
     store.getState().setActiveDoc("file_1");
 
-    await store.getState().openProject(b.id);
-    assert.equal(store.getState().activeDocId, null, "another project starts without it");
+    await store.getState().openWorkspace(b.id);
+    assert.equal(store.getState().activeDocId, null, "another workspace starts without it");
     assert.equal(store.getState().runId, b.runId);
 
-    await store.getState().openProject(a.id);
+    await store.getState().openWorkspace(a.id);
     assert.equal(store.getState().activeDocId, "file_1", "back on the first, it is restored");
     assert.equal(store.getState().runId, a.runId);
   });
 
-  test("sign-out removes every project's conveniences from the tab", async () => {
-    const { clearProjectConveniences } = await import("./slices/project-slice");
-    const project = await services.projects.create({ name: "Signed out" });
-    const store = await openedOn(project);
+  test("sign-out removes every workspace's conveniences from the tab", async () => {
+    const { clearWorkspaceConveniences } = await import("./slices/workspace-slice");
+    const workspace = await services.workspaces.create({ name: "Signed out" });
+    const store = await openedOn(workspace);
     store.getState().setActiveDoc("file_1");
     session.setItem("unrelated", "kept");
-    assert.ok(session.saved.has(`${KEY}:${project.id}`));
+    assert.ok(session.saved.has(`${KEY}:${workspace.id}`));
 
-    clearProjectConveniences(KEY);
+    clearWorkspaceConveniences(KEY);
 
-    assert.equal(session.saved.has(`${KEY}:${project.id}`), false);
+    assert.equal(session.saved.has(`${KEY}:${workspace.id}`), false);
     assert.equal(session.getItem("unrelated"), "kept");
   });
 
-  test("opening the project already open does nothing; a later opening wins", async () => {
-    const a = await services.projects.create({ name: "First" });
-    const b = await services.projects.create({ name: "Second" });
+  test("opening the workspace already open does nothing; a later opening wins", async () => {
+    const a = await services.workspaces.create({ name: "First" });
+    const b = await services.workspaces.create({ name: "Second" });
     const store = await openedOn(a);
     store.getState().setSelection(DOCS.slice(0, 1));
 
-    await store.getState().openProject(a.id);
-    assert.equal(store.getState().selectedFiles.length, 1, "the same project is not reloaded");
+    await store.getState().openWorkspace(a.id);
+    assert.equal(store.getState().selectedFiles.length, 1, "the same workspace is not reloaded");
 
-    const slow = store.getState().openProject(b.id);
-    const fast = store.getState().openProject(a.id);
+    const slow = store.getState().openWorkspace(b.id);
+    const fast = store.getState().openWorkspace(a.id);
     await Promise.all([slow, fast]);
-    assert.equal(store.getState().projectId, a.id);
+    assert.equal(store.getState().workspaceId, a.id);
     assert.equal(store.getState().runId, a.runId);
   });
 
-  test("setProject shows a renamed project at once, and only for the open one", async () => {
-    const project = await services.projects.create({ name: "Before" });
-    const other = await services.projects.create({ name: "Other" });
-    const store = await openedOn(project);
+  test("setWorkspace shows a renamed workspace at once, and only for the open one", async () => {
+    const workspace = await services.workspaces.create({ name: "Before" });
+    const other = await services.workspaces.create({ name: "Other" });
+    const store = await openedOn(workspace);
 
-    const saved = await services.projects.rename(project.id, {
+    const saved = await services.workspaces.rename(workspace.id, {
       name: "After",
       description: "Now described",
     });
-    store.getState().setProject(saved);
-    assert.equal(store.getState().project?.name, "After");
-    assert.equal(store.getState().project?.description, "Now described");
+    store.getState().setWorkspace(saved);
+    assert.equal(store.getState().workspace?.name, "After");
+    assert.equal(store.getState().workspace?.description, "Now described");
 
-    store.getState().setProject(other);
-    assert.equal(store.getState().project?.name, "After", "another project is ignored");
+    store.getState().setWorkspace(other);
+    assert.equal(store.getState().workspace?.name, "After", "another workspace is ignored");
   });
 
-  test("the pipeline's store has no project, and still lets go of its run on a new selection", async () => {
+  test("the pipeline's store has no workspace, and still lets go of its run on a new selection", async () => {
     const store = createRunStore("test-pipeline:run");
     await store.persist.rehydrate();
-    await store.getState().openProject("anything");
-    assert.equal(store.getState().projectId, null);
+    await store.getState().openWorkspace("anything");
+    assert.equal(store.getState().workspaceId, null);
 
     store.getState().setSelection(DOCS.slice(0, 1));
     await store.getState().ensureRun();

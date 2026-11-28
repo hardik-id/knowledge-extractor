@@ -29,7 +29,7 @@ export function ScreenProvider({
 }) {
   const [selection, dispatch] = useReducer(screenReducer, INITIAL_SELECTION);
   const records = useFileExtraction(fileId).data?.records;
-  // A template offer belongs to this screen: it must not outlive the project or document.
+  // A template offer belongs to this screen: it must not outlive the workspace or document.
   useEffect(() => () => offerProposal(null), []);
 
   const value = useMemo<ScreenState>(() => {

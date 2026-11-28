@@ -168,7 +168,7 @@ describe("what the row remembers", () => {
     assert.deepEqual(memoryFor(m, "r1"), { runId: "r1", words, applied });
   });
 
-  test("another project starts with nothing: typed text and applied code don't leak", () => {
+  test("another workspace starts with nothing: typed text and applied code don't leak", () => {
     const m = rememberApplied(rememberWords(NO_MEMORY, "r1", words), "r1", applied);
     assert.deepEqual(memoryFor(m, "r2"), { runId: "r2", words: null, applied: null });
     // Remembering in the new run replaces the old run's memory.

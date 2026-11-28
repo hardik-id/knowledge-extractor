@@ -30,11 +30,11 @@ import {
   type FieldValue,
   type FieldValueInput,
   type FileExtraction,
-  type NewProjectInput,
+  type NewWorkspaceInput,
   type NewRecordInput,
-  type Project,
-  type ProjectPage,
-  type ProjectPatch,
+  type Workspace,
+  type WorkspacePage,
+  type WorkspacePatch,
   type PublishResult,
   type RecordPatch,
   type ReviewState,
@@ -73,17 +73,17 @@ import { extractRecords } from "./mock-extractor";
  * classify again writes a fresh copy, which drops the enrichment.
  *
  * State is kept in the browser so a page reload finds the run again, the way
- * it would on a real server. Runs that belong to a project, and the projects,
+ * it would on a real server. Runs that belong to a workspace, and the workspaces,
  * are kept in localStorage, so they survive closing the browser. Other runs
  * (the pipeline's) stay in sessionStorage, one per tab.
  */
 
 const DEFAULT_STORAGE_KEY = "knowledge-extractor:mock-backend";
-const DEFAULT_PROJECTS_KEY = "knowledge-extractor:mock-projects";
-const MAX_PROJECT_NAME_LENGTH = 120;
+const DEFAULT_WORKSPACES_KEY = "knowledge-extractor:mock-workspaces";
+const MAX_WORKSPACE_NAME_LENGTH = 120;
 
 const LATENCY_MS = 150;
-const PROJECT_PAGE_SIZE = 20;
+const WORKSPACE_PAGE_SIZE = 20;
 const QUEUE_STAGGER_MS = 250;
 const INGEST_STEPS = 10;
 const WORK_MS: Record<Exclude<WorkStageId, "ingest">, number> = {
@@ -130,15 +130,15 @@ interface MockRun {
    * `document`: the stored document named by the run file's `sourceRef`. Older runs don't have it.
    */
   extractionInput?: "enrich" | "document";
-  /** The project that owns this run. Such a run is deleted with its project only. */
-  projectId?: string;
+  /** The workspace that owns this run. Such a run is deleted with its workspace only. */
+  workspaceId?: string;
   /** The saved versions of the definition before the current one, oldest first. */
   previousDefinitions?: ExtractionDefinition[];
   /** The last change a person made to the records or the documents. */
   activityAt?: string;
 }
 
-interface MockProject {
+interface MockWorkspace {
   id: string;
   name: string;
   description: string;
@@ -162,7 +162,7 @@ export interface MockBackendOptions {
   storage?: MockStorage | null;
   /** The key the state is kept under. One per app, so two apps on one origin keep apart. */
   storageKey?: string;
-  /** Where to keep projects and their runs. Default: localStorage when there is one. */
+  /** Where to keep workspaces and their runs. Default: localStorage when there is one. */
   persistentStorage?: MockStorage | null;
   persistentStorageKey?: string;
 }
@@ -212,12 +212,12 @@ function defaultPersistentStorage(): MockStorage | null {
 const badRequest = (message: string) =>
   new ApiError({ status: 422, code: "validation_error", message });
 
-/** A project name as stored: trimmed, not blank, not too long. */
+/** A workspace name as stored: trimmed, not blank, not too long. */
 function checkName(name: unknown): string {
   const trimmed = typeof name === "string" ? name.trim() : "";
-  if (!trimmed) throw badRequest("A project needs a name.");
-  if (trimmed.length > MAX_PROJECT_NAME_LENGTH) {
-    throw badRequest(`A project name takes at most ${MAX_PROJECT_NAME_LENGTH} characters.`);
+  if (!trimmed) throw badRequest("A workspace needs a name.");
+  if (trimmed.length > MAX_WORKSPACE_NAME_LENGTH) {
+    throw badRequest(`A workspace name takes at most ${MAX_WORKSPACE_NAME_LENGTH} characters.`);
   }
   return trimmed;
 }
@@ -338,7 +338,7 @@ export function mockSplit(text: string, size: number): Array<[number, number]> {
 export class MockBackend {
   private readonly runs = new Map<string, MockRun>();
   private readonly subscriptions = new Set<Subscription>();
-  private readonly projects = new Map<string, MockProject>();
+  private readonly workspaces = new Map<string, MockWorkspace>();
   private readonly storage: MockStorage | null;
   private readonly storageKey: string;
   private readonly persistentStorage: MockStorage | null;
@@ -359,7 +359,7 @@ export class MockBackend {
       options.persistentStorage === undefined
         ? defaultPersistentStorage()
         : options.persistentStorage;
-    this.persistentStorageKey = options.persistentStorageKey ?? DEFAULT_PROJECTS_KEY;
+    this.persistentStorageKey = options.persistentStorageKey ?? DEFAULT_WORKSPACES_KEY;
     this.restore();
   }
 
@@ -393,36 +393,36 @@ export class MockBackend {
     return { text, contentType: CONTENT_TYPE.md, etag: document.etag };
   }
 
-  // ── Projects ──────────────────────────────────────────────────────────
+  // ── Workspaces ──────────────────────────────────────────────────────────
 
-  async listProjects(signal?: AbortSignal): Promise<Project[]> {
+  async listWorkspaces(signal?: AbortSignal): Promise<Workspace[]> {
     await this.wait(LATENCY_MS);
     signal?.throwIfAborted();
-    return [...this.projects.values()]
-      .map((project) => this.projectView(project))
+    return [...this.workspaces.values()]
+      .map((workspace) => this.workspaceView(workspace))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
   }
 
   /** A page of the list. The cursor is the offset into the ordered list, as text. */
-  async listProjectsPage(
+  async listWorkspacesPage(
     options: { cursor?: string | null; signal?: AbortSignal; pageSize?: number } = {},
-  ): Promise<ProjectPage> {
-    const all = await this.listProjects(options.signal);
-    const size = options.pageSize ?? PROJECT_PAGE_SIZE;
+  ): Promise<WorkspacePage> {
+    const all = await this.listWorkspaces(options.signal);
+    const size = options.pageSize ?? WORKSPACE_PAGE_SIZE;
     const start = options.cursor ? Number.parseInt(options.cursor, 10) : 0;
     if (!Number.isInteger(start) || start < 0) throw badRequest("The cursor is not valid.");
     const end = start + size;
     return { items: all.slice(start, end), next: end < all.length ? String(end) : null };
   }
 
-  /** The templates a project can start from, the default first. */
+  /** The templates a workspace can start from, the default first. */
   async listTemplates(signal?: AbortSignal): Promise<DefinitionTemplate[]> {
     await this.wait(LATENCY_MS);
     signal?.throwIfAborted();
     return structuredClone([...MOCK_TEMPLATES]);
   }
 
-  async createProject(input: NewProjectInput): Promise<Project> {
+  async createWorkspace(input: NewWorkspaceInput): Promise<Workspace> {
     await this.wait(LATENCY_MS);
     const name = checkName(input.name);
     const template = MOCK_TEMPLATES.find((t) => t.id === (input.templateId ?? DEFAULT_TEMPLATE_ID));
@@ -437,23 +437,23 @@ export class MockBackend {
       throw badRequest("The description must be text.");
     }
     const now = this.timestamp();
-    const project: MockProject = {
-      id: `project_${newId()}`,
+    const workspace: MockWorkspace = {
+      id: `workspace_${newId()}`,
       name,
       description: input.description ?? "",
       runId: `run_${newId()}`,
       createdAt: now,
       updatedAt: now,
     };
-    this.runs.set(project.runId, {
-      id: project.runId,
+    this.runs.set(workspace.runId, {
+      id: workspace.runId,
       createdAt: now,
       files: [],
       cells: {},
       sharedWriter: {},
       workStages: ["extract"],
       extractionInput: "document",
-      projectId: project.id,
+      workspaceId: workspace.id,
       definition: {
         ...structuredClone(template.definition),
         version: 1,
@@ -461,38 +461,38 @@ export class MockBackend {
         createdAt: now,
       },
     });
-    this.projects.set(project.id, project);
+    this.workspaces.set(workspace.id, workspace);
     this.save();
-    return this.projectView(project);
+    return this.workspaceView(workspace);
   }
 
-  async getProject(projectId: string, signal?: AbortSignal): Promise<Project> {
+  async getWorkspace(workspaceId: string, signal?: AbortSignal): Promise<Workspace> {
     await this.wait(LATENCY_MS);
     signal?.throwIfAborted();
-    return this.projectView(this.requireProject(projectId));
+    return this.workspaceView(this.requireWorkspace(workspaceId));
   }
 
-  async updateProject(projectId: string, patch: ProjectPatch): Promise<Project> {
+  async updateWorkspace(workspaceId: string, patch: WorkspacePatch): Promise<Workspace> {
     await this.wait(LATENCY_MS);
-    const project = this.requireProject(projectId);
-    const name = patch.name === undefined ? project.name : checkName(patch.name);
+    const workspace = this.requireWorkspace(workspaceId);
+    const name = patch.name === undefined ? workspace.name : checkName(patch.name);
     if (patch.description !== undefined && typeof patch.description !== "string") {
       throw badRequest("The description must be text.");
     }
-    project.name = name;
-    project.description = patch.description ?? project.description;
-    project.updatedAt = this.timestamp();
+    workspace.name = name;
+    workspace.description = patch.description ?? workspace.description;
+    workspace.updatedAt = this.timestamp();
     this.save();
-    return this.projectView(project);
+    return this.workspaceView(workspace);
   }
 
-  async deleteProject(projectId: string): Promise<void> {
+  async deleteWorkspace(workspaceId: string): Promise<void> {
     await this.wait(LATENCY_MS);
-    const project = this.requireProject(projectId);
-    this.projects.delete(project.id);
-    this.runs.delete(project.runId);
+    const workspace = this.requireWorkspace(workspaceId);
+    this.workspaces.delete(workspace.id);
+    this.runs.delete(workspace.runId);
     for (const subscription of [...this.subscriptions]) {
-      if (subscription.runId !== project.runId) continue;
+      if (subscription.runId !== workspace.runId) continue;
       this.subscriptions.delete(subscription);
       subscription.handlers.onStateChange?.("closed");
     }
@@ -1130,11 +1130,11 @@ export class MockBackend {
 
   async deleteRun(runId: string): Promise<void> {
     await this.wait(LATENCY_MS);
-    if (this.runs.get(runId)?.projectId) {
+    if (this.runs.get(runId)?.workspaceId) {
       throw new ApiError({
         status: 409,
-        code: "run_belongs_to_project",
-        message: "This run belongs to a project. Delete the project instead.",
+        code: "run_belongs_to_workspace",
+        message: "This run belongs to a workspace. Delete the workspace instead.",
       });
     }
     this.runs.delete(runId);
@@ -1148,7 +1148,7 @@ export class MockBackend {
    */
   reset(): void {
     this.runs.clear();
-    this.projects.clear();
+    this.workspaces.clear();
     this.subscriptions.clear();
     this.examplesUsed.clear();
     try {
@@ -1566,34 +1566,34 @@ export class MockBackend {
     }
   }
 
-  private requireProject(projectId: string): MockProject {
-    const project = this.projects.get(projectId);
-    if (!project) {
+  private requireWorkspace(workspaceId: string): MockWorkspace {
+    const workspace = this.workspaces.get(workspaceId);
+    if (!workspace) {
       throw new ApiError({
         status: 404,
-        code: "project_not_found",
-        message: "This project does not exist.",
+        code: "workspace_not_found",
+        message: "This workspace does not exist.",
       });
     }
-    return project;
+    return workspace;
   }
 
-  private projectView(project: MockProject): Project {
-    const run = this.runs.get(project.runId);
-    const times = [project.updatedAt, run?.activityAt ?? ""];
+  private workspaceView(workspace: MockWorkspace): Workspace {
+    const run = this.runs.get(workspace.runId);
+    const times = [workspace.updatedAt, run?.activityAt ?? ""];
     if (run) {
       times.push(...Object.values(run.cells).map((c) => c.updatedAt));
       times.push(...(run.assistant ?? []).map((m) => m.createdAt));
       if (run.definition) times.push(...this.allDefinitions(run).map((d) => d.createdAt));
     }
     return {
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      runId: project.runId,
+      id: workspace.id,
+      name: workspace.name,
+      description: workspace.description,
+      runId: workspace.runId,
       documentCount: run?.files.length ?? 0,
       configurationVersion: run?.definition?.version ?? null,
-      createdAt: project.createdAt,
+      createdAt: workspace.createdAt,
       updatedAt: times.reduce((a, b) => (b > a ? b : a)),
     };
   }
@@ -1632,18 +1632,18 @@ export class MockBackend {
   private save() {
     const runs = [...this.runs.values()];
     try {
-      this.storage?.setItem(this.storageKey, JSON.stringify(runs.filter((r) => !r.projectId)));
+      this.storage?.setItem(this.storageKey, JSON.stringify(runs.filter((r) => !r.workspaceId)));
     } catch {
       // Storage full or blocked: the mock still works until the next reload.
     }
     try {
-      const owned = runs.filter((r) => r.projectId);
-      if (this.projects.size === 0 && owned.length === 0) {
+      const owned = runs.filter((r) => r.workspaceId);
+      if (this.workspaces.size === 0 && owned.length === 0) {
         this.persistentStorage?.removeItem?.(this.persistentStorageKey);
       } else {
         this.persistentStorage?.setItem(
           this.persistentStorageKey,
-          JSON.stringify({ projects: [...this.projects.values()], runs: owned }),
+          JSON.stringify({ workspaces: [...this.workspaces.values()], runs: owned }),
         );
       }
     } catch {
@@ -1661,8 +1661,8 @@ export class MockBackend {
     }
     try {
       const stored = JSON.parse(this.persistentStorage?.getItem(this.persistentStorageKey) ?? "{}");
-      for (const project of (stored.projects ?? []) as MockProject[]) {
-        this.projects.set(project.id, project);
+      for (const workspace of (stored.workspaces ?? []) as MockWorkspace[]) {
+        this.workspaces.set(workspace.id, workspace);
       }
       saved = [...saved, ...((stored.runs ?? []) as MockRun[])];
     } catch {

@@ -42,10 +42,7 @@ export type ScreenAction =
   | { type: "setProposal"; proposal: unknown }
   | { type: "setConversationOpen"; open: boolean };
 
-export function screenReducer(
-  state: ScreenSelection,
-  action: ScreenAction,
-): ScreenSelection {
+export function screenReducer(state: ScreenSelection, action: ScreenAction): ScreenSelection {
   switch (action.type) {
     case "selectType":
       if (action.typeId === state.selectedTypeId) return state;
@@ -133,7 +130,7 @@ export type ScreenView = "document" | "output";
 /**
  * What the top bar and the working screen share: the "Document | Output" switch, the Fields
  * overlay of a narrow screen, and the "Assistant" button's request to put the cursor in the
- * assistant's input. Held above both, by the project screen. Null outside it.
+ * assistant's input. Held above both, by the workspace screen. Null outside it.
  */
 export interface ScreenControls {
   view: ScreenView;

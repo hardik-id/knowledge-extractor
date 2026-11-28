@@ -10,7 +10,7 @@ import type {
   ExtractionRecord,
   FieldDef,
   FileExtraction,
-  Project,
+  Workspace,
   Services,
   StageCell,
   TextSpan,
@@ -160,8 +160,8 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
   };
 
   /** What to clean up if a step fails half way. */
-  const open: { projectId: string | null; unsubscribe: (() => void) | null } = {
-    projectId: null,
+  const open: { workspaceId: string | null; unsubscribe: (() => void) | null } = {
+    workspaceId: null,
     unsubscribe: null,
   };
   const checkLiveUpdates = () => {
@@ -197,43 +197,46 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       ];
     });
 
-    const projectName = `test:api ${new Date().toISOString()}`;
-    const project = await step("Create a project", async () => {
-      const created = await services.projects.create({
-        name: projectName,
+    const workspaceName = `test:api ${new Date().toISOString()}`;
+    const workspace = await step("Create a workspace", async () => {
+      const created = await services.workspaces.create({
+        name: workspaceName,
         description: "Made by test:api",
       });
-      open.projectId = created.id;
-      check(created.name === projectName, `The project is named "${created.name}".`);
+      open.workspaceId = created.id;
+      check(created.name === workspaceName, `The workspace is named "${created.name}".`);
       check(created.description === "Made by test:api", "The description is not the one sent.");
-      check(created.runId, "The project has no run.");
-      check(created.documentCount === 0, `The new project has ${created.documentCount} documents.`);
+      check(created.runId, "The workspace has no run.");
+      check(
+        created.documentCount === 0,
+        `The new workspace has ${created.documentCount} documents.`,
+      );
       check(
         created.configurationVersion === 1,
-        `The new project has configuration version ${created.configurationVersion}, not 1.`,
+        `The new workspace has configuration version ${created.configurationVersion}, not 1.`,
       );
       const emptyRun = await services.runs.getRun(created.runId);
       check(
         emptyRun.files.length === 0 && emptyRun.cells.length === 0,
-        "The run of a new project is not empty.",
+        "The run of a new workspace is not empty.",
       );
-      return [created, `project ${created.id}, run ${created.runId}, empty`];
+      return [created, `workspace ${created.id}, run ${created.runId}, empty`];
     });
-    const runId = project.runId;
+    const runId = workspace.runId;
 
-    await step("List projects", async () => {
-      const listed = await services.projects.list();
-      const found = listed.find((p) => p.id === project.id);
-      check(found, "The new project is not in the list.");
-      const read = await services.projects.get(project.id);
-      check(read.id === project.id && read.runId === runId, "get returned another project.");
+    await step("List workspaces", async () => {
+      const listed = await services.workspaces.list();
+      const found = listed.find((p) => p.id === workspace.id);
+      check(found, "The new workspace is not in the list.");
+      const read = await services.workspaces.get(workspace.id);
+      check(read.id === workspace.id && read.runId === runId, "get returned another workspace.");
       for (let i = 1; i < listed.length; i++) {
         check(
           listed[i - 1].updatedAt >= listed[i].updatedAt,
-          "The projects are not ordered by last activity.",
+          "The workspaces are not ordered by last activity.",
         );
       }
-      return [listed, `${listed.length} project(s), the new one among them`];
+      return [listed, `${listed.length} workspace(s), the new one among them`];
     });
 
     await step("List the templates", async () => {
@@ -260,13 +263,13 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       return [templates, `${ids.join(", ")}; same as the mock's`];
     });
 
-    await step("Create a project from a template", async () => {
-      const made = await services.projects.create({
-        name: `${projectName} (skill)`,
+    await step("Create a workspace from a template", async () => {
+      const made = await services.workspaces.create({
+        name: `${workspaceName} (skill)`,
         templateId: "skill",
       });
       try {
-        check(made.configurationVersion === 1, "A project from a template starts at version 1.");
+        check(made.configurationVersion === 1, "A workspace from a template starts at version 1.");
         const read = await services.extraction.getDefinitionVersion(made.runId, 1);
         const skill = MOCK_TEMPLATES.find((t) => t.id === "skill")!;
         check(read.version === 1, `The configuration is version ${read.version}, not 1.`);
@@ -281,7 +284,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
           "Version 1 is not the skill template's definition.",
         );
         try {
-          await services.projects.create({ name: "x", templateId: "no-such-template" });
+          await services.workspaces.create({ name: "x", templateId: "no-such-template" });
         } catch (error) {
           if (isApiError(error) && error.status === 422 && error.code === "unknown_template") {
             return [null, `version 1, "${read.note}"; unknown id is 422 unknown_template`];
@@ -290,7 +293,7 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
         }
         throw new Error("An unknown template id was accepted; expected 422 unknown_template.");
       } finally {
-        await services.projects.remove(made.id).catch(() => undefined);
+        await services.workspaces.remove(made.id).catch(() => undefined);
       }
     });
 
@@ -353,10 +356,10 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
         two.cells.every((c) => c.stage === "extract"),
         "A run of documents has a stage other than extract.",
       );
-      const read = await services.projects.get(project.id);
+      const read = await services.workspaces.get(workspace.id);
       check(
         read.documentCount === next.length,
-        `The project counts ${read.documentCount} documents, not ${next.length}.`,
+        `The workspace counts ${read.documentCount} documents, not ${next.length}.`,
       );
       const fresh = await services.runs.getRun(runId);
       check(
@@ -720,47 +723,51 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
       return [restored, `version ${restored.version}, "${restored.note}"`];
     });
 
-    await step("Rename the project", async () => {
-      const name = `${projectName} (renamed)`;
-      const renamed = await services.projects.rename(project.id, { name });
+    await step("Rename the workspace", async () => {
+      const name = `${workspaceName} (renamed)`;
+      const renamed = await services.workspaces.rename(workspace.id, { name });
       check(renamed.name === name, `The name is "${renamed.name}".`);
-      check(renamed.description === project.description, "Renaming changed the description.");
-      const read: Project = await services.projects.get(project.id);
+      check(renamed.description === workspace.description, "Renaming changed the description.");
+      const read: Workspace = await services.workspaces.get(workspace.id);
       check(read.name === name, "The new name was not kept.");
       check(
         read.configurationVersion === saved.version + 1,
-        "The project's configuration version is not the latest.",
+        "The workspace's configuration version is not the latest.",
       );
       return [read, `"${read.name}", configuration version ${read.configurationVersion}`];
     });
 
-    await step("The run of a project can't be deleted", async () => {
+    await step("The run of a workspace can't be deleted", async () => {
       try {
         await services.runs.deleteRun(runId);
       } catch (error) {
-        if (isApiError(error) && error.status === 409 && error.code === "run_belongs_to_project") {
-          return [null, "409 run_belongs_to_project"];
+        if (
+          isApiError(error) &&
+          error.status === 409 &&
+          error.code === "run_belongs_to_workspace"
+        ) {
+          return [null, "409 run_belongs_to_workspace"];
         }
         throw error;
       }
-      throw new Error("The run of a project was deleted; expected 409 run_belongs_to_project.");
+      throw new Error("The run of a workspace was deleted; expected 409 run_belongs_to_workspace.");
     });
 
-    await step("Delete the project", async () => {
-      await services.projects.remove(project.id);
-      open.projectId = null;
+    await step("Delete the workspace", async () => {
+      await services.workspaces.remove(workspace.id);
+      open.workspaceId = null;
       for (const read of [
-        () => services.projects.get(project.id),
+        () => services.workspaces.get(workspace.id),
         () => services.runs.getRun(runId),
       ]) {
         try {
           await read();
-          throw new Error("The project or its run can still be read after the delete.");
+          throw new Error("The workspace or its run can still be read after the delete.");
         } catch (error) {
           if (!(isApiError(error) && error.status === 404)) throw error;
         }
       }
-      return [null, "project and run both 404"];
+      return [null, "workspace and run both 404"];
     });
 
     await step("Every live update was readable", async () => {
@@ -771,6 +778,6 @@ export async function runStudioFlow(services: Services, options: StudioFlowOptio
     open.unsubscribe?.();
     console.warn = warn;
     // Leave nothing behind when a step failed half way.
-    if (open.projectId) await services.projects.remove(open.projectId).catch(() => undefined);
+    if (open.workspaceId) await services.workspaces.remove(open.workspaceId).catch(() => undefined);
   }
 }

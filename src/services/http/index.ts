@@ -5,7 +5,7 @@ import type { SourceFile } from "@/types/pipeline";
 import type {
   DocumentsApi,
   ExtractionApi,
-  ProjectsApi,
+  WorkspacesApi,
   TemplatesApi,
   RunEvents,
   RunsApi,
@@ -26,9 +26,9 @@ import {
   isRunChangedMessage,
   parseDefinitionVersions,
   parseExecution,
-  parseProject,
-  parseProjectPage,
-  parseProjects,
+  parseWorkspace,
+  parseWorkspacePage,
+  parseWorkspaces,
   parseTemplates,
   parseEtagHeader,
   parseExtractionChangedMessage,
@@ -40,7 +40,7 @@ import {
   toWireExecutionConfig,
   toWireFieldValues,
   toWireNewRecord,
-  toWireProjectPatch,
+  toWireWorkspacePatch,
   toWireRecordPatch,
   toWireValueReview,
 } from "./parsers";
@@ -119,16 +119,16 @@ const toWireItem = (file: SourceFile) => ({
   modified_at: file.modifiedAt,
 });
 
-export function createHttpProjectsApi(client: HttpClient): ProjectsApi {
+export function createHttpWorkspacesApi(client: HttpClient): WorkspacesApi {
   return {
-    list: async (signal) => parseProjects(await client.get("projects", { signal })),
+    list: async (signal) => parseWorkspaces(await client.get("workspaces", { signal })),
 
     listPage: async ({ cursor, signal } = {}) =>
-      parseProjectPage(await client.get("projects", { signal, query: { cursor } })),
+      parseWorkspacePage(await client.get("workspaces", { signal, query: { cursor } })),
 
     create: async (input) =>
-      parseProject(
-        await client.post("projects", {
+      parseWorkspace(
+        await client.post("workspaces", {
           body: {
             name: input.name,
             description: input.description,
@@ -137,18 +137,18 @@ export function createHttpProjectsApi(client: HttpClient): ProjectsApi {
         }),
       ),
 
-    get: async (projectId, signal) =>
-      parseProject(await client.get(`projects/${enc(projectId)}`, { signal })),
+    get: async (workspaceId, signal) =>
+      parseWorkspace(await client.get(`workspaces/${enc(workspaceId)}`, { signal })),
 
-    rename: async (projectId, patch) => {
-      const response = await client.request("PATCH", `projects/${enc(projectId)}`, {
-        body: toWireProjectPatch(patch),
+    rename: async (workspaceId, patch) => {
+      const response = await client.request("PATCH", `workspaces/${enc(workspaceId)}`, {
+        body: toWireWorkspacePatch(patch),
       });
-      return parseProject(await response.json().catch(() => undefined));
+      return parseWorkspace(await response.json().catch(() => undefined));
     },
 
-    remove: async (projectId) => {
-      await client.delete(`projects/${enc(projectId)}`);
+    remove: async (workspaceId) => {
+      await client.delete(`workspaces/${enc(workspaceId)}`);
     },
   };
 }
@@ -384,7 +384,7 @@ export function createHttpServices(options: HttpRunEventsOptions): Services {
     status: createHttpStatusApi(options.client),
     catalog: createHttpSourceCatalog(options.client),
     documents: createHttpDocumentsApi(options.client),
-    projects: createHttpProjectsApi(options.client),
+    workspaces: createHttpWorkspacesApi(options.client),
     templates: createHttpTemplatesApi(options.client),
     runs: createHttpRunsApi(options.client),
     extraction: createHttpExtractionApi(options.client),

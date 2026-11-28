@@ -11,7 +11,7 @@ export function isTouchedByPerson(record: ExtractionRecord): boolean {
 }
 
 /**
- * What loading a configuration with these record types does to the project's
+ * What loading a configuration with these record types does to the workspace's
  * records at the next run, in plain words; null when there are none. The run
  * keeps what a person worked on, even when its record type is gone (Review shows
  * it without a type), and replaces the suggestions nobody reviewed.

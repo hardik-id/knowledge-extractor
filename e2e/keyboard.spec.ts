@@ -22,30 +22,30 @@ async function tabTo(page: Page, name: string, limit = 60) {
   );
 }
 
-test("from the project list, a project opens and 'Run on this document' is reached with Tab and Enter", async ({
+test("from the workspace list, a workspace opens and 'Run on this document' is reached with Tab and Enter", async ({
   api,
   page,
   person,
 }) => {
-  const project = await api.createProject({ name: "Keyboard project" });
-  await addDocument(person, project.run_id);
+  const workspace = await api.createWorkspace({ name: "Keyboard workspace" });
+  await addDocument(person, workspace.run_id);
 
   await page.goto("/studio");
-  await expect(page.getByRole("heading", { name: "Keyboard project" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Keyboard workspace" })).toBeVisible();
 
-  await tabTo(page, "Keyboard project");
-  await expect(page.getByRole("link", { name: "Keyboard project" })).toBeFocused();
+  await tabTo(page, "Keyboard workspace");
+  await expect(page.getByRole("link", { name: "Keyboard workspace" })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(extractPath(project.id));
+  await expect(page).toHaveURL(extractPath(workspace.id));
 
   const run = page.getByRole("button", { name: "Run on this document" });
   await expect(run).toBeVisible();
-  // The top bar comes first: the project menu, then Run, and only then the working screen.
-  await tabTo(page, "Keyboard project");
+  // The top bar comes first: the workspace menu, then Run, and only then the working screen.
+  await tabTo(page, "Keyboard workspace");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Keyboard project" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Keyboard workspace" })).toBeFocused();
   await tabTo(page, "Run on this document");
   await expect(run).toBeFocused();
   await page.keyboard.press("Enter");
@@ -60,9 +60,9 @@ test("focus returns to the version text after Version history and to More after 
   page,
   person,
 }) => {
-  const project = await api.createProject({ name: "Focus project" });
-  await addDocument(person, project.run_id);
-  await page.goto(extractPath(project.id));
+  const workspace = await api.createWorkspace({ name: "Focus workspace" });
+  await addDocument(person, workspace.run_id);
+  await page.goto(extractPath(workspace.id));
 
   const version = page.getByRole("button", { name: /^(Version \d|Nothing saved yet)/ });
   await expect(version).toBeVisible();

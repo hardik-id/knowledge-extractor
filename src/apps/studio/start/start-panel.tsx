@@ -26,7 +26,7 @@ interface StartPanelProps {
 }
 
 /**
- * The right column of a project with an empty configuration: ask the assistant, start from a
+ * The right column of a workspace with an empty configuration: ask the assistant, start from a
  * template, or add a field yourself. Each way ends with a configuration to keep or discard.
  */
 export function StartPanel({ definition, assistant }: StartPanelProps) {

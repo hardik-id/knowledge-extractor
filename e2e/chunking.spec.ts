@@ -5,12 +5,12 @@ import {
   ChunkingRow,
   ExtractionPage,
   openVersionHistory,
-  projectWithDocuments,
+  workspaceWithDocuments,
   saveConfiguration,
 } from "./pages/extraction";
 import { fieldColumn, openFields, openOneScreen } from "./pages/working-screen";
 import {
-  createProjectFromDialog,
+  createWorkspaceFromDialog,
   pickDocuments,
   submitDocumentsButton,
   DOCS,
@@ -24,8 +24,8 @@ const versionLine = (page: Page) => page.getByTestId("version-line");
 test.beforeEach(async ({ api, expectApiError, page, person, request }) => {
   // Before a first run the backend answers 404 for the document's extraction.
   expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-  await openOneScreen(page, project);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await openOneScreen(page, workspace);
 });
 
 test("the row is closed and says Automatic; there is nothing unsaved", async ({ page }) => {
@@ -189,7 +189,7 @@ test("keeping an assistant proposal keeps the chosen chunking", async ({ page })
 });
 
 test("the row is not on the start panel", async ({ page }) => {
-  await createProjectFromDialog(page, "Fresh project");
+  await createWorkspaceFromDialog(page, "Fresh workspace");
   await pickDocuments(page, [DOCS.roadmap]);
   await submitDocumentsButton(page).click();
   await expect(
@@ -204,11 +204,11 @@ for (const scheme of ["light", "dark"] as const) {
 
     test("the open row has no accessibility violations", async ({ api, page, person, request }) => {
       // The documents the other accessibility scans use (a longer one makes the document pane scroll).
-      const project = await projectWithDocuments(api, person, request, [
+      const workspace = await workspaceWithDocuments(api, person, request, [
         DOCS.roadmap,
         DOCS.runbook,
       ]);
-      await openOneScreen(page, project);
+      await openOneScreen(page, workspace);
       const row = new ChunkingRow(page);
       await row.choose("By paragraph");
       await expect(row.size).toBeVisible();

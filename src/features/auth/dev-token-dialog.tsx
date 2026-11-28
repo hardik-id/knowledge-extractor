@@ -47,7 +47,7 @@ export default function DevTokenDialog({ tokens }: { tokens: DevTokenProvider })
     tokens.setAccessToken(token);
     try {
       // Any call will do: the API answers 401 to a token it does not accept.
-      await services.projects.listPage();
+      await services.workspaces.listPage();
       setText("");
       tokens.resume();
     } catch (error) {

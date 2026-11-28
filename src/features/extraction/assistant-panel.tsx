@@ -252,7 +252,7 @@ export function AssistantPanel({ draft, setDraft }: AssistantPanelProps) {
           <DialogHeader>
             <DialogTitle>Clear the conversation?</DialogTitle>
             <DialogDescription>
-              This removes every message and proposal for everyone on this project. The definition
+              This removes every message and proposal for everyone on this workspace. The definition
               and the records stay.
             </DialogDescription>
           </DialogHeader>

@@ -9,8 +9,8 @@ import {
 import { DOCS, openExtraction } from "./pages/studio";
 
 test.beforeEach(async ({ api, page }) => {
-  const project = await api.createProject({ name: "Versions project" });
-  await openExtraction(page, project, [DOCS.roadmap]);
+  const workspace = await api.createWorkspace({ name: "Versions workspace" });
+  await openExtraction(page, workspace, [DOCS.roadmap]);
 });
 
 const versionLine = (page: import("@playwright/test").Page) => page.getByTestId("version-line");

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { configurationFact, deletionConsequences, documentsFact } from "./project-facts";
+import { configurationFact, deletionConsequences, documentsFact } from "./workspace-facts";
 
-describe("project facts", () => {
+describe("workspace facts", () => {
   test("the facts read as sentences", () => {
     assert.equal(documentsFact({ documentCount: 1 }), "1 document");
     assert.equal(documentsFact({ documentCount: 0 }), "0 documents");

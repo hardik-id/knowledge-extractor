@@ -11,7 +11,7 @@ import { BackendStatusBadge } from "@/features/status/status-badge";
 import { UserMenu } from "@/features/auth/user-menu";
 import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 import { STUDIO_HOME } from "./nav-steps";
-import { ProjectMenu } from "./project-menu";
+import { WorkspaceMenu } from "./workspace-menu";
 import { DocumentSwitcher } from "./top-bar/document-switcher";
 import { MoreMenu } from "./top-bar/more-menu";
 import { RunButton } from "./top-bar/run-button";
@@ -19,20 +19,20 @@ import { VersionMenu } from "./top-bar/version-menu";
 import { useScreenControls } from "./working-screen/screen-state";
 
 /**
- * The one bar of a project screen (it replaces the sidebar and the page header): the logo, the
- * way back to all projects, the project's menu, then on the right what the screen offers and the
+ * The one bar of a workspace screen (it replaces the sidebar and the page header): the logo, the
+ * way back to all workspaces, the workspace's menu, then on the right what the screen offers and the
  * theme and account. It is one 48px row from 960px and wraps below. The right side is composed
  * here, so what it holds changes in this file only.
  */
-export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
+export function WorkspaceTopBar({ extraction }: { extraction?: ExtractionRun }) {
   const controls = useScreenControls();
   // Nothing to show as output while there is nothing to extract.
   const configured = (extraction?.definition.draft?.recordTypes.length ?? 0) > 0;
   return (
     <>
       <nav
-        aria-label="Project"
-        data-testid="project-top-bar"
+        aria-label="Workspace"
+        data-testid="workspace-top-bar"
         className="sticky top-0 z-30 shrink-0 border-b border-border-subtle bg-background md:static"
       >
         <div className="flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1 px-[max(16px,env(safe-area-inset-left))] py-1.5">
@@ -44,13 +44,13 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
             href={STUDIO_HOME}
             className="rounded-control px-1 text-body font-medium text-ink hover:underline"
           >
-            Projects
+            Workspaces
           </Link>
           <span className="flex min-w-0 items-center gap-x-2">
             <span aria-hidden className="text-ink-muted">
               /
             </span>
-            <ProjectMenu />
+            <WorkspaceMenu />
           </span>
           {extraction && <DocumentSwitcher />}
           {extraction && controls && configured && (
@@ -96,7 +96,7 @@ export function ProjectTopBar({ extraction }: { extraction?: ExtractionRun }) {
         </div>
       </nav>
       {/* What the skip link jumps to: the first stop after the bar. */}
-      <div id="project-content" tabIndex={-1} className="outline-none" />
+      <div id="workspace-content" tabIndex={-1} className="outline-none" />
     </>
   );
 }

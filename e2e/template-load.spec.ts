@@ -7,7 +7,7 @@ import {
   openTemplatesDialog,
   openVersionHistory,
   openVersionMenu,
-  projectWithDocuments,
+  workspaceWithDocuments,
   saveConfiguration,
 } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
@@ -38,8 +38,8 @@ test("load a template: unsaved, discard brings the old one back, then save it wi
   api,
   page,
 }) => {
-  const project = await api.createProject({ name: "Template project" });
-  await openExtraction(page, project, [DOCS.roadmap]);
+  const workspace = await api.createWorkspace({ name: "Template workspace" });
+  await openExtraction(page, workspace, [DOCS.roadmap]);
   await expect(page.getByRole("table", { name: "Fields of ADR" })).toBeVisible();
 
   await useTemplate(page, POLICY);
@@ -74,8 +74,8 @@ test("the dialog shows what the template brings, what would change, and that edi
   api,
   page,
 }) => {
-  const project = await api.createProject({ name: "Template dialog project" });
-  await openExtraction(page, project, [DOCS.roadmap]);
+  const workspace = await api.createWorkspace({ name: "Template dialog workspace" });
+  await openExtraction(page, workspace, [DOCS.roadmap]);
   await editPrompt(page, "Something I typed");
 
   const dialog = await openTemplates(page);
@@ -93,8 +93,8 @@ test("the dialog shows what the template brings, what would change, and that edi
 });
 
 test("the same template twice changes nothing the second time", async ({ api, page }) => {
-  const project = await api.createProject({ name: "Template twice project" });
-  await openExtraction(page, project, [DOCS.roadmap]);
+  const workspace = await api.createWorkspace({ name: "Template twice workspace" });
+  await openExtraction(page, workspace, [DOCS.roadmap]);
   await useTemplate(page, POLICY);
 
   const dialog = await openTemplates(page, POLICY);
@@ -102,7 +102,7 @@ test("the same template twice changes nothing the second time", async ({ api, pa
   await expect(dialog.getByRole("button", { name: "Use this template" })).toBeDisabled();
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
-  // Saved, and after a reload, it is still what the project has.
+  // Saved, and after a reload, it is still what the workspace has.
   await saveConfiguration(page);
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
   await page.reload();
@@ -116,10 +116,10 @@ test("with reviewed records, the dialog says what the next run does, and it does
   person,
   request,
 }) => {
-  const project = await projectWithDocuments(api, person, request, ["platform-adrs.md"]);
+  const workspace = await workspaceWithDocuments(api, person, request, ["platform-adrs.md"]);
   const extraction = new ExtractionPage(page);
   const strip = new RecordStripPage(page);
-  await extraction.open(project);
+  await extraction.open(workspace);
   await extraction.run("Run on this document");
   await extraction.finished();
   await expect(strip.position).toHaveText("Record 1 of 3");
@@ -142,8 +142,8 @@ test("with reviewed records, the dialog says what the next run does, and it does
 
 test("the dialog fits a phone without sideways scroll", async ({ api, page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  const project = await api.createProject({ name: "Template phone project" });
-  await openExtraction(page, project, [DOCS.roadmap]);
+  const workspace = await api.createWorkspace({ name: "Template phone workspace" });
+  await openExtraction(page, workspace, [DOCS.roadmap]);
   const dialog = await openTemplates(page, POLICY);
   await expect(dialog.getByText("Compared with the editor")).toBeVisible();
   expect(await scrollsSideways(page)).toBe(false);

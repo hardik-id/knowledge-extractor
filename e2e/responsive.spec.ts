@@ -4,20 +4,20 @@ import { expectWorkingScreen } from "./pages/working-screen";
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test("the project list fits a phone and its actions are reachable", async ({ api, page }) => {
-  await api.createProject({
-    name: "A project with a rather long name that has to wrap on a phone screen",
+test("the workspace list fits a phone and its actions are reachable", async ({ api, page }) => {
+  await api.createWorkspace({
+    name: "A workspace with a rather long name that has to wrap on a phone screen",
     description: "A description that is long enough to need more than one line at this width.",
   });
   await page.goto("/studio");
-  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
-  const row = page.getByRole("listitem").filter({ hasText: "A project with a rather long name" });
+  await expect(page.getByRole("heading", { name: "Workspaces", level: 1 })).toBeVisible();
+  const row = page.getByRole("listitem").filter({ hasText: "A workspace with a rather long name" });
   await expect(row).toBeVisible();
 
-  expect(await scrollsSideways(page), "the project list scrolls sideways").toBe(false);
+  expect(await scrollsSideways(page), "the workspace list scrolls sideways").toBe(false);
   for (const action of [
-    page.getByRole("button", { name: "New project" }),
-    row.getByRole("link", { name: /A project with a rather long name/ }),
+    page.getByRole("button", { name: "New workspace" }),
+    row.getByRole("link", { name: /A workspace with a rather long name/ }),
     row.getByRole("button", { name: "Edit" }),
     row.getByRole("button", { name: "Delete" }),
   ]) {
@@ -25,7 +25,7 @@ test("the project list fits a phone and its actions are reachable", async ({ api
   }
 });
 
-test("a project and the extraction page fit a phone, and the assistant opens from the top bar", async ({
+test("a workspace and the extraction page fit a phone, and the assistant opens from the top bar", async ({
   api,
   expectApiError,
   page,
@@ -33,29 +33,29 @@ test("a project and the extraction page fit a phone, and the assistant opens fro
 }) => {
   // The document of a file nobody has extracted yet: "extraction_not_found" is how the API says so.
   expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
-  const project = await api.createProject({ name: "Phone project" });
-  await addDocument(person, project.run_id);
+  const workspace = await api.createWorkspace({ name: "Phone workspace" });
+  await addDocument(person, workspace.run_id);
 
-  await page.goto(`/studio/projects/${project.id}`);
-  await expect(page.getByTestId("project-top-bar")).toBeVisible();
+  await page.goto(`/studio/workspaces/${workspace.id}`);
+  await expect(page.getByTestId("workspace-top-bar")).toBeVisible();
   await expect(
-    page.getByTestId("project-top-bar").getByRole("link", { name: "Projects" }),
+    page.getByTestId("workspace-top-bar").getByRole("link", { name: "Workspaces" }),
   ).toBeInViewport({ ratio: 1 });
   await expectWorkingScreen(page);
-  expect(await scrollsSideways(page), "the project page scrolls sideways").toBe(false);
+  expect(await scrollsSideways(page), "the workspace page scrolls sideways").toBe(false);
 
-  // A project without documents: the picker is the whole screen.
-  const empty = await api.createProject({ name: "Phone empty project" });
+  // A workspace without documents: the picker is the whole screen.
+  const empty = await api.createWorkspace({ name: "Phone empty workspace" });
   await page.goto(extractPath(empty.id));
   await expect(submitDocumentsButton(page)).toBeVisible();
   expect(await scrollsSideways(page), "the picker scrolls sideways").toBe(false);
 
-  await page.goto(extractPath(project.id));
+  await page.goto(extractPath(workspace.id));
   await expectWorkingScreen(page);
-  const bar = page.getByTestId("project-top-bar");
-  await expect(bar.getByRole("button", { name: "Phone project" })).toBeInViewport({ ratio: 1 });
+  const bar = page.getByTestId("workspace-top-bar");
+  await expect(bar.getByRole("button", { name: "Phone workspace" })).toBeInViewport({ ratio: 1 });
   expect(await scrollsSideways(page), "the top bar scrolls sideways").toBe(false);
-  const run = page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ });
+  const run = page.getByTestId("workspace-top-bar").getByRole("button", { name: /^Run/ });
   await run.scrollIntoViewIfNeeded();
   await expect(run).toBeInViewport({ ratio: 1 });
   await expect(page.getByTestId("version-line")).toBeVisible();

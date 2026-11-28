@@ -38,7 +38,7 @@ export function describeGenerateError(error: unknown): string {
 
 /**
  * One Generate call. Resolves, never rejects. A call whose `signal` was aborted is "abandoned"
- * whatever the server answered, so a late answer can't land in a project the person has left.
+ * whatever the server answered, so a late answer can't land in a workspace the person has left.
  */
 export async function generateSplitter(
   api: Pick<ExtractionApi, "generateCustomChunking">,
@@ -108,7 +108,7 @@ export interface CustomMemory {
 
 export const NO_MEMORY: CustomMemory = { runId: null, words: null, applied: null };
 
-/** The memory as it is for this run: empty when it was made in another project. */
+/** The memory as it is for this run: empty when it was made in another workspace. */
 export function memoryFor(memory: CustomMemory, runId: string | null): CustomMemory {
   return memory.runId === runId ? memory : { ...NO_MEMORY, runId };
 }

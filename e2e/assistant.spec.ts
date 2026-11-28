@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "./support/env";
 import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import { ExtractionPage, workspaceWithDocuments } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
 import { expectWorkingScreen } from "./pages/working-screen";
 import { Switcher } from "./pages/switcher";
@@ -15,9 +15,9 @@ test.describe("the assistant", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await new ExtractionPage(page).open(project);
+    await new ExtractionPage(page).open(workspace);
     await expect(page.getByTestId("version-line")).not.toContainText("unsaved changes");
 
     await dock.ask("add a field for the approver");
@@ -42,16 +42,16 @@ test.describe("the assistant", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await new ExtractionPage(page).open(project);
+    await new ExtractionPage(page).open(workspace);
     await dock.ask("add a field for the approver");
     await expect(dock.newFieldRows).toHaveCount(1);
 
     await page.reload();
     await expectWorkingScreen(page);
     await expect(dock.newFieldRows).toHaveCount(1);
-    await page.getByTestId("project-top-bar").getByRole("button", { name: "Assistant" }).click();
+    await page.getByTestId("workspace-top-bar").getByRole("button", { name: "Assistant" }).click();
     await expect(dock.conversation.getByText("add a field for the approver")).toBeVisible();
   });
 
@@ -61,11 +61,11 @@ test.describe("the assistant", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
-    await new ExtractionPage(page).open(project);
+    await new ExtractionPage(page).open(workspace);
     await expect(dock.conversation).toHaveCount(0);
-    await page.getByTestId("project-top-bar").getByRole("button", { name: "Assistant" }).click();
+    await page.getByTestId("workspace-top-bar").getByRole("button", { name: "Assistant" }).click();
     await expect(dock.conversation).toBeVisible();
     await expect(dock.input).toBeFocused();
   });
@@ -78,10 +78,10 @@ test.describe("running the extraction", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const extraction = new ExtractionPage(page);
     const switcher = new Switcher(page);
-    await extraction.open(project);
+    await extraction.open(workspace);
 
     let navigations = 0;
     page.on("framenavigated", (frame) => {
@@ -114,10 +114,10 @@ test.describe("running the extraction", () => {
     person,
     request,
   }) => {
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const extraction = new ExtractionPage(page);
     const switcher = new Switcher(page);
-    await extraction.open(project);
+    await extraction.open(workspace);
     await expect(extraction.runButton).toHaveText("Run on this document");
 
     const sent = page.waitForRequest(
@@ -134,7 +134,7 @@ test.describe("running the extraction", () => {
         cells: { stage: string; status: string; file_id: string }[];
       };
       return run.cells.filter((c) => c.stage === "extract" && c.status === "succeeded");
-    }, `${API_BASE_URL}/runs/${project.run_id}`);
+    }, `${API_BASE_URL}/runs/${workspace.run_id}`);
     expect(extracted.map((c) => c.file_id)).toEqual(body.file_ids);
 
     await switcher.open();

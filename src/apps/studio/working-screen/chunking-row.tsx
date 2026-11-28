@@ -43,7 +43,7 @@ export function ChunkingRow({ definition }: { definition: ExtractionDefinitionSt
   // The description and link typed for Custom: kept while the screen is open, not saved.
   const [memory, setMemory] = useState(NO_MEMORY);
   const runId = usePipelineStore((s) => s.runId);
-  // Tied to the run: another project starts with nothing remembered.
+  // Tied to the run: another workspace starts with nothing remembered.
   const remembered = memoryFor(memory, runId);
 
   // A size that is wrong when the person tries to save or run, or that the server refused: open

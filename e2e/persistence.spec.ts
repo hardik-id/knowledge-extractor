@@ -10,7 +10,7 @@ const PROMPT = "Extract each decision record and who approved it.";
 const NOTE = "Narrowed to approvals";
 const QUESTION = "Output as JSON.";
 
-test("a project built in one browser is whole in a brand-new one, and each view survives a reload", async ({
+test("a workspace built in one browser is whole in a brand-new one, and each view survives a reload", async ({
   api,
   contextFor,
   page,
@@ -18,12 +18,12 @@ test("a project built in one browser is whole in a brand-new one, and each view 
 }) => {
   // Many steps against a real backend: more than the default 30 s when others use it too.
   test.setTimeout(90_000);
-  const project = await api.createProject({ name: "Persistent project" });
-  await addDocument(person, project.run_id);
+  const workspace = await api.createWorkspace({ name: "Persistent workspace" });
+  await addDocument(person, workspace.run_id);
   const dock = (p: Page) => new AssistantDock(p);
 
   // Build it: a saved configuration with a note, a conversation, an extraction, a reviewed record.
-  await openOneScreen(page, project);
+  await openOneScreen(page, workspace);
   await editPrompt(page, PROMPT);
   await saveConfiguration(page, NOTE);
   await expect(page.getByTestId("version-line")).toContainText("Version 2");
@@ -32,7 +32,7 @@ test("a project built in one browser is whole in a brand-new one, and each view 
   await expect(dock(page).conversation.getByText("Assistant", { exact: true })).toBeVisible();
   await expect(dock(page).conversation.getByText("Writing…")).toHaveCount(0);
 
-  await page.getByTestId("project-top-bar").getByRole("button", { name: /^Run/ }).click();
+  await page.getByTestId("workspace-top-bar").getByRole("button", { name: /^Run/ }).click();
   const strip = new RecordStripPage(page);
   await expect(strip.position).toHaveText("Record 1 of 3");
   const list = await strip.openList();
@@ -45,7 +45,7 @@ test("a project built in one browser is whole in a brand-new one, and each view 
   const fresh = await contextFor(person);
   const again = await fresh.newPage();
   expect(await again.context().storageState()).toMatchObject({ cookies: [], origins: [] });
-  await openOneScreen(again, project);
+  await openOneScreen(again, workspace);
 
   // The records are there, reviewed, in the strip and in the list.
   const stripAgain = new RecordStripPage(again);
@@ -58,7 +58,7 @@ test("a project built in one browser is whole in a brand-new one, and each view 
   await expect(history.getByText(NOTE)).toBeVisible();
   await history.getByRole("button", { name: "Close" }).click();
 
-  // The conversation is kept for the project: opened again after a reload, it is all there.
+  // The conversation is kept for the workspace: opened again after a reload, it is all there.
   await again.reload();
   await expectWorkingScreen(again);
   await dock(again).input.click();
@@ -75,17 +75,17 @@ test("a project built in one browser is whole in a brand-new one, and each view 
   await expect(again.getByLabel("Markdown output")).toHaveText(text);
 });
 
-test("a project's documents are there in a new browser", async ({ api, contextFor, person }) => {
-  const project = await api.createProject({ name: "Documents project" });
-  await addDocument(person, project.run_id);
+test("a workspace's documents are there in a new browser", async ({ api, contextFor, person }) => {
+  const workspace = await api.createWorkspace({ name: "Documents workspace" });
+  await addDocument(person, workspace.run_id);
 
   const fresh = await contextFor(person);
   const page = await fresh.newPage();
   await page.goto("/studio");
-  await expect(page.getByRole("heading", { name: "Documents project" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Documents workspace" })).toBeVisible();
   await expect(page.getByText("1 document")).toBeVisible();
-  await page.getByRole("link", { name: "Documents project" }).click();
-  await expect(page).toHaveURL(extractPath(project.id));
+  await page.getByRole("link", { name: "Documents workspace" }).click();
+  await expect(page).toHaveURL(extractPath(workspace.id));
   const sheet = await openDocumentsSheet(page);
   await expect(sheet.getByText("1 document selected")).toBeVisible();
 });

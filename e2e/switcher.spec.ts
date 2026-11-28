@@ -1,6 +1,6 @@
 import { expectAccessible } from "./support/accessibility";
 import { expect, test } from "./fixtures";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import { ExtractionPage, workspaceWithDocuments } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
 import { Switcher } from "./pages/switcher";
 
@@ -13,10 +13,10 @@ test("the switcher steps through the documents and shows their state before and 
   person,
   request,
 }) => {
-  const project = await projectWithDocuments(api, person, request, [FIRST, SECOND]);
+  const workspace = await workspaceWithDocuments(api, person, request, [FIRST, SECOND]);
   const extraction = new ExtractionPage(page);
   const switcher = new Switcher(page);
-  await extraction.open(project);
+  await extraction.open(workspace);
 
   await expect(switcher.trigger).toContainText("1 of 2");
   await expect(switcher.previous).toBeDisabled();
@@ -64,9 +64,9 @@ test("the switcher steps through the documents and shows their state before and 
 });
 
 test("the switcher works with the keyboard", async ({ api, page, person, request }) => {
-  const project = await projectWithDocuments(api, person, request, [FIRST, SECOND]);
+  const workspace = await workspaceWithDocuments(api, person, request, [FIRST, SECOND]);
   const switcher = new Switcher(page);
-  await new ExtractionPage(page).open(project);
+  await new ExtractionPage(page).open(workspace);
 
   await expect(switcher.trigger).toBeVisible();
   await switcher.trigger.focus();
@@ -90,9 +90,9 @@ test("the switcher fits at phone width and passes an accessibility scan", async 
   person,
   request,
 }) => {
-  const project = await projectWithDocuments(api, person, request, [FIRST, SECOND]);
+  const workspace = await workspaceWithDocuments(api, person, request, [FIRST, SECOND]);
   const switcher = new Switcher(page);
-  await new ExtractionPage(page).open(project);
+  await new ExtractionPage(page).open(workspace);
   for (const size of [
     { width: 1280, height: 720 },
     { width: 390, height: 844 },

@@ -11,37 +11,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Project } from "@/services/contracts";
+import type { Workspace } from "@/services/contracts";
 import { isSessionEnd } from "@/features/auth/report-failure";
 import { describeApiError } from "@/services/errors";
-import { deletionConsequences } from "./project-facts";
+import { deletionConsequences } from "./workspace-facts";
 
-interface DeleteProjectDialogProps {
-  /** The project to delete; null keeps the dialog closed. */
-  project: Project | null;
+interface DeleteWorkspaceDialogProps {
+  /** The workspace to delete; null keeps the dialog closed. */
+  workspace: Workspace | null;
   onCancel: () => void;
   /** Deletes it; rejects with the failure to show. The dialog closes when it resolves. */
-  onDeleted: (project: Project) => Promise<void>;
+  onDeleted: (workspace: Workspace) => Promise<void>;
   /** Called when the dialog has closed after a deletion, to put focus somewhere that still exists. */
   onClosedAfterDelete: () => void;
 }
 
-/** Names the project and says what goes with it before deleting. */
-export function DeleteProjectDialog(props: DeleteProjectDialogProps) {
-  const { project, onCancel } = props;
+/** Names the workspace and says what goes with it before deleting. */
+export function DeleteWorkspaceDialog(props: DeleteWorkspaceDialogProps) {
+  const { workspace, onCancel } = props;
   return (
-    <Dialog open={project !== null} onOpenChange={(open) => !open && onCancel()}>
-      {project && <DeleteContent key={project.id} {...props} project={project} />}
+    <Dialog open={workspace !== null} onOpenChange={(open) => !open && onCancel()}>
+      {workspace && <DeleteContent key={workspace.id} {...props} workspace={workspace} />}
     </Dialog>
   );
 }
 
 function DeleteContent({
-  project,
+  workspace,
   onCancel,
   onDeleted,
   onClosedAfterDelete,
-}: DeleteProjectDialogProps & { project: Project }) {
+}: DeleteWorkspaceDialogProps & { workspace: Workspace }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const deleted = useRef(false);
@@ -50,7 +50,7 @@ function DeleteContent({
     setBusy(true);
     setError(null);
     try {
-      await onDeleted(project);
+      await onDeleted(workspace);
       deleted.current = true;
       onCancel();
     } catch (failure) {
@@ -70,11 +70,11 @@ function DeleteContent({
       }}
     >
       <DialogHeader className="pr-8">
-        <DialogTitle>Delete “{project.name}”?</DialogTitle>
-        <DialogDescription>This can’t be undone. Deleting the project removes:</DialogDescription>
+        <DialogTitle>Delete “{workspace.name}”?</DialogTitle>
+        <DialogDescription>This can’t be undone. Deleting the workspace removes:</DialogDescription>
       </DialogHeader>
       <ul className="list-disc space-y-1 pl-5 text-body">
-        {deletionConsequences(project).map((line) => (
+        {deletionConsequences(workspace).map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
@@ -85,11 +85,11 @@ function DeleteContent({
       )}
       <DialogFooter>
         <Button variant="secondary" disabled={busy} onClick={onCancel}>
-          Keep project
+          Keep workspace
         </Button>
         <Button variant="destructive" disabled={busy} onClick={() => void confirm()}>
           {busy && <LoaderCircle data-icon="inline-start" className="animate-spin" />}
-          {busy ? "Deleting…" : "Delete project"}
+          {busy ? "Deleting…" : "Delete workspace"}
         </Button>
       </DialogFooter>
     </DialogContent>

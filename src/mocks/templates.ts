@@ -264,5 +264,5 @@ export const MOCK_TEMPLATES: readonly DefinitionTemplate[] = [
   },
 ];
 
-/** The template a project starts from when none is chosen. */
+/** The template a workspace starts from when none is chosen. */
 export const DEFAULT_TEMPLATE_ID = "adr";

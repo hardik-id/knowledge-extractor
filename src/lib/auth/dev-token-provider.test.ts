@@ -8,7 +8,7 @@ import { memoryStorage } from "./test-storage";
 
 const request = (): ApiRequest => ({
   method: "GET",
-  url: "https://api.test/projects",
+  url: "https://api.test/workspaces",
   headers: new Headers(),
 });
 

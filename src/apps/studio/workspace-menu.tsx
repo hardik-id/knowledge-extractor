@@ -13,26 +13,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { services } from "@/services";
 import { usePipelineStore } from "@/store/pipeline-store";
-import { DeleteProjectDialog } from "./delete-project-dialog";
+import { DeleteWorkspaceDialog } from "./delete-workspace-dialog";
 import { STUDIO_HOME } from "./nav-steps";
-import { ProjectFormDialog } from "./project-form-dialog";
+import { WorkspaceFormDialog } from "./workspace-form-dialog";
 
 type Dialog = "rename" | "description" | "delete";
 
 /**
- * The open project's name as a menu: rename it, edit its description, delete it.
- * A rename shows at once (the store takes the saved project); a delete goes back to the list.
+ * The open workspace's name as a menu: rename it, edit its description, delete it.
+ * A rename shows at once (the store takes the saved workspace); a delete goes back to the list.
  */
-export function ProjectMenu() {
+export function WorkspaceMenu() {
   const router = useRouter();
-  const project = usePipelineStore((s) => s.project);
-  const setProject = usePipelineStore((s) => s.setProject);
+  const workspace = usePipelineStore((s) => s.workspace);
+  const setWorkspace = usePipelineStore((s) => s.setWorkspace);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  if (!project) return null;
+  if (!workspace) return null;
 
   const closeForm = (open: boolean) => !open && setDialog(null);
-  const initial = { name: project.name, description: project.description };
+  const initial = { name: workspace.name, description: workspace.description };
 
   return (
     <>
@@ -41,10 +41,10 @@ export function ProjectMenu() {
           <Button
             ref={trigger}
             variant="ghost"
-            title={project.name}
+            title={workspace.name}
             className="max-w-[min(24rem,60vw)] px-2 font-semibold text-ink-heading"
           >
-            <span className="truncate">{project.name}</span>
+            <span className="truncate">{workspace.name}</span>
             <ChevronDown aria-hidden className="text-ink-muted" />
           </Button>
         </DropdownMenuTrigger>
@@ -65,25 +65,25 @@ export function ProjectMenu() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ProjectFormDialog
+      <WorkspaceFormDialog
         open={dialog === "rename" || dialog === "description"}
         onOpenChange={closeForm}
-        title={dialog === "description" ? "Edit description" : "Rename project"}
+        title={dialog === "description" ? "Edit description" : "Rename workspace"}
         description="Its documents and records stay as they are."
         submitLabel="Save"
         busyLabel="Saving…"
         initial={initial}
         onSubmit={async (values) => {
-          setProject(await services.projects.rename(project.id, values));
+          setWorkspace(await services.workspaces.rename(workspace.id, values));
         }}
       />
-      <DeleteProjectDialog
-        project={dialog === "delete" ? project : null}
+      <DeleteWorkspaceDialog
+        workspace={dialog === "delete" ? workspace : null}
         onCancel={() => setDialog(null)}
         onDeleted={async (deleting) => {
-          await services.projects.remove(deleting.id);
+          await services.workspaces.remove(deleting.id);
         }}
-        // The project and its page are gone: the list is where the person goes next.
+        // The workspace and its page are gone: the list is where the person goes next.
         onClosedAfterDelete={() => router.push(STUDIO_HOME)}
       />
     </>

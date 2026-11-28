@@ -45,7 +45,7 @@ type Generation =
 
 /**
  * The Custom part of the Chunking row: the description, the link, Generate, what came back and
- * what is applied. Mount it with `key={runId}`: a project change then abandons a running call.
+ * what is applied. Mount it with `key={runId}`: a workspace change then abandons a running call.
  */
 export function CustomChunkingPanel({
   definition,
@@ -77,7 +77,7 @@ export function CustomChunkingPanel({
     if (target) (target === "applied" ? appliedText.current : generateButton.current)?.focus();
   });
 
-  // Leaving the project, or the row, abandons the call: its answer goes nowhere.
+  // Leaving the workspace, or the row, abandons the call: its answer goes nowhere.
   useEffect(() => () => controller.current?.abort(), []);
 
   if (!draft) return null;

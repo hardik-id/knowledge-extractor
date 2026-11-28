@@ -2,34 +2,34 @@ import { isApiError } from "@/lib/api/api-error";
 import { services } from "@/services";
 import type { SourceKind } from "@/types/pipeline";
 import { mergeCells, noteKnownExtractions, sameDocuments, selectionFromRun } from "../run-state";
-import type { FilesSlice, ProjectSlice, RunSlice, SliceCreator } from "../types";
+import type { FilesSlice, WorkspaceSlice, RunSlice, SliceCreator } from "../types";
 
-const NO_PROJECT = {
-  projectId: null,
-  project: null,
-  projectLoad: "idle",
-  projectError: null,
-} satisfies Partial<ProjectSlice>;
+const NO_WORKSPACE = {
+  workspaceId: null,
+  workspace: null,
+  workspaceLoad: "idle",
+  workspaceError: null,
+} satisfies Partial<WorkspaceSlice>;
 
-/** The pipeline's store: it never opens a project. */
-export const createNoProjectSlice: SliceCreator<ProjectSlice> = () => ({
-  ...NO_PROJECT,
-  openProject: async () => {},
-  setProject: () => {},
+/** The pipeline's store: it never opens a workspace. */
+export const createNoWorkspaceSlice: SliceCreator<WorkspaceSlice> = () => ({
+  ...NO_WORKSPACE,
+  openWorkspace: async () => {},
+  setWorkspace: () => {},
 });
 
-/** What a project's store does differently from the pipeline's. */
-export type ProjectStoreSlice = ProjectSlice &
+/** What a workspace's store does differently from the pipeline's. */
+export type WorkspaceStoreSlice = WorkspaceSlice &
   Pick<FilesSlice, "setActiveSource"> &
   Pick<RunSlice, "setActiveDoc" | "ensureRun" | "loadRun" | "applySnapshot" | "discardRun">;
 
-/** Small things worth keeping across a reload of the tab, per project. */
+/** Small things worth keeping across a reload of the tab, per workspace. */
 interface Conveniences {
   activeDocId: string | null;
   activeSource: SourceKind;
 }
 
-const conveniencesKey = (prefix: string, projectId: string) => `${prefix}:${projectId}`;
+const conveniencesKey = (prefix: string, workspaceId: string) => `${prefix}:${workspaceId}`;
 
 function readConveniences(key: string): Partial<Conveniences> {
   try {
@@ -53,8 +53,8 @@ function writeConveniences(key: string, value: Conveniences): void {
   }
 }
 
-/** Removes every project's conveniences from this tab (sign-out). */
-export function clearProjectConveniences(prefix: string): void {
+/** Removes every workspace's conveniences from this tab (sign-out). */
+export function clearWorkspaceConveniences(prefix: string): void {
   try {
     const keys: string[] = [];
     for (let i = 0; i < sessionStorage.length; i++) {
@@ -71,63 +71,63 @@ const isGone = (error: unknown) =>
   isApiError(error) &&
   (error.status === 404 ||
     error.status === 403 ||
-    error.code === "project_not_found" ||
+    error.code === "workspace_not_found" ||
     error.code === "run_not_found");
 
 /**
- * A store open on one project (Knowledge Studio). The address decides the
- * project, the project decides the run, and the selection is the run's files:
+ * A store open on one workspace (Knowledge Studio). The address decides the
+ * workspace, the workspace decides the run, and the selection is the run's files:
  * opening the same address in another tab, or after a restart, gives the same
  * state. Only the active document and source tab are kept in sessionStorage,
- * under `prefix:<project id>`.
+ * under `prefix:<workspace id>`.
  *
- * The run belongs to the project, so it is never discarded or replaced:
+ * The run belongs to the workspace, so it is never discarded or replaced:
  * choosing documents only changes the selection here, and `ensureRun` sends
  * it to the run with `setDocuments`.
  *
  * `base` is the store's other slices, whose behaviour this one extends.
  */
-export function createProjectSlice(
+export function createWorkspaceSlice(
   prefix: string,
   base: FilesSlice & RunSlice,
-): SliceCreator<ProjectStoreSlice> {
+): SliceCreator<WorkspaceStoreSlice> {
   return (set, get, api) => {
     /** Counts openings, so an older one that answers late changes nothing. */
     let opening = 0;
     let saving: Promise<void> | null = null;
 
     const saveConveniences = () => {
-      const { projectId, activeDocId, activeSource } = get();
-      if (projectId)
-        writeConveniences(conveniencesKey(prefix, projectId), { activeDocId, activeSource });
+      const { workspaceId, activeDocId, activeSource } = get();
+      if (workspaceId)
+        writeConveniences(conveniencesKey(prefix, workspaceId), { activeDocId, activeSource });
     };
 
     return {
-      ...NO_PROJECT,
+      ...NO_WORKSPACE,
 
-      openProject: async (projectId) => {
+      openWorkspace: async (workspaceId) => {
         const current = get();
-        if (current.projectId === projectId && current.projectLoad !== "error") return;
+        if (current.workspaceId === workspaceId && current.workspaceLoad !== "error") return;
 
         const attempt = ++opening;
         // Superseded by a later opening, or the store was reset meanwhile (sign-out).
-        const stale = () => attempt !== opening || get().projectId !== projectId;
+        const stale = () => attempt !== opening || get().workspaceId !== workspaceId;
         set({
           ...api.getInitialState(),
           hasHydrated: current.hasHydrated,
-          projectId,
-          projectLoad: "loading",
-          ...readConveniences(conveniencesKey(prefix, projectId)),
+          workspaceId,
+          workspaceLoad: "loading",
+          ...readConveniences(conveniencesKey(prefix, workspaceId)),
         });
 
         try {
-          const project = await services.projects.get(projectId);
+          const workspace = await services.workspaces.get(workspaceId);
           if (stale()) return;
-          const run = await services.runs.getRun(project.runId);
+          const run = await services.runs.getRun(workspace.runId);
           if (stale()) return;
           set({
-            project,
-            projectLoad: "ready",
+            workspace,
+            workspaceLoad: "ready",
             runId: run.id,
             runFiles: run.files,
             cells: mergeCells({}, run.cells),
@@ -139,15 +139,16 @@ export function createProjectSlice(
           if (!stale()) {
             set(
               isGone(error)
-                ? { projectLoad: "gone" }
-                : { projectLoad: "error", projectError: error },
+                ? { workspaceLoad: "gone" }
+                : { workspaceLoad: "error", workspaceError: error },
             );
           }
         }
       },
 
-      setProject: (project) => {
-        if (get().projectId === project.id && get().projectLoad === "ready") set({ project });
+      setWorkspace: (workspace) => {
+        if (get().workspaceId === workspace.id && get().workspaceLoad === "ready")
+          set({ workspace });
       },
 
       setActiveDoc: (fileId) => {
@@ -180,8 +181,8 @@ export function createProjectSlice(
 
       loadRun: async (signal) => {
         const result = await base.loadRun(signal);
-        // The run goes with its project.
-        if (result === "gone") set({ projectLoad: "gone" });
+        // The run goes with its workspace.
+        if (result === "gone") set({ workspaceLoad: "gone" });
         return result;
       },
 
@@ -199,7 +200,7 @@ export function createProjectSlice(
         }
       },
 
-      // A new selection must not let go of the project's run.
+      // A new selection must not let go of the workspace's run.
       discardRun: () => {},
     };
   };

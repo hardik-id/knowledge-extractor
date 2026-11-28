@@ -1,6 +1,6 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
+import { ExtractionPage, workspaceWithDocuments } from "./pages/extraction";
 import { scrollsSideways } from "./pages/studio";
 import { documentPane, fieldColumn, openOneScreen } from "./pages/working-screen";
 import { expectAccessible } from "./support/accessibility";
@@ -17,20 +17,20 @@ function noExtractionYet(
   expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
 }
 
-/** A project with a document, its extraction run, and the working screen open. */
+/** A workspace with a document, its extraction run, and the working screen open. */
 async function openWithResults(
   page: Page,
-  api: Parameters<typeof projectWithDocuments>[0],
-  person: Parameters<typeof projectWithDocuments>[1],
-  request: Parameters<typeof projectWithDocuments>[2],
+  api: Parameters<typeof workspaceWithDocuments>[0],
+  person: Parameters<typeof workspaceWithDocuments>[1],
+  request: Parameters<typeof workspaceWithDocuments>[2],
 ) {
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
   const extraction = new ExtractionPage(page);
-  await openOneScreen(page, project);
+  await openOneScreen(page, workspace);
   await extraction.run("Run extraction");
   await extraction.finished();
   await expect(documentPane(page).locator("mark").first()).toBeVisible();
-  return { project, extraction };
+  return { workspace, extraction };
 }
 
 test("the table is today's table, and its edits survive a save and a reload", async ({
@@ -41,9 +41,9 @@ test("the table is today's table, and its edits survive a save and a reload", as
   request,
 }) => {
   noExtractionYet(expectApiError);
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
   const extraction = new ExtractionPage(page);
-  await openOneScreen(page, project);
+  await openOneScreen(page, workspace);
 
   const column = fieldColumn(page);
   await expect(column.getByRole("table", { name: "Fields of ADR" })).toBeVisible();
@@ -67,7 +67,7 @@ test("the table is today's table, and its edits survive a save and a reload", as
 
   await extraction.saveConfiguration("Edited on the working screen");
   await page.reload();
-  await openOneScreen(page, project);
+  await openOneScreen(page, workspace);
 
   const again = fieldColumn(page);
   await expect(again.getByRole("textbox", { name: "Name of field 1" })).toHaveValue("Heading");
@@ -157,8 +157,8 @@ for (const size of [
       request,
     }) => {
       noExtractionYet(expectApiError);
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-      await openOneScreen(page, project);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+      await openOneScreen(page, workspace);
       const column = fieldColumn(page);
       await expect(column.getByRole("table")).toBeVisible();
       expect(await scrollsSideways(page)).toBe(false);
@@ -190,8 +190,8 @@ for (const size of [
       request,
     }) => {
       noExtractionYet(expectApiError);
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-      await openOneScreen(page, project);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+      await openOneScreen(page, workspace);
       await expect(fieldColumn(page)).toHaveCount(0);
       expect(await scrollsSideways(page)).toBe(false);
 
@@ -231,9 +231,9 @@ for (const scheme of ["light", "dark"] as const) {
     }) => {
       noExtractionYet(expectApiError);
       // Before the first run Run is the one orange action; after it, it is a secondary button.
-      const project = await projectWithDocuments(api, person, request, DOCUMENTS);
+      const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
       const extraction = new ExtractionPage(page);
-      await openOneScreen(page, project);
+      await openOneScreen(page, workspace);
       await expect(page.locator('button[data-variant="default"]:visible')).toHaveCount(1);
       await extraction.run("Run extraction");
       await extraction.finished();
@@ -284,8 +284,8 @@ test.describe("pictures", () => {
   }) => {
     noExtractionYet(expectApiError);
     await page.setViewportSize({ width: 390, height: 844 });
-    const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-    await openOneScreen(page, project);
+    const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+    await openOneScreen(page, workspace);
     await page.getByRole("button", { name: "Fields", exact: true }).click();
     const sheet = page.getByRole("dialog", { name: "Fields" });
     await expect(sheet.getByRole("table", { name: "Fields of ADR" })).toBeVisible();

@@ -36,7 +36,7 @@ function useWide(): boolean {
 }
 
 /**
- * The working screen of a project: the document on the left (with the record strip pinned under
+ * The working screen of a workspace: the document on the left (with the record strip pinned under
  * it), the configuration in a 560px column on the right. Below 1100px the column is a sheet,
  * opened by the "Fields" button above the document. The "Document | Output" switch is in the top bar.
  */

@@ -1,15 +1,15 @@
 import { type Page, expect } from "@playwright/test";
-import type { ApiProject } from "../fixtures";
+import type { ApiWorkspace } from "../fixtures";
 
-/** The working screen of a project, at the project address. */
-export async function openOneScreen(page: Page, project: ApiProject) {
-  await page.goto(`/studio/projects/${project.id}`);
+/** The working screen of a workspace, at the workspace address. */
+export async function openOneScreen(page: Page, workspace: ApiWorkspace) {
+  await page.goto(`/studio/workspaces/${workspace.id}`);
   await expectWorkingScreen(page);
 }
 
 /** The working screen is up: the top bar with its version text, and the document pane. */
 export async function expectWorkingScreen(page: Page) {
-  await expect(page.getByTestId("project-top-bar").locator("visible=true")).toBeVisible();
+  await expect(page.getByTestId("workspace-top-bar").locator("visible=true")).toBeVisible();
   await expect(page.getByTestId("version-line")).toBeVisible();
   await expect(documentPane(page)).toBeVisible();
 }

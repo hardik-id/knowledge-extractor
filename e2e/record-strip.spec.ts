@@ -1,7 +1,7 @@
 import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { FieldSelectionPage } from "./pages/field-selection";
-import { ExtractionPage, projectWithDocuments, saveConfiguration } from "./pages/extraction";
+import { ExtractionPage, workspaceWithDocuments, saveConfiguration } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
 import { scrollsSideways } from "./pages/studio";
 import { Switcher } from "./pages/switcher";
@@ -35,8 +35,8 @@ async function selectInDocument(page: Page, text: string) {
 
 test("the strip is absent before a run", async ({ api, expectApiError, page, person, request }) => {
   noExtractionYet(expectApiError);
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-  await openOneScreen(page, project);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await openOneScreen(page, workspace);
   await expect(documentPane(page)).toBeVisible();
   await expect(page.getByRole("region", { name: "Found in this record" })).toHaveCount(0);
 });
@@ -563,8 +563,8 @@ test("a quote that is not in the document carries its note on its line, with its
   request,
 }) => {
   noExtractionYet(expectApiError);
-  const project = await projectWithDocuments(api, person, request, DOCUMENTS);
-  await openOneScreen(page, project);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await openOneScreen(page, workspace);
   // The backend here finds every quote; make the answer flag one value as not found in the text.
   await page.route(/\/files\/[^/]+\/extraction$/, async (route) => {
     if (route.request().method() !== "GET") return route.fallback();

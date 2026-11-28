@@ -242,8 +242,7 @@ function showRecord(recordId: string) {
  * nothing found. Not shown before a first run.
  */
 export function RecordStrip({ definition }: { definition: ExtractionDefinitionState }) {
-  const { fileId, selectedTypeId, currentRecordId, setCurrentRecordId, setOpenValue } =
-    useScreen();
+  const { fileId, selectedTypeId, currentRecordId, setCurrentRecordId, setOpenValue } = useScreen();
   const extraction = useFileExtraction(fileId);
   const documentText = useExtractionInput(fileId).data?.text;
   const controls = useScreenControls();

@@ -17,9 +17,9 @@ import {
   type DefinitionVersionSummary,
   type ExtractionChange,
   type BackendStatus,
-  type Project,
-  type ProjectPage,
-  type ProjectPatch,
+  type Workspace,
+  type WorkspacePage,
+  type WorkspacePatch,
   type PublishResult,
   type ExtractionDefinition,
   type ExtractionDefinitionDraft,
@@ -419,9 +419,9 @@ export function parseBackendStatus(value: unknown): BackendStatus {
   };
 }
 
-// ── Projects ────────────────────────────────────────────────────────────
+// ── Workspaces ────────────────────────────────────────────────────────────
 
-export function parseProject(value: unknown, path = "project"): Project {
+export function parseWorkspace(value: unknown, path = "workspace"): Workspace {
   const o = object(value, path);
   return {
     id: string(o.id, `${path}.id`),
@@ -437,24 +437,24 @@ export function parseProject(value: unknown, path = "project"): Project {
   };
 }
 
-/** `{ items: [project], next }` */
-export function parseProjects(value: unknown): Project[] {
-  return array(object(value, "projects").items, "projects.items").map((p, i) =>
-    parseProject(p, `projects.items[${i}]`),
+/** `{ items: [workspace], next }` */
+export function parseWorkspaces(value: unknown): Workspace[] {
+  return array(object(value, "workspaces").items, "workspaces.items").map((p, i) =>
+    parseWorkspace(p, `workspaces.items[${i}]`),
   );
 }
 
-/** `{ items: [project], next }` with the cursor kept. */
-export function parseProjectPage(value: unknown): ProjectPage {
-  const page = object(value, "projects");
+/** `{ items: [workspace], next }` with the cursor kept. */
+export function parseWorkspacePage(value: unknown): WorkspacePage {
+  const page = object(value, "workspaces");
   const next = page.next;
   if (next !== null && next !== undefined && typeof next !== "string") {
-    invalid("projects.next", "text or null");
+    invalid("workspaces.next", "text or null");
   }
-  return { items: parseProjects(value), next: next ?? null };
+  return { items: parseWorkspaces(value), next: next ?? null };
 }
 
-export function toWireProjectPatch(patch: ProjectPatch) {
+export function toWireWorkspacePatch(patch: WorkspacePatch) {
   return { name: patch.name, description: patch.description };
 }
 

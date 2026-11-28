@@ -14,32 +14,32 @@ import { usePipelineStore } from "@/store/pipeline-store";
 import { STUDIO_HOME } from "./nav-steps";
 
 /**
- * Opens the project the address names, and shows its pages once it and its
- * run have loaded. An unknown project, or someone else's, gets a screen that
+ * Opens the workspace the address names, and shows its pages once it and its
+ * run have loaded. An unknown workspace, or someone else's, gets a screen that
  * says so, with the way back to the list.
  */
-export function ProjectScope({ children }: { children: React.ReactNode }) {
+export function WorkspaceScope({ children }: { children: React.ReactNode }) {
   const { id } = useParams<{ id: string }>();
   const hasHydrated = usePipelineStore((s) => s.hasHydrated);
-  const openId = usePipelineStore((s) => s.projectId);
-  const load = usePipelineStore((s) => s.projectLoad);
-  const openProject = usePipelineStore((s) => s.openProject);
-  const error = usePipelineStore((s) => s.projectError);
+  const openId = usePipelineStore((s) => s.workspaceId);
+  const load = usePipelineStore((s) => s.workspaceLoad);
+  const openWorkspace = usePipelineStore((s) => s.openWorkspace);
+  const error = usePipelineStore((s) => s.workspaceError);
   const sessionEnded = useSessionEnded();
 
-  // Again whenever the store lets go of it (another project, a sign-out).
+  // Again whenever the store lets go of it (another workspace, a sign-out).
   useEffect(() => {
-    if (hasHydrated && openId !== id) void openProject(id);
-  }, [hasHydrated, openId, id, openProject]);
+    if (hasHydrated && openId !== id) void openWorkspace(id);
+  }, [hasHydrated, openId, id, openWorkspace]);
 
   // The token was refused: the sign-in surface is up, and this loads again once the person is back.
   useOnSessionResumed(() => {
-    if (openId === id && load === "error" && isUnauthorized(error)) void openProject(id);
+    if (openId === id && load === "error" && isUnauthorized(error)) void openWorkspace(id);
   });
 
   const waitingForSignIn = load === "error" && isUnauthorized(error) && sessionEnded;
   if (openId !== id || load === "idle" || load === "loading" || waitingForSignIn) {
-    return <ProjectSkeleton />;
+    return <WorkspaceSkeleton />;
   }
 
   if (load === "gone") {
@@ -47,11 +47,11 @@ export function ProjectScope({ children }: { children: React.ReactNode }) {
       <div className="px-5 py-10 sm:px-8">
         <EmptyState
           icon={FolderX}
-          title="This project no longer exists"
+          title="This workspace no longer exists"
           description="It may have been deleted, or it belongs to someone else."
           action={
             <Button variant="outline" asChild>
-              <Link href={STUDIO_HOME}>All projects</Link>
+              <Link href={STUDIO_HOME}>All workspaces</Link>
             </Button>
           }
         />
@@ -64,10 +64,10 @@ export function ProjectScope({ children }: { children: React.ReactNode }) {
       <div className="px-5 py-10 sm:px-8">
         <EmptyState
           icon={CloudOff}
-          title="Couldn't load this project"
+          title="Couldn't load this workspace"
           description={describeApiError(error)}
           action={
-            <Button variant="outline" onClick={() => void openProject(id)}>
+            <Button variant="outline" onClick={() => void openWorkspace(id)}>
               Try again
             </Button>
           }
@@ -79,12 +79,12 @@ export function ProjectScope({ children }: { children: React.ReactNode }) {
   return children;
 }
 
-export function ProjectSkeleton() {
+export function WorkspaceSkeleton() {
   return (
     <div
       role="status"
       aria-busy="true"
-      aria-label="Loading project"
+      aria-label="Loading workspace"
       className="space-y-6 px-5 py-6 sm:px-8"
     >
       <div className="space-y-3">
