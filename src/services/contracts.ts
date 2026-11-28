@@ -183,7 +183,7 @@ export interface Workspace {
   description: string;
   /** The workspace's run. It exists from the start, empty. Everything inside goes through the run's own calls. */
   runId: string;
-  /** The tenant (team) the workspace belongs to. */
+  /** The tenant the workspace belongs to. */
   tenantId: string;
   /** The person's role in this workspace. */
   role: WorkspaceRole;
