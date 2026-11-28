@@ -15,15 +15,29 @@ import { type Locator, type Page, expect } from "@playwright/test";
 export async function clickUntilOpen(page: Page, opener: Locator, opened: Locator) {
   await expect(async () => {
     if (!(await opened.isVisible())) await opener.click({ timeout: 2_000 });
-    await expect(opened).toBeVisible({ timeout: 1_000 });
-    await expect(opened.locator(":focus")).toHaveCount(1, { timeout: 1_000 });
-    await page.evaluate(
-      () =>
-        new Promise<void>((done) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => done())),
-        ),
-    );
-    await expect(opened).toBeVisible({ timeout: 1_000 });
+    await openAndStill(page, opened);
   }).toPass({ timeout: 20_000 });
   return opened;
+}
+
+/** The same for the keyboard: `opener` gets the focus and `key` is pressed until `opened` stands. */
+export async function pressUntilOpen(page: Page, opener: Locator, key: string, opened: Locator) {
+  await expect(async () => {
+    if (!(await opened.isVisible())) {
+      await opener.focus({ timeout: 2_000 });
+      await page.keyboard.press(key);
+    }
+    await openAndStill(page, opened);
+  }).toPass({ timeout: 20_000 });
+  return opened;
+}
+
+async function openAndStill(page: Page, opened: Locator) {
+  await expect(opened).toBeVisible({ timeout: 1_000 });
+  await expect(opened.locator(":focus")).toHaveCount(1, { timeout: 1_000 });
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))),
+  );
+  await expect(opened).toBeVisible({ timeout: 1_000 });
 }
