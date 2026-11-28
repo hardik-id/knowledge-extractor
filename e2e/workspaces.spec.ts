@@ -193,6 +193,9 @@ test("an old extraction address lands on the workspace", async ({ api, page, per
 test("an old project address opens the same workspace", async ({ api, page, person }) => {
   const workspace = await api.createWorkspace({ name: "Old project address" });
   await addDocument(person, workspace.run_id);
+  await page.goto("/studio/projects");
+  await expect(page).toHaveURL(/\/studio$/);
+  await expect(page.getByRole("heading", { name: "Workspaces", level: 1 })).toBeVisible();
   for (const old of [
     `/studio/projects/${workspace.id}`,
     `/studio/projects/${workspace.id}/extract`,
