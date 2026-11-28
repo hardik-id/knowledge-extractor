@@ -1,4 +1,4 @@
-import { documentPane, expectWorkingScreen } from "./pages/working-screen";
+import { configurationRow, documentPane, expectWorkingScreen } from "./pages/working-screen";
 import { type Page } from "@playwright/test";
 import { addDocument, submitDocumentsButton } from "./pages/studio";
 import { expect, test } from "./fixtures";
@@ -78,6 +78,7 @@ test.describe("on a desktop", () => {
     await page.goto(`/studio/workspaces/${workspace.id}`);
     await expectWorkingScreen(page);
     await expect(documentPane(page).getByRole("heading").first()).toBeVisible();
+    await expect(configurationRow(page)).toBeVisible();
     // The first stop is the skip link; the order is read from the second.
     await page.keyboard.press("Tab");
     const order: string[] = [];
