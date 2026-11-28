@@ -20,6 +20,7 @@ import { OutputPane } from "./output-pane";
 import { RecordStrip } from "./record-strip";
 import { ScreenProvider } from "./screen-provider";
 import { useScreenControls, WIDE_QUERY } from "./screen-state";
+import { ValueMenu } from "./value-menu";
 
 function subscribeWide(onChange: () => void) {
   const query = window.matchMedia(WIDE_QUERY);
@@ -125,7 +126,12 @@ function Screen({ extraction, fileId }: { extraction: ExtractionRun; fileId: str
           ) : shown === "output" ? (
             <OutputPane fileId={fileId} definition={definition} />
           ) : (
-            <DocumentPane fileId={fileId} definition={definition} />
+            <>
+              <DocumentPane fileId={fileId} definition={definition} />
+              {/* Beside the pane, not in it: the pane shows a skeleton while the records load
+                  again, and the menu must outlive that to put focus back on the highlight. */}
+              <ValueMenu definition={definition} />
+            </>
           )}
         </div>
         {/* The strip belongs to the document: the Output view shows every record already. */}

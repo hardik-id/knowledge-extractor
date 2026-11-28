@@ -13,7 +13,6 @@ import { useDocumentReview } from "@/features/extraction/use-document-review";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { describeApiError } from "@/services/errors";
 import { useFieldSelection } from "./use-field-selection";
-import { ValueMenu } from "./value-menu";
 import { useScreen } from "./screen-state";
 
 const NO_TYPES = { recordTypes: [] };
@@ -244,7 +243,6 @@ export function DocumentPane({
           onClose={closeMenu}
         />
       )}
-      <ValueMenu definition={definition} />
     </div>
   );
 }
