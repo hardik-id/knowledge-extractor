@@ -27,6 +27,18 @@ export class AssistantDock {
     return this.column.getByRole("region", { name: "Suggested changes" });
   }
 
+  /** The card of a suggestion in the conversation (the newest one). */
+  get card() {
+    return this.conversation.getByRole("group", { name: "Suggestion" }).last();
+  }
+
+  /** The lines of a change with its own Keep (in the table or the bar), not the lines of the card. */
+  get changeLines() {
+    return this.column
+      .getByRole("listitem")
+      .filter({ has: this.page.getByRole("button", { name: /^Keep/ }) });
+  }
+
   /** The rows the proposal adds to the table. */
   get newFieldRows() {
     return this.column.getByRole("row").filter({ hasText: "New field" });

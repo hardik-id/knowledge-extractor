@@ -1,6 +1,7 @@
 import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
-import { workspaceWithDocuments } from "./pages/extraction";
+import { ExtractionPage, saveConfiguration, workspaceWithDocuments } from "./pages/extraction";
+import { RecordStripPage } from "./pages/record-strip";
 import { openStart } from "./pages/studio";
 import {
   configurationRow,
@@ -128,4 +129,129 @@ test("an empty workspace reads 'Nothing configured yet' and starts in the conver
   await expect(
     dock.dock.getByRole("heading", { name: "What do you want from these documents?" }),
   ).toBeVisible();
+});
+
+test("a new person goes from an empty workspace to records in the strip without opening Configuration", async ({
+  page,
+}) => {
+  await openStart(page, "Chat only workspace", "platform-adrs.md");
+  const dock = new AssistantDock(page);
+  await page
+    .getByRole("textbox", { name: "What do you want from these documents?" })
+    .fill("the architecture decisions");
+  await page.getByRole("button", { name: "Suggest fields" }).click();
+  await expect(dock.card).toContainText("Add record type");
+  await expect(dock.card.getByRole("button", { name: /^Keep all/ })).toBeVisible();
+  await dock.card.getByRole("button", { name: /^Keep all/ }).click();
+  await expect(dock.card).toContainText("Kept");
+  const extraction = new ExtractionPage(page);
+  await extraction.run();
+  await extraction.finished();
+  const strip = new RecordStripPage(page);
+  await expect(strip.strip).toBeVisible();
+  await expect(strip.position).toHaveText(/^Record 1 of \d+$/);
+  await expect(configurationRow(page)).toHaveAttribute("aria-expanded", "false");
+});
+
+test("a suggestion is a card: the changes in words, buttons that say what they keep, and no table opened", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  noExtractionYet(expectApiError);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await openOneScreen(page, workspace, { configuration: "closed" });
+  const dock = new AssistantDock(page);
+  await dock.ask("add a field for the approver");
+  await expect(dock.card).toContainText("Add 1 field to");
+  await expect(dock.card).toContainText("Approver");
+  await expect(dock.card).toContainText("Waiting for you");
+  await expect(configurationRow(page)).toContainText("suggested change");
+  await expect(configurationRow(page)).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    dock.card.getByRole("button", { name: /^Keep all \d+ suggested changes?$/ }),
+  ).toBeVisible();
+  await expect(
+    dock.card.getByRole("button", { name: /^Discard \d+ suggested changes?$/ }),
+  ).toBeVisible();
+  await expect(
+    dock.card.getByRole("button", { name: "Review suggested changes in Configuration" }),
+  ).toBeVisible();
+
+  await dock.card.getByRole("button", { name: /^Discard / }).click();
+  await expect(dock.card).toContainText("Discarded");
+  await expect(dock.card.getByRole("button")).toHaveCount(0);
+  await expect(configurationRow(page)).not.toContainText("suggested change");
+  await expect(dock.column.getByRole("status")).toContainText("Discarded");
+  await expect(configurationRow(page)).toHaveAttribute("aria-expanded", "false");
+});
+
+test("Review opens Configuration with the focus in the table", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  noExtractionYet(expectApiError);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await openOneScreen(page, workspace, { configuration: "closed" });
+  const dock = new AssistantDock(page);
+  await dock.ask("add a field for the approver");
+  await dock.card.getByRole("button", { name: /^Review/ }).click();
+  await expect(configurationRow(page)).toHaveAttribute("aria-expanded", "true");
+  await expect(dock.bar).toBeVisible();
+  const table = page.getByRole("region", { name: "Field list" });
+  await expect.poll(() => table.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  // Closing and reopening Configuration later does not pull the focus into the table again.
+  const row = configurationRow(page);
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "false");
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  await expect(row).toBeFocused();
+  // Each change has keep or discard exactly as before.
+  await dock.newFieldRows.first().getByRole("button", { name: "Keep" }).click();
+  await expect(dock.card).toContainText("1 kept, 1 waiting");
+});
+
+test("the card reads its outcome, also after a save and a reload", async ({
+  api,
+  expectApiError,
+  page,
+  person,
+  request,
+}) => {
+  noExtractionYet(expectApiError);
+  const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
+  await openOneScreen(page, workspace, { configuration: "closed" });
+  const dock = new AssistantDock(page);
+  await dock.ask("add a field for the approver");
+  await dock.card.getByRole("button", { name: /^Keep all/ }).click();
+  await expect(dock.card).toContainText("Kept");
+  await expect(dock.card.getByRole("button")).toHaveCount(0);
+  await saveConfiguration(page);
+  await page.reload();
+  await expectWorkingScreen(page);
+  await expect(dock.card).toContainText("Already in what you have");
+  await expect(dock.card.getByRole("button")).toHaveCount(0);
+});
+
+test("a template chosen at the start is a card in the conversation", async ({ page }) => {
+  await openStart(page, "Template card workspace");
+  const dock = new AssistantDock(page);
+  await page.getByRole("button", { name: /^Policy rules/ }).click();
+  await expect(dock.card).toContainText("Add record type");
+  await expect(configurationRow(page)).toHaveAttribute("aria-expanded", "false");
+  await expect(configurationRow(page)).toContainText("suggested change");
+  await dock.card.getByRole("button", { name: /^Discard / }).click();
+  await expect(dock.card).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "What do you want from these documents?" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /^Policy rules/ }).click();
+  await dock.card.getByRole("button", { name: /^Keep all/ }).click();
+  await expect(configurationRow(page)).toContainText("6 fields");
 });

@@ -50,15 +50,25 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
     if (mustShow) setConfigurationOpen(true);
   }, [mustShow, setConfigurationOpen]);
 
-  // PART 2 (#267) REMOVES THIS RULE: until the suggestion is a card in the conversation, it is
-  // shown in the table, so Configuration opens by itself when a suggestion arrives or a template is
-  // offered. It does not change what the person chose to remember.
-  const suggestion = (proposal as ProposalInfo | null)?.messageId ?? null;
-  const seenSuggestion = useRef<string | null>(null);
+  // "Review" on a card: open Configuration (without changing what the person chose to remember)
+  // and put the focus in the table, on the first change when there is one.
+  const [reviewing, setReviewing] = useState(0);
+  const handled = useRef(0);
   useEffect(() => {
-    if (suggestion && suggestion !== seenSuggestion.current) setConfigurationOpen(true);
-    seenSuggestion.current = suggestion;
-  }, [suggestion, setConfigurationOpen]);
+    // One-shot: a later opening of Configuration by any other route must not move the focus.
+    if (reviewing === handled.current || !configurationOpen) return;
+    handled.current = reviewing;
+    let frames = 0;
+    let frame = 0;
+    const step = () => {
+      const button = scroller.current?.querySelector<HTMLElement>("[data-change-actions] button");
+      if (button) button.focus();
+      else if (frames++ < 20) frame = requestAnimationFrame(step);
+      else scroller.current?.focus();
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [reviewing, configurationOpen]);
 
   // "Assistant" in the top bar: put the cursor in the input. Below 1100px the column has just
   // mounted in its overlay, so wait until the input is there.
@@ -180,7 +190,15 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
       <p role="status" className="sr-only">
         {decision}
       </p>
-      <AssistantDock definition={definition} starting={starting} />
+      <AssistantDock
+        definition={definition}
+        starting={starting}
+        onDecided={setDecision}
+        onReview={() => {
+          setConfigurationOpen(true);
+          setReviewing((n) => n + 1);
+        }}
+      />
     </div>
   );
 }

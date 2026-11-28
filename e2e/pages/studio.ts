@@ -154,10 +154,14 @@ export async function hasInnerScroll(box: import("@playwright/test").Locator): P
 }
 
 /** A new workspace from the dialog, with one document picked, opened on the working screen: the start panel. */
-export async function openStart(page: Page, name = "Start workspace") {
+export async function openStart(
+  page: Page,
+  name = "Start workspace",
+  document: string = DOCS.roadmap,
+) {
   await createWorkspaceFromDialog(page, name);
   await expect(page.getByRole("heading", { name: "Documents", level: 1 })).toBeVisible();
-  await pickDocuments(page, [DOCS.roadmap]);
+  await pickDocuments(page, [document]);
   await submitDocumentsButton(page).click();
   await expectWorkingScreen(page);
   // Below 1100px the column is an overlay, opened by "Assistant": the panel is not on show yet.

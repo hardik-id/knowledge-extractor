@@ -47,6 +47,8 @@ test("a template row shows its fields as suggestions; Keep all loads them as an 
   await openStart(page);
   const dock = new AssistantDock(page);
   await page.getByRole("button", { name: /^Policy rules/ }).click();
+  // The table with each change is behind "Review".
+  await dock.card.getByRole("button", { name: /^Review/ }).click();
   // The start panel gives way to the suggestions: the record type as a table marked as new.
   await expect(dock.bar).toContainText("suggested change");
   await expect(dock.column.getByText("New record type")).toBeVisible();
@@ -76,6 +78,8 @@ test("Discard all on a template brings the start panel back", async ({ page }) =
   await openStart(page);
   const dock = new AssistantDock(page);
   await page.getByRole("button", { name: /^Policy rules/ }).click();
+  // The table with each change is behind "Review".
+  await dock.card.getByRole("button", { name: /^Review/ }).click();
   await expect(dock.bar).toBeVisible();
 
   await dock.bar.getByRole("button", { name: "Discard all" }).click();
@@ -90,6 +94,8 @@ test("a template offer does not follow the person into another workspace", async
   await openStart(page, "Offer workspace A");
   const dock = new AssistantDock(page);
   await page.getByRole("button", { name: /^Policy rules/ }).click();
+  // The table with each change is behind "Review".
+  await dock.card.getByRole("button", { name: /^Review/ }).click();
   await expect(dock.bar).toContainText("suggested change");
 
   // A client-side move to Workspaces, then a second workspace: nothing suggested there.
@@ -107,6 +113,8 @@ test("Suggest fields asks the assistant, opens the conversation and shows its pr
   const dock = new AssistantDock(page);
   await page.getByRole("button", { name: "Suggest fields" }).click();
   await expect(dock.conversation).toContainText("Suggest fields for this document.");
+  // The table with each change is behind "Review".
+  await dock.card.getByRole("button", { name: /^Review/ }).click();
   await expect(dock.bar).toContainText("suggested change");
   // A proposal is not saved.
   await expect(page.getByTestId("version-line")).toContainText("Nothing saved yet");
