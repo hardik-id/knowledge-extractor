@@ -10,8 +10,8 @@ import type { AssistantState } from "@/features/extraction/use-assistant";
 import { plural } from "@/lib/format";
 import { useAsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
-import { offerProposal } from "../workspace/use-proposal";
-import { useWorkspace } from "../workspace/workspace-state";
+import { offerProposal } from "../working-screen/use-proposal";
+import { useScreen } from "../working-screen/screen-state";
 import {
   startFromScratch,
   startTemplates,
@@ -31,7 +31,7 @@ interface StartPanelProps {
  */
 export function StartPanel({ definition, assistant }: StartPanelProps) {
   const askId = useId();
-  const { setConversationOpen } = useWorkspace();
+  const { setConversationOpen } = useScreen();
   const [text, setText] = useState("");
   const templates = useAsyncData("templates", (signal) => services.templates.list(signal));
   const rows = startTemplates(templates.data ?? []);

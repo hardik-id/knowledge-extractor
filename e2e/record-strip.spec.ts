@@ -5,7 +5,7 @@ import { ExtractionPage, projectWithDocuments, saveConfiguration } from "./pages
 import { RecordStripPage } from "./pages/record-strip";
 import { scrollsSideways } from "./pages/studio";
 import { Switcher } from "./pages/switcher";
-import { documentPane, fieldColumn, openOneScreen } from "./pages/workspace";
+import { documentPane, fieldColumn, openOneScreen } from "./pages/working-screen";
 import { expectAccessible } from "./support/accessibility";
 
 const DOCUMENTS = ["platform-adrs.md"];

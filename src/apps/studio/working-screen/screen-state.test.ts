@@ -4,17 +4,17 @@ import {
   INITIAL_SELECTION,
   resolveRecordId,
   resolveTypeId,
-  workspaceReducer,
-  type WorkspaceSelection,
-} from "./workspace-state";
+  screenReducer,
+  type ScreenSelection,
+} from "./screen-state";
 
 const anchor = { left: 1, top: 2, right: 3, bottom: 4 };
-const withState = (patch: Partial<WorkspaceSelection>): WorkspaceSelection => ({
+const withState = (patch: Partial<ScreenSelection>): ScreenSelection => ({
   ...INITIAL_SELECTION,
   ...patch,
 });
 
-describe("workspaceReducer", () => {
+describe("screenReducer", () => {
   test("starts with nothing chosen and the conversation closed", () => {
     assert.deepEqual(INITIAL_SELECTION, {
       selectedTypeId: null,
@@ -33,7 +33,7 @@ describe("workspaceReducer", () => {
       selectedFieldId: "f1",
       openValue: { valueId: "v1", anchor },
     });
-    assert.deepEqual(workspaceReducer(state, { type: "selectType", typeId: "t2" }), {
+    assert.deepEqual(screenReducer(state, { type: "selectType", typeId: "t2" }), {
       ...INITIAL_SELECTION,
       selectedTypeId: "t2",
     });
@@ -41,25 +41,25 @@ describe("workspaceReducer", () => {
 
   test("choosing the same type again changes nothing", () => {
     const state = withState({ selectedTypeId: "t1", currentRecordId: "r1" });
-    assert.equal(workspaceReducer(state, { type: "selectType", typeId: "t1" }), state);
+    assert.equal(screenReducer(state, { type: "selectType", typeId: "t1" }), state);
   });
 
   test("sets and clears the record, the field and the open value", () => {
-    let state = workspaceReducer(INITIAL_SELECTION, { type: "setCurrentRecord", recordId: "r2" });
-    state = workspaceReducer(state, { type: "selectField", fieldId: "f3" });
-    state = workspaceReducer(state, { type: "openValue", value: { valueId: "v9", anchor } });
+    let state = screenReducer(INITIAL_SELECTION, { type: "setCurrentRecord", recordId: "r2" });
+    state = screenReducer(state, { type: "selectField", fieldId: "f3" });
+    state = screenReducer(state, { type: "openValue", value: { valueId: "v9", anchor } });
     assert.equal(state.currentRecordId, "r2");
     assert.equal(state.selectedFieldId, "f3");
     assert.deepEqual(state.openValue, { valueId: "v9", anchor });
-    state = workspaceReducer(state, { type: "selectField", fieldId: null });
-    state = workspaceReducer(state, { type: "openValue", value: null });
+    state = screenReducer(state, { type: "selectField", fieldId: null });
+    state = screenReducer(state, { type: "openValue", value: null });
     assert.equal(state.selectedFieldId, null);
     assert.equal(state.openValue, null);
   });
 
   test("keeps the proposal and the conversation", () => {
-    let state = workspaceReducer(INITIAL_SELECTION, { type: "setProposal", proposal: { n: 1 } });
-    state = workspaceReducer(state, { type: "setConversationOpen", open: true });
+    let state = screenReducer(INITIAL_SELECTION, { type: "setProposal", proposal: { n: 1 } });
+    state = screenReducer(state, { type: "setConversationOpen", open: true });
     assert.deepEqual(state.proposal, { n: 1 });
     assert.equal(state.conversationOpen, true);
   });

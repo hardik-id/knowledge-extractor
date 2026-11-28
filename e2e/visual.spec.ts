@@ -2,7 +2,7 @@ import { type Locator, type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { ExtractionPage, addDocuments } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
-import { documentPane } from "./pages/workspace";
+import { documentPane } from "./pages/working-screen";
 import {
   DOCS,
   createProjectFromDialog,

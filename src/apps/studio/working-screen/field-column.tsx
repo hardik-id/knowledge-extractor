@@ -14,7 +14,7 @@ import { focusAssistantInput } from "./use-proposal";
 import { ProposalBar, ProposalLines, ProposedFieldRows, ProposedTypes } from "./proposal-table";
 import { RecordTypeBar } from "./record-type-bar";
 import { useFieldSelection } from "./use-field-selection";
-import { useScreenControls, useWorkspace } from "./workspace-state";
+import { useScreenControls, useScreen } from "./screen-state";
 
 /**
  * The right column: the record type, the prompt, the field table (today's Define table, edited in
@@ -22,7 +22,7 @@ import { useScreenControls, useWorkspace } from "./workspace-state";
  */
 export function FieldColumn({ definition }: { definition: ExtractionDefinitionState }) {
   const { draft, saved, setDraft, errors, showErrors } = definition;
-  const { selectedTypeId, selectedFieldId, proposal, setConversationOpen } = useWorkspace();
+  const { selectedTypeId, selectedFieldId, proposal, setConversationOpen } = useScreen();
   const controls = useScreenControls();
   const scroller = useRef<HTMLDivElement>(null);
   const selection = useFieldSelection();

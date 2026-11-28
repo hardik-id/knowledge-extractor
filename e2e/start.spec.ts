@@ -3,7 +3,7 @@ import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
 import { openVersionMenu } from "./pages/extraction";
 import { openStart, scrollsSideways } from "./pages/studio";
-import { documentPane, openFields } from "./pages/workspace";
+import { documentPane, openFields } from "./pages/working-screen";
 import { expectAccessible } from "./support/accessibility";
 
 /** The start panel in the field column (or its overlay on a narrow screen). */

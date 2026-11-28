@@ -26,7 +26,7 @@ import {
   type StripValue,
 } from "./strip-rules";
 import { useFieldSelection } from "./use-field-selection";
-import { useScreenControls, useWorkspace } from "./workspace-state";
+import { useScreenControls, useScreen } from "./screen-state";
 
 const QUIET = "text-small text-ink-muted";
 
@@ -243,7 +243,7 @@ function showRecord(recordId: string) {
  */
 export function RecordStrip({ definition }: { definition: ExtractionDefinitionState }) {
   const { fileId, selectedTypeId, currentRecordId, setCurrentRecordId, setOpenValue } =
-    useWorkspace();
+    useScreen();
   const extraction = useFileExtraction(fileId);
   const documentText = useExtractionInput(fileId).data?.text;
   const controls = useScreenControls();

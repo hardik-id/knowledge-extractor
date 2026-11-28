@@ -2,7 +2,7 @@ import { type APIRequestContext, type Page, expect } from "@playwright/test";
 import { API_BASE_URL, API_ORIGIN } from "../support/env";
 import type { Api, ApiProject, Person } from "../fixtures";
 import { clickUntilOpen } from "../support/first-click";
-import { openOneScreen } from "./workspace";
+import { openOneScreen } from "./working-screen";
 
 interface ApiDocument {
   id: string;

@@ -1,6 +1,6 @@
 import { type Page } from "@playwright/test";
 import { addDocument, extractPath } from "./pages/studio";
-import { expectWorkingScreen } from "./pages/workspace";
+import { expectWorkingScreen } from "./pages/working-screen";
 import { expect, test } from "./fixtures";
 import { editPrompt } from "./pages/extraction";
 

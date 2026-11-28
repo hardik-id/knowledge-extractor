@@ -8,17 +8,17 @@ import {
   INITIAL_SELECTION,
   resolveRecordId,
   resolveTypeId,
-  WorkspaceContext,
-  workspaceReducer,
-  type WorkspaceState,
-} from "./workspace-state";
+  ScreenContext,
+  screenReducer,
+  type ScreenState,
+} from "./screen-state";
 
 /**
  * Holds the working screen's selection for one open document. Keyed by the caller on the file, so
  * opening another document starts clean. The defaults that depend on data (the first type, the
  * first record of the type) are resolved here, so a consumer never sees an id that is gone.
  */
-export function WorkspaceProvider({
+export function ScreenProvider({
   fileId,
   recordTypes,
   children,
@@ -27,12 +27,12 @@ export function WorkspaceProvider({
   recordTypes: readonly RecordType[];
   children: ReactNode;
 }) {
-  const [selection, dispatch] = useReducer(workspaceReducer, INITIAL_SELECTION);
+  const [selection, dispatch] = useReducer(screenReducer, INITIAL_SELECTION);
   const records = useFileExtraction(fileId).data?.records;
   // A template offer belongs to this screen: it must not outlive the project or document.
   useEffect(() => () => offerProposal(null), []);
 
-  const value = useMemo<WorkspaceState>(() => {
+  const value = useMemo<ScreenState>(() => {
     const selectedTypeId = resolveTypeId(selection.selectedTypeId, recordTypes);
     const selectedFieldId = recordTypes.some((t) =>
       t.fields.some((f) => f.id === selection.selectedFieldId),
@@ -54,5 +54,5 @@ export function WorkspaceProvider({
     };
   }, [selection, fileId, recordTypes, records]);
 
-  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+  return <ScreenContext.Provider value={value}>{children}</ScreenContext.Provider>;
 }

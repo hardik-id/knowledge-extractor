@@ -23,7 +23,7 @@ import { useAssistant } from "@/features/extraction/use-assistant";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { describeApiError } from "@/services/errors";
 import { focusAssistantInput, resetOutcomes, useProposalSync } from "./use-proposal";
-import { useWorkspace } from "./workspace-state";
+import { useScreen } from "./screen-state";
 
 /**
  * The assistant at the bottom of the column: a one-line input; using it opens the conversation
@@ -32,7 +32,7 @@ import { useWorkspace } from "./workspace-state";
 export function AssistantDock({ definition }: { definition: ExtractionDefinitionState }) {
   const assistant = useAssistant(definition.draft ?? undefined);
   const { messages, busy, activity } = assistant;
-  const { conversationOpen, setConversationOpen } = useWorkspace();
+  const { conversationOpen, setConversationOpen } = useScreen();
   const outcomeOf = useProposalSync(
     definition.draft ?? undefined,
     messages,

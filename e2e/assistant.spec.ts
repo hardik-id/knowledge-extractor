@@ -3,7 +3,7 @@ import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
 import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
-import { expectWorkingScreen } from "./pages/workspace";
+import { expectWorkingScreen } from "./pages/working-screen";
 import { Switcher } from "./pages/switcher";
 
 const DOCUMENTS = ["platform-adrs.md", "incident-runbook.md"];

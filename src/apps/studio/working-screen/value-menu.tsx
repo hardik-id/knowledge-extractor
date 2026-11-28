@@ -10,7 +10,7 @@ import type { ExtractionDefinitionState } from "@/features/extraction/use-extrac
 import { useExtractionActions, useFileExtraction } from "@/features/run/use-extraction";
 import { cn } from "@/lib/utils";
 import type { ExtractionRecord } from "@/services/contracts";
-import { useWorkspace } from "./workspace-state";
+import { useScreen } from "./screen-state";
 
 function findValue(records: readonly ExtractionRecord[] | undefined, valueId: string | null) {
   if (!records || !valueId) return null;
@@ -23,12 +23,12 @@ function findValue(records: readonly ExtractionRecord[] | undefined, valueId: st
 
 /**
  * The actions on one value (accept, reject, correct, remove), in a small menu at its highlight.
- * It reads `openValue` from the workspace state: the highlight's place when it was pressed, then
+ * It reads `openValue` from the screen state: the highlight's place when it was pressed, then
  * the highlight itself while it is on screen, so the menu follows the document's scrolling.
  * Esc closes it and focus goes back to the highlight.
  */
 export function ValueMenu({ definition }: { definition: ExtractionDefinitionState }) {
-  const { fileId, openValue, setOpenValue } = useWorkspace();
+  const { fileId, openValue, setOpenValue } = useScreen();
   const extraction = useFileExtraction(fileId);
   // Keep the last settled records while they load again, so a change is never sent with the
   // revision of an older key's answer.

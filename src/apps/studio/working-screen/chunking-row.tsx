@@ -23,7 +23,7 @@ import {
 } from "@/services/contracts";
 import { CustomChunkingPanel } from "./custom-chunking-panel";
 import { NO_MEMORY, memoryFor, rememberApplied, rememberWords } from "./custom-chunking";
-import { useScreenControls } from "./workspace-state";
+import { useScreenControls } from "./screen-state";
 
 /**
  * "Chunking" on one line under "What to extract": how the documents are cut into pieces before

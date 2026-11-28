@@ -1,7 +1,7 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 import type { ApiProject, Person } from "../fixtures";
 import { ExtractionPage, projectWithDocuments } from "./extraction";
-import { documentPane, fieldColumn, openOneScreen } from "./workspace";
+import { documentPane, fieldColumn, openOneScreen } from "./working-screen";
 
 /** The faded look of a highlight: its fill and underline in the label colour at a quarter strength. */
 const FADED = /-soft\/25/;

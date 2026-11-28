@@ -13,7 +13,7 @@ import {
 } from "@/features/extraction/proposal-diff";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import type { AssistantMessage, AssistantProposal } from "@/services/contracts";
-import { useWorkspace } from "./workspace-state";
+import { useScreen } from "./screen-state";
 
 /** The newest proposal still to decide, with what keeping it would change in the draft it was compared with. */
 export interface ProposalInfo {
@@ -216,7 +216,7 @@ export function useProposalSync(
   /** The conversation has loaded: until then an old proposal must not pass for a new one. */
   loaded: boolean,
 ): (message: AssistantMessage) => { outcome: ProposalOutcome | "included"; line: string } {
-  const { setProposal } = useWorkspace();
+  const { setProposal } = useScreen();
   // The provider makes a new setter with every value; only a new proposal should run the effect.
   const put = useRef(setProposal);
   useEffect(() => {
@@ -353,7 +353,7 @@ export function useProposal(
   keep: (change: ProposalChange, from?: Element | null) => void;
   discard: (change: ProposalChange, from?: Element | null) => void;
 } {
-  const { proposal } = useWorkspace();
+  const { proposal } = useScreen();
   const info = (proposal as ProposalInfo | null) ?? null;
   const choices = useDecisions();
   const decided = info ? (choices[info.messageId] ?? NONE) : NONE;

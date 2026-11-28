@@ -1,4 +1,4 @@
-import { expectWorkingScreen } from "./pages/workspace";
+import { expectWorkingScreen } from "./pages/working-screen";
 import { type Page } from "@playwright/test";
 import { addDocument, submitDocumentsButton } from "./pages/studio";
 import { expect, test } from "./fixtures";

@@ -8,7 +8,7 @@ import type { ExtractionDefinitionState } from "@/features/extraction/use-extrac
 import { plural } from "@/lib/format";
 import type { FieldDef, RecordType } from "@/services/contracts";
 import { useProposal, type ProposalInfo } from "./use-proposal";
-import { useWorkspace } from "./workspace-state";
+import { useScreen } from "./screen-state";
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -98,7 +98,7 @@ export function ProposalBar({
   onDecided?: (said: string) => void;
 }) {
   const { info, keepAll, discardAll } = useProposal(definition, onDecided);
-  const { selectedTypeId } = useWorkspace();
+  const { selectedTypeId } = useScreen();
   if (!info) return null;
   const type = info.current.recordTypes.find((t) => t.id === selectedTypeId);
   const proposed = type && proposedType(info, type);
@@ -176,7 +176,7 @@ export function ProposalLines({
   definition: ExtractionDefinitionState;
   onDecided?: (said: string) => void;
 }) {
-  const { proposal, selectedTypeId } = useWorkspace();
+  const { proposal, selectedTypeId } = useScreen();
   const info = proposal as ProposalInfo | null;
   const type = info?.current.recordTypes.find((t) => t.id === selectedTypeId);
   const all = info && type ? linesByField(info, type) : null;
@@ -223,7 +223,7 @@ export function ProposedFieldRows({
   definition: ExtractionDefinitionState;
   onDecided?: (said: string) => void;
 }) {
-  const { proposal } = useWorkspace();
+  const { proposal } = useScreen();
   const info = proposal as ProposalInfo | null;
   const type = info?.current.recordTypes.find((t) => t.id === typeId);
   const first = useRef<HTMLTableRowElement>(null);
@@ -300,7 +300,7 @@ export function ProposedTypes({
   definition: ExtractionDefinitionState;
   onDecided?: (said: string) => void;
 }) {
-  const { proposal } = useWorkspace();
+  const { proposal } = useScreen();
   const info = proposal as ProposalInfo | null;
   if (!info) return null;
   const types = info.changes

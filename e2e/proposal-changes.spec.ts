@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
 import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
-import { openOneScreen } from "./pages/workspace";
+import { openOneScreen } from "./pages/working-screen";
 import { scrollsSideways } from "./pages/studio";
 import { expectAccessible } from "./support/accessibility";
 

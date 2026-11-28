@@ -2,7 +2,7 @@ import { type APIRequestContext, type Page, expect } from "@playwright/test";
 import type { Api, Person } from "../fixtures";
 import { clickUntilOpen } from "../support/first-click";
 import { ExtractionPage, projectWithDocuments } from "./extraction";
-import { documentPane, openOneScreen } from "./workspace";
+import { documentPane, openOneScreen } from "./working-screen";
 
 /** The record strip under the document, and the menu of a value opened from its highlight. */
 export class RecordStripPage {

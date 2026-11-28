@@ -14,7 +14,7 @@ import type { ExtractionDefinitionState } from "@/features/extraction/use-extrac
 import { describeApiError } from "@/services/errors";
 import { useFieldSelection } from "./use-field-selection";
 import { ValueMenu } from "./value-menu";
-import { useWorkspace } from "./workspace-state";
+import { useScreen } from "./screen-state";
 
 const NO_TYPES = { recordTypes: [] };
 
@@ -40,7 +40,7 @@ export function DocumentPane({
   definition: ExtractionDefinitionState;
 }) {
   const { currentRecordId, selectedFieldId, openValue, setCurrentRecordId, setOpenValue } =
-    useWorkspace();
+    useScreen();
   const { scrollTargetValueId } = useFieldSelection();
   const saved = definition.saved;
 

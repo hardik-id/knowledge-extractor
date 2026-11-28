@@ -1,5 +1,5 @@
 import { RecordStripPage } from "./pages/record-strip";
-import { expectWorkingScreen } from "./pages/workspace";
+import { expectWorkingScreen } from "./pages/working-screen";
 import { expectAccessible } from "./support/accessibility";
 import { expect, test } from "./fixtures";
 import {

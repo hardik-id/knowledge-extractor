@@ -3,7 +3,7 @@ import { AssistantDock } from "./pages/assistant-dock";
 import { editPrompt, openVersionHistory, promptLine, saveConfiguration } from "./pages/extraction";
 import { RecordStripPage } from "./pages/record-strip";
 import { addDocument, extractPath, openDocumentsSheet } from "./pages/studio";
-import { expectWorkingScreen, openOneScreen } from "./pages/workspace";
+import { expectWorkingScreen, openOneScreen } from "./pages/working-screen";
 import { expect, test } from "./fixtures";
 
 const PROMPT = "Extract each decision record and who approved it.";

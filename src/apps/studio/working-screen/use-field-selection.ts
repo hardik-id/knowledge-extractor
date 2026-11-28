@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useFileExtraction } from "@/features/run/use-extraction";
 import { overlayIsOpen, scrollTargetValueId } from "./field-selection-rules";
-import { useWorkspace } from "./workspace-state";
+import { useScreen } from "./screen-state";
 
 /** Which field is selected in the table, and where the document should scroll for it. */
 export interface FieldSelection {
@@ -16,14 +16,14 @@ export interface FieldSelection {
 }
 
 /**
- * The field selection of the working screen. The selection itself lives in the workspace state,
+ * The field selection of the working screen. The selection itself lives in the screen state,
  * which already clears it when the record type changes or the field leaves the draft. Esc clears
  * it from anywhere, unless a menu or dialog is open (it closes first) or something already
  * handled the key.
  */
 export function useFieldSelection(): FieldSelection {
   const { fileId, selectedFieldId, selectedTypeId, currentRecordId, setSelectedFieldId } =
-    useWorkspace();
+    useScreen();
   const records = useFileExtraction(fileId).data?.records;
 
   const toggle = useCallback(

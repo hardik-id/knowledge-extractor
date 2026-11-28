@@ -21,7 +21,7 @@ import { Problem } from "@/features/extraction/field-table";
 import { Segmented } from "@/features/extraction/review-panes";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { plural } from "@/lib/format";
-import { useWorkspace } from "./workspace-state";
+import { useScreen } from "./screen-state";
 
 type Editing = "name" | "description" | null;
 
@@ -31,7 +31,7 @@ type Editing = "name" | "description" | null;
  * remove a record type). Every change goes into the draft.
  */
 export function RecordTypeBar({ definition }: { definition: ExtractionDefinitionState }) {
-  const { selectedTypeId, setSelectedTypeId } = useWorkspace();
+  const { selectedTypeId, setSelectedTypeId } = useScreen();
   const { draft, setDraft, errors, showErrors } = definition;
   const [editing, setEditing] = useState<Editing>(null);
   const root = useRef<HTMLDivElement>(null);

@@ -1,4 +1,4 @@
-import { expectWorkingScreen } from "./workspace";
+import { expectWorkingScreen } from "./working-screen";
 import {
   type APIRequestContext,
   type Page,

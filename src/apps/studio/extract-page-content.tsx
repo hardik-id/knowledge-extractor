@@ -15,13 +15,13 @@ import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 import { DocumentsScreen } from "./documents-screen";
 import { ProjectTopBar } from "./project-top-bar";
-import { OneScreen } from "./workspace/one-screen";
+import { OneScreen } from "./working-screen/one-screen";
 import {
   ScreenControlsContext,
   WIDE_QUERY,
   type ScreenControls,
   type ScreenView,
-} from "./workspace/workspace-state";
+} from "./working-screen/screen-state";
 
 /** Inside an open project (see ProjectScope): the working screen once its run has documents, the picker before. */
 export function ExtractPageContent() {

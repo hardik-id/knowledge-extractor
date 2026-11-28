@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import { ExtractionPage, projectWithDocuments, saveConfiguration } from "./pages/extraction";
-import { openFields } from "./pages/workspace";
+import { openFields } from "./pages/working-screen";
 
 const DOCUMENTS = ["platform-adrs.md"];
 

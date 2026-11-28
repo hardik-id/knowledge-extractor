@@ -16,7 +16,7 @@ import { DocumentSwitcher } from "./top-bar/document-switcher";
 import { MoreMenu } from "./top-bar/more-menu";
 import { RunButton } from "./top-bar/run-button";
 import { VersionMenu } from "./top-bar/version-menu";
-import { useScreenControls } from "./workspace/workspace-state";
+import { useScreenControls } from "./working-screen/screen-state";
 
 /**
  * The one bar of a project screen (it replaces the sidebar and the page header): the logo, the

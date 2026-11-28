@@ -1,6 +1,6 @@
 import { addDocument, extractPath, scrollsSideways, submitDocumentsButton } from "./pages/studio";
 import { expect, test } from "./fixtures";
-import { expectWorkingScreen } from "./pages/workspace";
+import { expectWorkingScreen } from "./pages/working-screen";
 
 test.use({ viewport: { width: 390, height: 844 } });
 

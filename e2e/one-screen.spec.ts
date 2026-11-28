@@ -2,7 +2,7 @@ import { type Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { ExtractionPage, projectWithDocuments } from "./pages/extraction";
 import { scrollsSideways } from "./pages/studio";
-import { documentPane, fieldColumn, openOneScreen } from "./pages/workspace";
+import { documentPane, fieldColumn, openOneScreen } from "./pages/working-screen";
 import { expectAccessible } from "./support/accessibility";
 
 const DOCUMENTS = ["platform-adrs.md"];

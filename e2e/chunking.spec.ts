@@ -8,7 +8,7 @@ import {
   projectWithDocuments,
   saveConfiguration,
 } from "./pages/extraction";
-import { fieldColumn, openFields, openOneScreen } from "./pages/workspace";
+import { fieldColumn, openFields, openOneScreen } from "./pages/working-screen";
 import {
   createProjectFromDialog,
   pickDocuments,

@@ -10,7 +10,7 @@ export interface ValueAnchor {
 }
 
 /** What the working screen has selected. Nothing here is saved. */
-export interface WorkspaceSelection {
+export interface ScreenSelection {
   /** The record type shown in the field column; null until chosen (then the first type). */
   selectedTypeId: string | null;
   /** The record being looked at; null until chosen (then the first record of the type). */
@@ -25,7 +25,7 @@ export interface WorkspaceSelection {
   conversationOpen: boolean;
 }
 
-export const INITIAL_SELECTION: WorkspaceSelection = {
+export const INITIAL_SELECTION: ScreenSelection = {
   selectedTypeId: null,
   currentRecordId: null,
   selectedFieldId: null,
@@ -34,18 +34,18 @@ export const INITIAL_SELECTION: WorkspaceSelection = {
   conversationOpen: false,
 };
 
-export type WorkspaceAction =
+export type ScreenAction =
   | { type: "selectType"; typeId: string | null }
   | { type: "setCurrentRecord"; recordId: string | null }
   | { type: "selectField"; fieldId: string | null }
-  | { type: "openValue"; value: WorkspaceSelection["openValue"] }
+  | { type: "openValue"; value: ScreenSelection["openValue"] }
   | { type: "setProposal"; proposal: unknown }
   | { type: "setConversationOpen"; open: boolean };
 
-export function workspaceReducer(
-  state: WorkspaceSelection,
-  action: WorkspaceAction,
-): WorkspaceSelection {
+export function screenReducer(
+  state: ScreenSelection,
+  action: ScreenAction,
+): ScreenSelection {
   switch (action.type) {
     case "selectType":
       if (action.typeId === state.selectedTypeId) return state;
@@ -105,23 +105,23 @@ export function resolveRecordId(
   return (own.find((r) => r.review !== "rejected") ?? own[0])?.id ?? null;
 }
 
-export interface WorkspaceState extends WorkspaceSelection {
+export interface ScreenState extends ScreenSelection {
   /** The open document. */
   fileId: string | null;
   setSelectedTypeId: (typeId: string | null) => void;
   setCurrentRecordId: (recordId: string | null) => void;
   setSelectedFieldId: (fieldId: string | null) => void;
-  setOpenValue: (value: WorkspaceSelection["openValue"]) => void;
+  setOpenValue: (value: ScreenSelection["openValue"]) => void;
   setProposal: (proposal: unknown) => void;
   setConversationOpen: (open: boolean) => void;
 }
 
-export const WorkspaceContext = createContext<WorkspaceState | null>(null);
+export const ScreenContext = createContext<ScreenState | null>(null);
 
-/** The working screen's selection. Only inside `WorkspaceProvider`. */
-export function useWorkspace(): WorkspaceState {
-  const state = useContext(WorkspaceContext);
-  if (!state) throw new Error("useWorkspace is used outside the working screen.");
+/** The working screen's selection. Only inside `ScreenProvider`. */
+export function useScreen(): ScreenState {
+  const state = useContext(ScreenContext);
+  if (!state) throw new Error("useScreen is used outside the working screen.");
   return state;
 }
 

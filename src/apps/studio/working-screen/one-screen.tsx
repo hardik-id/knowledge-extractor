@@ -18,8 +18,8 @@ import { DocumentPane } from "./document-pane";
 import { FieldColumn } from "./field-column";
 import { OutputPane } from "./output-pane";
 import { RecordStrip } from "./record-strip";
-import { WorkspaceProvider } from "./workspace-provider";
-import { useScreenControls, WIDE_QUERY } from "./workspace-state";
+import { ScreenProvider } from "./screen-provider";
+import { useScreenControls, WIDE_QUERY } from "./screen-state";
 
 function subscribeWide(onChange: () => void) {
   const query = window.matchMedia(WIDE_QUERY);
@@ -76,9 +76,9 @@ export function OneScreen({ extraction }: { extraction: ExtractionRun }) {
 
   return (
     // Keyed by the document: opening another one starts with nothing selected.
-    <WorkspaceProvider key={fileId ?? "none"} fileId={fileId} recordTypes={draft.recordTypes}>
+    <ScreenProvider key={fileId ?? "none"} fileId={fileId} recordTypes={draft.recordTypes}>
       <Screen extraction={extraction} fileId={fileId} />
-    </WorkspaceProvider>
+    </ScreenProvider>
   );
 }
 
