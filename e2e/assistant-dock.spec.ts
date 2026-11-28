@@ -29,8 +29,8 @@ test.describe("the assistant in the column", () => {
     const column = fieldColumn(page);
     await expect(page.getByTestId("version-line")).not.toContainText("unsaved changes");
 
-    // One line to ask with; the conversation is closed until it is used.
-    await expect(dock.conversation).toHaveCount(0);
+    // The conversation is always open, with the input under it.
+    await expect(dock.conversation).toBeVisible();
     await dock.ask("add a field for the approver");
     await expect(dock.bar).toContainText("suggested change");
     await expect(dock.newFieldRows).toHaveCount(1);
@@ -246,7 +246,10 @@ test.describe("the assistant in the column", () => {
       const dock = new AssistantDock(page);
       await openOneScreen(page, workspace);
       if (size.width < 1100)
-        await page.getByRole("button", { name: "Fields", exact: true }).click();
+        await page
+          .getByRole("main", { name: "Document" })
+          .getByRole("button", { name: "Assistant", exact: true })
+          .click();
       await dock.ask("add a field for the approver");
       await expect(dock.newFieldRows).toHaveCount(1);
       await expect(dock.input).toBeVisible();

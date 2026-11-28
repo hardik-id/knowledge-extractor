@@ -21,8 +21,8 @@ export interface ScreenSelection {
   openValue: { valueId: string; anchor: ValueAnchor } | null;
   /** The assistant's pending proposal. A placeholder until item 10 fills it. */
   proposal: unknown;
-  /** The conversation with the assistant is open in the column. */
-  conversationOpen: boolean;
+  /** The "Configuration" row of the column is open. */
+  configurationOpen: boolean;
 }
 
 export const INITIAL_SELECTION: ScreenSelection = {
@@ -31,7 +31,7 @@ export const INITIAL_SELECTION: ScreenSelection = {
   selectedFieldId: null,
   openValue: null,
   proposal: null,
-  conversationOpen: false,
+  configurationOpen: false,
 };
 
 export type ScreenAction =
@@ -40,7 +40,7 @@ export type ScreenAction =
   | { type: "selectField"; fieldId: string | null }
   | { type: "openValue"; value: ScreenSelection["openValue"] }
   | { type: "setProposal"; proposal: unknown }
-  | { type: "setConversationOpen"; open: boolean };
+  | { type: "setConfigurationOpen"; open: boolean };
 
 export function screenReducer(state: ScreenSelection, action: ScreenAction): ScreenSelection {
   switch (action.type) {
@@ -66,10 +66,10 @@ export function screenReducer(state: ScreenSelection, action: ScreenAction): Scr
       return { ...state, openValue: action.value };
     case "setProposal":
       return { ...state, proposal: action.proposal };
-    case "setConversationOpen":
-      return state.conversationOpen === action.open
+    case "setConfigurationOpen":
+      return state.configurationOpen === action.open
         ? state
-        : { ...state, conversationOpen: action.open };
+        : { ...state, configurationOpen: action.open };
   }
 }
 
@@ -110,7 +110,8 @@ export interface ScreenState extends ScreenSelection {
   setSelectedFieldId: (fieldId: string | null) => void;
   setOpenValue: (value: ScreenSelection["openValue"]) => void;
   setProposal: (proposal: unknown) => void;
-  setConversationOpen: (open: boolean) => void;
+  /** Opens or closes Configuration. `remember` keeps the choice for the next visit (a click does; opening by itself does not). */
+  setConfigurationOpen: (open: boolean, remember?: boolean) => void;
 }
 
 export const ScreenContext = createContext<ScreenState | null>(null);
@@ -129,7 +130,7 @@ export type ScreenView = "document" | "output";
 
 /**
  * What the top bar and the working screen share: the "Document | Output" switch, the Fields
- * overlay of a narrow screen, and the "Assistant" button's request to put the cursor in the
+ * overlay of a narrow screen (the assistant's column), and the "Assistant" button's request to put the cursor in the
  * assistant's input. Held above both, by the workspace screen. Null outside it.
  */
 export interface ScreenControls {

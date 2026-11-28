@@ -55,7 +55,7 @@ test.describe("the assistant", () => {
     await expect(dock.conversation.getByText("add a field for the approver")).toBeVisible();
   });
 
-  test("Assistant in the top bar opens the conversation and puts the cursor in the input", async ({
+  test("Assistant in the top bar puts the cursor in the input", async ({
     api,
     page,
     person,
@@ -64,9 +64,9 @@ test.describe("the assistant", () => {
     const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
     const dock = new AssistantDock(page);
     await new ExtractionPage(page).open(workspace);
-    await expect(dock.conversation).toHaveCount(0);
-    await page.getByTestId("workspace-top-bar").getByRole("button", { name: "Assistant" }).click();
     await expect(dock.conversation).toBeVisible();
+    await expect(dock.input).not.toBeFocused();
+    await page.getByTestId("workspace-top-bar").getByRole("button", { name: "Assistant" }).click();
     await expect(dock.input).toBeFocused();
   });
 });

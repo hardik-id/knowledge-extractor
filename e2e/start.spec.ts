@@ -3,7 +3,12 @@ import { expect, test } from "./fixtures";
 import { AssistantDock } from "./pages/assistant-dock";
 import { openVersionMenu } from "./pages/extraction";
 import { openStart, scrollsSideways } from "./pages/studio";
-import { documentPane, openFields } from "./pages/working-screen";
+import {
+  configurationRow,
+  documentPane,
+  openConfiguration,
+  openFields,
+} from "./pages/working-screen";
 import { expectAccessible } from "./support/accessibility";
 
 /** The start panel in the field column (or its overlay on a narrow screen). */
@@ -123,6 +128,9 @@ test("what the person wrote is what the assistant is asked", async ({ page }) =>
 test("Add a field yourself makes a record type named Record with one field", async ({ page }) => {
   await openStart(page);
   await page.getByRole("button", { name: "Add a field yourself" }).click();
+  // Configuration is closed on a first visit; the row says what was added.
+  await expect(configurationRow(page)).toContainText("Record · 1 field");
+  await openConfiguration(page);
   await expect(page.getByRole("heading", { name: "Record", exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /^Name of field/ })).toHaveCount(1);
   await expect(page.getByTestId("version-line")).toContainText("unsaved changes");

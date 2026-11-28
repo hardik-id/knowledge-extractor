@@ -11,7 +11,6 @@ import { plural } from "@/lib/format";
 import { useAsyncData } from "@/lib/use-async-data";
 import { services } from "@/services";
 import { offerProposal } from "../working-screen/use-proposal";
-import { useScreen } from "../working-screen/screen-state";
 import {
   startFromScratch,
   startTemplates,
@@ -26,12 +25,11 @@ interface StartPanelProps {
 }
 
 /**
- * The right column of a workspace with an empty configuration: ask the assistant, start from a
+ * The conversation's empty state in a workspace with an empty configuration: ask the assistant, start from a
  * template, or add a field yourself. Each way ends with a configuration to keep or discard.
  */
 export function StartPanel({ definition, assistant }: StartPanelProps) {
   const askId = useId();
-  const { setConversationOpen } = useScreen();
   const [text, setText] = useState("");
   const templates = useAsyncData("templates", (signal) => services.templates.list(signal));
   const rows = startTemplates(templates.data ?? []);
@@ -58,8 +56,6 @@ export function StartPanel({ definition, assistant }: StartPanelProps) {
             size="lg"
             disabled={assistant.busy || !definition.draft}
             onClick={() => {
-              // The answer is read in the conversation.
-              setConversationOpen(true);
               void assistant.send(suggestMessage(text));
             }}
           >

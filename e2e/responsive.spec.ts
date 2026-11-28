@@ -70,8 +70,11 @@ test("a workspace and the extraction page fit a phone, and the assistant opens f
 
   // The field column is an overlay on a phone: "Fields" opens it, "Assistant" opens it too and
   // puts the cursor in the assistant's input.
-  await page.getByRole("button", { name: "Fields" }).click();
-  const fields = page.getByRole("dialog", { name: "Fields" });
+  await page
+    .getByRole("main", { name: "Document" })
+    .getByRole("button", { name: "Assistant" })
+    .click();
+  const fields = page.getByRole("dialog", { name: "Assistant" });
   await expect(fields).toBeVisible();
   const input = fields.getByRole("textbox", { name: "Ask the assistant" });
   await expect(input).toBeVisible();

@@ -309,6 +309,16 @@ export function focusAssistantInput() {
   document.querySelector<HTMLInputElement>('input[aria-label="Ask the assistant"]')?.focus();
 }
 
+/** Focuses the input as soon as it is mounted (an overlay mounts it after it opens), for up to a second. */
+export function focusAssistantInputWhenMounted(frames = 60) {
+  const step = () => {
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Ask the assistant"]');
+    if (input) input.focus();
+    else if (frames-- > 0) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 /** The buttons of each open change, in the order of the page. */
 const ACTIONS = "[data-change-actions]";
 

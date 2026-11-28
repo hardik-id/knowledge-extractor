@@ -247,7 +247,10 @@ test.describe("keeping or discarding one change at a time", () => {
       const dock = new AssistantDock(page);
       await openOneScreen(page, workspace);
       if (size.width < 1100)
-        await page.getByRole("button", { name: "Fields", exact: true }).click();
+        await page
+          .getByRole("main", { name: "Document" })
+          .getByRole("button", { name: "Assistant", exact: true })
+          .click();
       await dock.ask("add a field for the approver");
       const row = dock.newFieldRows.first();
       await expect(row.getByRole("button", { name: "Discard" })).toBeInViewport();

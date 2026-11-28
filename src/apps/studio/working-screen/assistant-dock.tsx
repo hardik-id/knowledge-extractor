@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, MoreHorizontal, Sparkles } from "lucide-react";
+import { MoreHorizontal, Sparkles } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,17 +22,25 @@ import { AssistantWorking, Message } from "@/features/extraction/assistant-panel
 import { useAssistant } from "@/features/extraction/use-assistant";
 import type { ExtractionDefinitionState } from "@/features/extraction/use-extraction-definition";
 import { describeApiError } from "@/services/errors";
-import { focusAssistantInput, resetOutcomes, useProposalSync } from "./use-proposal";
-import { useScreen } from "./screen-state";
+import { StartPanel } from "../start/start-panel";
+import { resetOutcomes, useProposalSync } from "./use-proposal";
 
 /**
- * The assistant at the bottom of the column: a one-line input; using it opens the conversation
- * upward, oldest message first. Its proposals are shown in the table, not here.
+ * The assistant in the column, always open: its header with the menu, the conversation filling the
+ * height (oldest message first, the newest in view) and the input at the bottom. With nothing
+ * configured the conversation starts with the start content (ask, templates, add a field).
+ * Its proposals are shown in the table, not here.
  */
-export function AssistantDock({ definition }: { definition: ExtractionDefinitionState }) {
+export function AssistantDock({
+  definition,
+  starting,
+}: {
+  definition: ExtractionDefinitionState;
+  /** Nothing saved, drafted or suggested: the conversation opens with the start content. */
+  starting: boolean;
+}) {
   const assistant = useAssistant(definition.draft ?? undefined);
   const { messages, busy, activity } = assistant;
-  const { conversationOpen, setConversationOpen } = useScreen();
   const outcomeOf = useProposalSync(
     definition.draft ?? undefined,
     messages,
@@ -45,103 +53,100 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
 
   // The newest message is the one to read.
   useEffect(() => {
-    if (conversationOpen && log.current) log.current.scrollTop = log.current.scrollHeight;
-  }, [conversationOpen, messages, activity]);
+    // With no message yet the start content is shown from its top.
+    if (log.current && messages.length > 0) log.current.scrollTop = log.current.scrollHeight;
+  }, [messages, activity]);
 
   const submit = async () => {
     if (busy || text.trim() === "") return;
-    setConversationOpen(true);
     if (await assistant.send(text)) setText("");
   };
 
   return (
-    <section aria-labelledby={`${id}-title`} className="shrink-0 border-t border-border-subtle">
-      <h2 id={`${id}-title`} className="sr-only">
-        Assistant
-      </h2>
-      {conversationOpen && (
-        <div className="flex flex-col gap-2 pt-2">
-          <div className="flex items-center gap-2 pr-2 pl-4">
-            <Sparkles aria-hidden className="size-4 text-link" />
-            <span className="font-semibold text-ink-heading">Assistant</span>
-            <span className="flex-1" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="More about the conversation">
-                  <MoreHorizontal aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-44 whitespace-nowrap">
-                <DropdownMenuItem
-                  disabled={busy || messages.length === 0}
-                  onSelect={() => setConfirming(true)}
-                >
-                  Clear conversation
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Close the conversation"
-              onClick={() => {
-                setConversationOpen(false);
-                focusAssistantInput();
-              }}
-            >
-              <ChevronDown aria-hidden />
+    <section
+      aria-labelledby={`${id}-title`}
+      className="flex min-h-[max(240px,40%)] flex-1 flex-col"
+    >
+      <div className="flex shrink-0 items-center gap-2 py-1 pr-2 pl-4">
+        <Sparkles aria-hidden className="size-4 text-link" />
+        <h2 id={`${id}-title`} className="font-semibold text-ink-heading">
+          Assistant
+        </h2>
+        <span className="flex-1" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label="More about the conversation">
+              <MoreHorizontal aria-hidden />
             </Button>
-          </div>
-          {assistant.error ? (
-            <div className="flex flex-col items-start gap-2 px-4 pb-2">
-              <p>
-                <span className="font-semibold text-ink">Couldn&apos;t load the conversation.</span>{" "}
-                {describeApiError(assistant.error)}
-              </p>
-              <Button variant="outline" size="sm" onClick={assistant.retry}>
-                Try again
-              </Button>
-            </div>
-          ) : (
-            <div
-              ref={log}
-              role="log"
-              aria-label="Conversation"
-              aria-live="polite"
-              aria-busy={assistant.isLoading}
-              className="flex max-h-[min(13rem,30dvh)] flex-col gap-3 overflow-y-auto px-4 pb-1"
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-44 whitespace-nowrap">
+            <DropdownMenuItem
+              disabled={busy || messages.length === 0}
+              onSelect={() => setConfirming(true)}
             >
-              {messages.length === 0 && !assistant.isLoading && (
-                <p className="text-small text-ink-muted">
-                  Describe what you want to extract, or ask for a change.
-                </p>
-              )}
-              {messages.map((m) => {
-                const shown = m.proposal ? outcomeOf(m) : null;
-                return (
-                  <div key={m.id} className="flex flex-col gap-1">
-                    <Message message={m} />
-                    {shown && (
-                      <p
-                        className={
-                          shown.outcome === "open"
-                            ? "text-small font-medium text-warning"
-                            : "text-small text-ink-muted"
-                        }
-                      >
-                        {shown.line}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-              {(activity === "working" || activity === "awaited") && <AssistantWorking />}
+              Clear conversation
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {assistant.error ? (
+        <div className="flex min-h-0 flex-1 flex-col items-start gap-2 px-4 pb-2">
+          <p>
+            <span className="font-semibold text-ink">Couldn&apos;t load the conversation.</span>{" "}
+            {describeApiError(assistant.error)}
+          </p>
+          <Button variant="outline" size="sm" onClick={assistant.retry}>
+            Try again
+          </Button>
+        </div>
+      ) : (
+        <div ref={log} className="min-h-0 flex-1 overflow-y-auto px-4 pb-1">
+          {starting && (
+            <div className="pt-2 pb-4">
+              <StartPanel definition={definition} assistant={assistant} />
             </div>
           )}
+          <div
+            role="log"
+            aria-label="Conversation"
+            aria-live="polite"
+            aria-busy={assistant.isLoading}
+            className="flex flex-col gap-3"
+          >
+            {messages.length === 0 && !assistant.isLoading && !starting && (
+              <p className="text-small text-ink-muted">
+                Describe what you want to extract, or ask for a change.
+              </p>
+            )}
+            {messages.map((m) => {
+              const shown = m.proposal ? outcomeOf(m) : null;
+              return (
+                <div key={m.id} className="flex flex-col gap-1">
+                  <Message message={m} />
+                  {shown && (
+                    <p
+                      className={
+                        shown.outcome === "open"
+                          ? "text-small font-medium text-warning"
+                          : "text-small text-ink-muted"
+                      }
+                    >
+                      {shown.line}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            {(activity === "working" || activity === "awaited") && <AssistantWorking />}
+          </div>
         </div>
       )}
       <form
-        className="flex items-center gap-2 py-2 pr-3 pl-4"
+        className={`flex shrink-0 items-center gap-2 border-t border-border-subtle py-2 pr-3 pl-4 ${
+          // Next's development indicator sits at the bottom left: on a phone-wide overlay the
+          // row stays above it, at its full width. A production build has no indicator.
+          process.env.NODE_ENV === "development" ? "max-sm:mb-16" : ""
+        }`}
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
@@ -151,18 +156,8 @@ export function AssistantDock({ definition }: { definition: ExtractionDefinition
           value={text}
           disabled={busy}
           aria-label="Ask the assistant"
-          placeholder={
-            !conversationOpen && activity !== "idle"
-              ? "Assistant is working…"
-              : messages.length > 0
-                ? "Ask for something else"
-                : "Ask the assistant"
-          }
-          onClick={() => setConversationOpen(true)}
-          onChange={(e) => {
-            setText(e.target.value);
-            setConversationOpen(true);
-          }}
+          placeholder={messages.length > 0 ? "Ask for something else" : "Ask the assistant"}
+          onChange={(e) => setText(e.target.value)}
         />
         <Button type="submit" variant="outline" disabled={busy || text.trim() === ""}>
           Send

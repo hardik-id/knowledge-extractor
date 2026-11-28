@@ -33,8 +33,10 @@ for (const size of [
     }) => {
       // The document of a file nobody has extracted yet: "extraction_not_found" is how the API says so.
       expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
-      // A short name: the bar is tight at these widths, and a longer name wraps it (see #264).
-      const workspace = await api.createWorkspace({ name: "Layout test" });
+      // A long name: the bar is tight at these widths, and the name gives way before the bar wraps.
+      const workspace = await api.createWorkspace({
+        name: "Layout workspace for the quarterly report",
+      });
       await addDocument(person, workspace.run_id);
 
       await page.goto("/studio");
@@ -51,7 +53,7 @@ for (const size of [
 
       await page.goto(extractPath(workspace.id));
       await expectWorkingScreen(page);
-      expect(await barHeight(page), "the top bar on the working screen").toBeLessThan(90);
+      expect(await barHeight(page), "the top bar on the working screen is one row").toBeLessThan(56);
       // With unsaved changes the version text is longer: the bar stays one row.
       await editPrompt(page, "Something else to extract");
       await expect(page.getByTestId("version-line")).toContainText("unsaved changes");

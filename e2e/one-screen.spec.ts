@@ -23,10 +23,11 @@ async function openWithResults(
   api: Parameters<typeof workspaceWithDocuments>[0],
   person: Parameters<typeof workspaceWithDocuments>[1],
   request: Parameters<typeof workspaceWithDocuments>[2],
+  options?: Parameters<typeof openOneScreen>[2],
 ) {
   const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
   const extraction = new ExtractionPage(page);
-  await openOneScreen(page, workspace);
+  await openOneScreen(page, workspace, options);
   await extraction.run("Run extraction");
   await extraction.finished();
   await expect(documentPane(page).locator("mark").first()).toBeVisible();
@@ -54,7 +55,7 @@ test("the table is today's table, and its edits survive a save and a reload", as
     column.getByRole("columnheader", { name: "What to look for", exact: true }),
   ).toHaveCount(0);
   await expect(column.getByRole("heading", { name: "ADR" })).toBeVisible();
-  await expect(column.getByText("6 fields")).toBeVisible();
+  await expect(column.getByText("6 fields", { exact: true })).toBeVisible();
   await expect(column.getByTestId("field-dot")).toHaveCount(6);
 
   await column.getByRole("textbox", { name: "Name of field 1" }).fill("Heading");
@@ -62,7 +63,7 @@ test("the table is today's table, and its edits survive a save and a reload", as
   await column.getByLabel("Type of Decided on").selectOption("number");
   await column.getByRole("button", { name: "More actions for Context" }).click();
   await page.getByRole("menuitem", { name: "Remove" }).click();
-  await expect(column.getByText("5 fields")).toBeVisible();
+  await expect(column.getByText("5 fields", { exact: true })).toBeVisible();
   await expect(page.getByText("Unsaved changes").first()).toBeVisible();
 
   await extraction.saveConfiguration("Edited on the working screen");
@@ -170,7 +171,11 @@ for (const size of [
         .getByRole("button", { name: "More actions for Decision" })
         .boundingBox();
       expect(last && box && last.x + last.width <= box.x + box.width).toBe(true);
-      await expect(page.getByRole("button", { name: "Fields", exact: true })).toHaveCount(0);
+      await expect(
+        page
+          .getByRole("main", { name: "Document" })
+          .getByRole("button", { name: "Assistant", exact: true }),
+      ).toHaveCount(0);
     });
   });
 }
@@ -195,8 +200,11 @@ for (const size of [
       await expect(fieldColumn(page)).toHaveCount(0);
       expect(await scrollsSideways(page)).toBe(false);
 
-      await page.getByRole("button", { name: "Fields", exact: true }).click();
-      const sheet = page.getByRole("dialog", { name: "Fields" });
+      await page
+        .getByRole("main", { name: "Document" })
+        .getByRole("button", { name: "Assistant", exact: true })
+        .click();
+      const sheet = page.getByRole("dialog", { name: "Assistant" });
       await expect(sheet.getByRole("table", { name: "Fields of ADR" })).toBeVisible();
       expect(await scrollsSideways(page)).toBe(false);
       // It slides in: wait until it has settled inside the window.
@@ -211,7 +219,11 @@ for (const size of [
       await sheet.getByRole("textbox", { name: "Name of field 1" }).fill("Heading");
       await page.keyboard.press("Escape");
       await expect(sheet).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Fields", exact: true })).toBeFocused();
+      await expect(
+        page
+          .getByRole("main", { name: "Document" })
+          .getByRole("button", { name: "Assistant", exact: true }),
+      ).toBeFocused();
       // The edit is in the draft, whichever way the column is shown.
       await expect(page.getByText("Unsaved changes").first()).toBeVisible();
     });
@@ -271,7 +283,8 @@ test.describe("pictures", () => {
   }) => {
     noExtractionYet(expectApiError);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await openWithResults(page, api, person, request);
+    // The first-visit screen: Configuration closed, the assistant open.
+    await openWithResults(page, api, person, request, { configuration: "closed" });
     await shot(page, "one-screen.png");
   });
 
@@ -285,10 +298,14 @@ test.describe("pictures", () => {
     noExtractionYet(expectApiError);
     await page.setViewportSize({ width: 390, height: 844 });
     const workspace = await workspaceWithDocuments(api, person, request, DOCUMENTS);
-    await openOneScreen(page, workspace);
-    await page.getByRole("button", { name: "Fields", exact: true }).click();
-    const sheet = page.getByRole("dialog", { name: "Fields" });
-    await expect(sheet.getByRole("table", { name: "Fields of ADR" })).toBeVisible();
+    await openOneScreen(page, workspace, { configuration: "closed" });
+    await page
+      .getByRole("main", { name: "Document" })
+      .getByRole("button", { name: "Assistant", exact: true })
+      .click();
+    const sheet = page.getByRole("dialog", { name: "Assistant" });
+    await expect(sheet.getByRole("button", { name: /^Configuration/ })).toBeVisible();
+    await expect(sheet.getByRole("textbox", { name: "Ask the assistant" })).toBeVisible();
     await shot(page, "one-screen-overlay.png");
   });
 });
