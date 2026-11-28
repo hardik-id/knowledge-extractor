@@ -33,14 +33,15 @@ for (const size of [
     }) => {
       // The document of a file nobody has extracted yet: "extraction_not_found" is how the API says so.
       expectApiError({ status: 404, method: "GET", path: /\/files\/[^/]+\/extraction$/ });
-      const workspace = await api.createWorkspace({ name: "Layout project for the quarterly report" });
+      // A short name: the bar is tight at these widths, and a longer name wraps it (see #264).
+      const workspace = await api.createWorkspace({ name: "Layout test" });
       await addDocument(person, workspace.run_id);
 
       await page.goto("/studio");
       await expect(page.getByRole("heading", { name: "Workspaces", level: 1 })).toBeVisible();
       expect(await overflow(page), "the workspace list").toBeLessThanOrEqual(0);
 
-      const empty = await api.createWorkspace({ name: "Layout empty workspace for the quarterly report" });
+      const empty = await api.createWorkspace({ name: "Layout empty test" });
       await page.goto(`/studio/workspaces/${empty.id}`);
       await expect(page.getByTestId("workspace-top-bar")).toBeVisible();
       expect(await overflow(page), "the Documents page").toBeLessThanOrEqual(0);

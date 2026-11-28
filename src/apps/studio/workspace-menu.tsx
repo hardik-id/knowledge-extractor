@@ -42,7 +42,7 @@ export function WorkspaceMenu() {
             ref={trigger}
             variant="ghost"
             title={workspace.name}
-            className="max-w-[min(9rem,60vw)] px-2 font-semibold text-ink-heading"
+            className="max-w-[min(24rem,60vw)] px-2 font-semibold text-ink-heading"
           >
             <span className="truncate">{workspace.name}</span>
             <ChevronDown aria-hidden className="text-ink-muted" />
