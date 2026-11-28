@@ -1,4 +1,4 @@
-import { expectWorkingScreen } from "./pages/working-screen";
+import { documentPane, expectWorkingScreen } from "./pages/working-screen";
 import { type Page } from "@playwright/test";
 import { addDocument, submitDocumentsButton } from "./pages/studio";
 import { expect, test } from "./fixtures";
@@ -73,9 +73,11 @@ test.describe("on a desktop", () => {
       "focus after the skip is still in the top bar",
     ).toBe(false);
 
-    // From the top, the order is: the top bar, then the content.
+    // From the top, the order is: the top bar, then the content. It is read from a loaded screen:
+    // while the screen loads the bar is not complete, and twelve Tabs go round the page.
     await page.goto(`/studio/workspaces/${workspace.id}`);
-    await expect(page.getByTestId("workspace-top-bar")).toBeVisible();
+    await expectWorkingScreen(page);
+    await expect(documentPane(page).getByRole("heading").first()).toBeVisible();
     // The first stop is the skip link; the order is read from the second.
     await page.keyboard.press("Tab");
     const order: string[] = [];
