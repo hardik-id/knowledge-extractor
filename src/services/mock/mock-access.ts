@@ -174,8 +174,14 @@ export class MockAccess {
     if (known) return known;
     if (!this.tenantOfWorkspace.has(workspaceId)) await this.source.get(workspaceId);
     const addedAt = new Date().toISOString();
+    const tenant = this.tenant(this.tenantIdOf(workspaceId));
     const created: WorkspaceRecord = {
-      members: new Map(SEED_WORKSPACE_ROLES.map(([id, role]) => [id, { role, addedAt }])),
+      members: new Map(
+        SEED_WORKSPACE_ROLES.filter(([id]) => tenant.members.has(id)).map(([id, role]) => [
+          id,
+          { role, addedAt },
+        ]),
+      ),
     };
     this.workspaces.set(workspaceId, created);
     return created;
@@ -199,6 +205,21 @@ export class MockAccess {
     if (admins.length === 1 && admins[0] === userId) {
       throw error(409, "last_tenant_admin", "A tenant needs at least one admin.");
     }
+  }
+
+  private forbidden(): ApiError {
+    return error(403, "forbidden", "You are not allowed to do this.");
+  }
+
+  /** Only a platform admin may do this. */
+  private needPlatformAdmin(): void {
+    if (!this.platformAdminActing) throw this.forbidden();
+  }
+
+  /** Only a platform admin or an admin of this tenant may do this. */
+  private needTenantAdmin(tenant: TenantRecord): void {
+    if (this.platformAdminActing) return;
+    if (tenant.members.get(ME.id)?.role !== "admin") throw this.forbidden();
   }
 
   private tenantView(tenant: TenantRecord, workspaceCount: number): Tenant {
@@ -229,6 +250,7 @@ export class MockAccess {
         );
       },
       create: async (name) => {
+        this.needPlatformAdmin();
         const checked = checkName(name);
         this.checkNameFree(checked);
         const id = `tenant_${this.tenants.size + 1}_${Date.now().toString(36)}`;
@@ -244,6 +266,7 @@ export class MockAccess {
         return this.tenantView(this.tenants.get(id)!, 0);
       },
       rename: async (tenantId, name) => {
+        this.needPlatformAdmin();
         const tenant = this.tenant(tenantId);
         const checked = checkName(name);
         this.checkNameFree(checked, tenant.id);
@@ -261,6 +284,7 @@ export class MockAccess {
         return this.tenantView(tenant, (await this.workspaceIdsOf(tenantId)).length);
       },
       remove: async (tenantId) => {
+        this.needPlatformAdmin();
         const tenant = this.tenant(tenantId);
         if (tenant.isDefault) {
           throw error(409, "default_tenant", "The default tenant can't be deleted.");
@@ -309,6 +333,7 @@ export class MockAccess {
       },
       add: async (tenantId, { preferredUsername, role }) => {
         const tenant = this.tenant(tenantId);
+        this.needTenantAdmin(tenant);
         const name = preferredUsername.trim().toLowerCase();
         const person = name
           ? PEOPLE.find((p) => p.preferredUsername.toLowerCase() === name)
@@ -330,6 +355,7 @@ export class MockAccess {
       },
       setRole: async (tenantId, userId, role) => {
         const tenant = this.tenant(tenantId);
+        this.needTenantAdmin(tenant);
         const current = tenant.members.get(userId);
         if (!current)
           throw error(404, "user_not_found", "This person is not a member of the tenant.");
@@ -349,6 +375,7 @@ export class MockAccess {
       },
       remove: async (tenantId, userId) => {
         const tenant = this.tenant(tenantId);
+        this.needTenantAdmin(tenant);
         const current = tenant.members.get(userId);
         if (!current)
           throw error(404, "user_not_found", "This person is not a member of the tenant.");
@@ -383,7 +410,7 @@ export class MockAccess {
 
     tenantWorkspaces: {
       list: async (tenantId, { cursor } = {}) => {
-        this.tenant(tenantId);
+        this.needTenantAdmin(this.tenant(tenantId));
         const known = new Map((await this.source.list()).map((w) => [w.id, w]));
         const items: TenantWorkspace[] = [];
         for (const id of await this.workspaceIdsOf(tenantId)) {
@@ -467,6 +494,12 @@ export class MockAccess {
 
     people: {
       find: async (preferredUsername) => {
+        if (
+          !this.platformAdminActing &&
+          ![...this.tenants.values()].some((t) => t.members.get(ME.id)?.role === "admin")
+        ) {
+          throw this.forbidden();
+        }
         const name = preferredUsername.trim().toLowerCase();
         if (!name) return null;
         const found = PEOPLE.filter((p) => p.preferredUsername.toLowerCase() === name);
@@ -490,11 +523,14 @@ export class MockAccess {
     },
 
     platformAdmins: {
-      list: async () =>
-        [...this.platformAdmins]
+      list: async () => {
+        this.needPlatformAdmin();
+        return [...this.platformAdmins]
           .map((id): PlatformAdmin => ({ user: this.ref(id), source: "row" }))
-          .sort((a, b) => a.user.name.localeCompare(b.user.name)),
+          .sort((a, b) => a.user.name.localeCompare(b.user.name));
+      },
       grant: async (userId) => {
+        this.needPlatformAdmin();
         if (!this.person(userId)) throw userNotFound();
         if (!this.platformAdmins.has(userId)) {
           this.platformAdmins.add(userId);
@@ -510,6 +546,7 @@ export class MockAccess {
         return { user: this.ref(userId), source: "row" };
       },
       revoke: async (userId) => {
+        this.needPlatformAdmin();
         if (!this.platformAdmins.has(userId)) throw userNotFound();
         if (this.platformAdmins.size === 1) {
           throw error(
@@ -532,13 +569,8 @@ export class MockAccess {
 
     activity: {
       list: async ({ tenantId, cursor } = {}) => {
-        if (
-          tenantId !== undefined &&
-          !this.tenants.has(tenantId) &&
-          !this.activityLog.some((e) => e.tenantId === tenantId)
-        ) {
-          throw tenantNotFound();
-        }
+        if (tenantId === undefined) this.needPlatformAdmin();
+        else this.needTenantAdmin(this.tenant(tenantId));
         const entries = this.activityLog
           .filter((e) => tenantId === undefined || e.tenantId === tenantId)
           .map((e) => ({ ...e }));

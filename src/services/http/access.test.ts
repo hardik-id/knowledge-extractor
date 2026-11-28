@@ -194,6 +194,15 @@ describe("access: people", () => {
     assert.equal(await r.api.people.find("nobody@example.com"), null);
   });
 
+  test("find sends the name trimmed", async () => {
+    const r = recordingClient({ items: [user], next: null });
+    await r.api.people.find("  ada@example.com ");
+    assert.equal(
+      only(r.requests).url,
+      "https://api.test/api/v1/users?preferred_username=ada%40example.com",
+    );
+  });
+
   test("find with a blank name asks nothing: the API would list everyone", async () => {
     const r = recordingClient({ items: [user], next: null });
     assert.equal(await r.api.people.find("   "), null);

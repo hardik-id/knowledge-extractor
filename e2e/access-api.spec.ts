@@ -80,9 +80,8 @@ test.describe("the access routes answer what the parsers read", () => {
       expect(Array.isArray(everything.items)).toBe(true);
       const ofTenant = await adminAccess.activity.list({ tenantId });
       expect(ofTenant.items.every((e) => e.tenantId === tenantId)).toBe(true);
-      // The new person joined Default on their first sign-in: that is an entry.
-      const joined = await adminAccess.activity.list({ tenantId });
-      expect(joined.items.length).toBeGreaterThan(0);
+      // The new person joined Default on their first sign-in: an entry is about them.
+      expect(ofTenant.items.some((e) => e.target?.id === me.id)).toBe(true);
 
       // The admin manages the workspace's members without reading its content.
       const wsMembers = await adminAccess.workspaceMembers.list(created.id);

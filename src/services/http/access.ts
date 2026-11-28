@@ -88,7 +88,10 @@ export function createHttpAccessApi(client: HttpClient): AccessApi {
         // A blank name is no query at all, and without one the API lists everyone.
         if (!preferredUsername.trim()) return null;
         const page = parsePage(
-          await client.get("users", { query: { preferred_username: preferredUsername }, signal }),
+          await client.get("users", {
+            query: { preferred_username: preferredUsername.trim() },
+            signal,
+          }),
           "users",
           parseAccessPerson,
         );

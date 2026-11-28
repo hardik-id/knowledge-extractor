@@ -152,7 +152,7 @@ describe("mock access: tenants", () => {
     });
     await api.tenants.remove(t.id);
     assert.deepEqual(
-      (await api.activity.list({ tenantId: t.id })).items.map((e) => e.action),
+      (await api.activity.list()).items.filter((e) => e.tenantId === t.id).map((e) => e.action),
       ["tenant.delete", "tenant.member.remove", "tenant.role.set", "tenant.create"],
     );
   });
@@ -387,6 +387,8 @@ describe("mock access: activity", () => {
     assert.equal((await api.activity.list({ cursor: first.next })).items.length, 1);
     assert.equal((await api.activity.list({ tenantId: legal.id })).items.length, 2);
     await rejectsWith(api.activity.list({ tenantId: "nope" }), "tenant_not_found", 404);
+    await api.tenants.remove(legal.id);
+    await rejectsWith(api.activity.list({ tenantId: legal.id }), "tenant_not_found", 404);
   });
 });
 
@@ -434,3 +436,58 @@ describe("mock access: the answers pass the http parsers", () => {
 
 const _typeCheck: AccessApi = plain();
 void _typeCheck;
+
+describe("mock access: a person who is not a platform admin", () => {
+  const lesser = () => new MockAccess({ platformAdmin: false }).api;
+
+  test("tenant create, rename and delete answer 403", async () => {
+    const api = lesser();
+    await rejectsWith(api.tenants.create("New"), "forbidden", 403);
+    await rejectsWith(api.tenants.rename(DEFAULT, "Other"), "forbidden", 403);
+    await rejectsWith(api.tenants.remove(DEFAULT), "forbidden", 403);
+  });
+
+  test("platform admins answer 403", async () => {
+    const api = lesser();
+    await rejectsWith(api.platformAdmins.list(), "forbidden", 403);
+    await rejectsWith(api.platformAdmins.grant(2), "forbidden", 403);
+    await rejectsWith(api.platformAdmins.revoke(1), "forbidden", 403);
+  });
+
+  test("activity of all tenants answers 403, a tenant's own is allowed", async () => {
+    const api = lesser();
+    await rejectsWith(api.activity.list(), "forbidden", 403);
+    assert.ok(Array.isArray((await api.activity.list({ tenantId: DEFAULT })).items));
+  });
+
+  test("a tenant the person does not administer is closed: workspaces, members, find", async () => {
+    const api = lesser();
+    await api.tenantMembers.setRole(DEFAULT, 1, "member"); // allowed: Priya is still admin
+    await rejectsWith(api.tenantWorkspaces.list(DEFAULT), "forbidden", 403);
+    await rejectsWith(
+      api.tenantMembers.add(DEFAULT, {
+        preferredUsername: "samir.haddad@example.com",
+        role: "member",
+      }),
+      "forbidden",
+      403,
+    );
+    await rejectsWith(api.tenantMembers.setRole(DEFAULT, 2, "member"), "forbidden", 403);
+    await rejectsWith(api.tenantMembers.remove(DEFAULT, 3), "forbidden", 403);
+    await rejectsWith(api.people.find("priya.nair@example.com"), "forbidden", 403);
+  });
+});
+
+describe("mock access: consistency", () => {
+  test("a new workspace is seeded only with people of its tenant", async () => {
+    const backend = new MockBackend({ speed: 0, storage: null, persistentStorage: null });
+    const access = new MockAccess({
+      workspaces: { list: () => backend.listWorkspaces(), get: (id) => backend.getWorkspace(id) },
+    }).api;
+    await access.tenantMembers.remove(DEFAULT, 2);
+    const w = await backend.createWorkspace({ name: "Late" });
+    const ids = (await access.workspaceMembers.list(w.id)).map((m) => m.user.id);
+    assert.ok(!ids.includes(2));
+    assert.ok(ids.includes(1));
+  });
+});
