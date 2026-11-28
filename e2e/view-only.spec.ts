@@ -8,6 +8,7 @@ import {
   addDocuments,
   ExtractionPage,
   openTemplatesDialog,
+  openVersionHistory,
   openVersionMenu,
   workspaceWithDocuments,
 } from "./pages/extraction";
@@ -126,19 +127,26 @@ test.describe("view only", () => {
     await expect(column.getByRole("combobox")).toHaveCount(0);
     await expect(column.getByText("What to extract", { exact: true })).toBeVisible();
     await expect(column.getByText("Automatic", { exact: true })).toBeVisible();
-    await expect(
-      column.getByTestId("read-only-fields").getByRole("listitem").first(),
-    ).toBeVisible();
+    const fields = column.getByRole("list", { name: /^Fields of / });
+    await expect(fields.getByRole("listitem").first()).toBeVisible();
     await expect(column.getByText(/Exact quote/).first()).toBeVisible();
     await expect(column.getByTestId("field-dot").first()).toBeVisible();
-    // No suggested rows in the table.
-    await expect(column.getByText("New field")).toHaveCount(0);
+    // No suggested rows and no bar to decide them, anywhere on the page.
+    await expect(view.getByText("New field")).toHaveCount(0);
+    await expect(view.getByRole("button", { name: /^Keep all/ })).toHaveCount(0);
+    await expect(view.getByRole("button", { name: "Discard all" })).toHaveCount(0);
 
     // A click on a field selects it: that only changes the highlights.
-    const first = column.getByTestId("read-only-fields").getByRole("button").first();
+    const first = fields.getByRole("button").first();
     await expect(first).toHaveAttribute("aria-pressed", "false");
     await first.click();
     await expect(first).toHaveAttribute("aria-pressed", "true");
+
+    // The history reads: a version can be opened and has no Restore.
+    const history = await openVersionHistory(view);
+    await history.getByRole("button", { name: /^View version \d+/ }).first().click();
+    await expect(history.getByRole("button", { name: "Restore this version" })).toHaveCount(0);
+    await history.getByRole("button", { name: "Close" }).click();
 
     await expectAccessible(view, "working screen of a Viewer");
   });

@@ -25,11 +25,14 @@ import { useScreenControls, useScreen } from "./screen-state";
  * and the assistant keeps at least 240px and 40% of the column.
  */
 export function FieldColumn({ definition }: { definition: ExtractionDefinitionState }) {
-  const { draft, saved, setDraft, errors, showErrors, valid, chunkingProblem } = definition;
+  const { saved, setDraft, errors, showErrors, valid, chunkingProblem } = definition;
   const { selectedTypeId, selectedFieldId, proposal, configurationOpen, setConfigurationOpen } =
     useScreen();
   const controls = useScreenControls();
   const mayEdit = useMay("workspace.edit");
+  // Someone who may not edit reads what is saved: a draft left from before the role changed is not it.
+  const draft = mayEdit ? definition.draft : (saved ?? definition.draft);
+  const shown = mayEdit || !saved ? definition : { ...definition, draft: saved };
   const scroller = useRef<HTMLDivElement>(null);
   const selection = useFieldSelection();
   const panelId = useId();
@@ -119,9 +122,9 @@ export function FieldColumn({ definition }: { definition: ExtractionDefinitionSt
             aria-label="Field list"
             className="outline-none"
           >
-            {!starting && <RecordTypeBar definition={definition} readOnly />}
-            {!starting && <PromptLine definition={definition} readOnly />}
-            {!starting && <ChunkingRow definition={definition} readOnly />}
+            {!starting && <RecordTypeBar definition={shown} readOnly />}
+            {!starting && <PromptLine definition={shown} readOnly />}
+            {!starting && <ChunkingRow definition={shown} readOnly />}
             {!type ? (
               <p className="px-4 py-4 text-ink-muted">No fields yet.</p>
             ) : type.fields.length === 0 ? (

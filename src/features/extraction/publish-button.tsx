@@ -4,9 +4,9 @@ import { Rocket } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { toastFailure } from "@/features/auth/report-failure";
 import { plural } from "@/lib/format";
 import { services } from "@/services";
-import { describeApiError } from "@/services/errors";
 import { usePipelineStore } from "@/store/pipeline-store";
 
 /** "Publish to pipeline" with an inline confirmation underneath. */
@@ -36,7 +36,7 @@ export function PublishButton({
       });
       setConfirming(false);
     } catch (error) {
-      toast.error("Couldn't publish", { description: describeApiError(error) });
+      toastFailure("Couldn't publish", error);
     } finally {
       setPublishing(false);
     }

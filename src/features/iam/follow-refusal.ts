@@ -25,9 +25,18 @@ export function followRefusal(error: unknown): void {
 export function useFollowRefusal(): void {
   const store = useRunStoreApi();
   useEffect(() => {
+    // Only the latest read counts: an older answer arriving last must not undo a newer one.
+    let latest = 0;
     const again = () => {
       const { workspaceId, setWorkspace } = store.getState();
-      if (workspaceId) services.workspaces.get(workspaceId).then(setWorkspace, () => {});
+      if (!workspaceId) return;
+      const mine = ++latest;
+      services.workspaces.get(workspaceId).then(
+        (workspace) => {
+          if (mine === latest) setWorkspace(workspace);
+        },
+        () => {},
+      );
     };
     listeners.add(again);
     return () => void listeners.delete(again);

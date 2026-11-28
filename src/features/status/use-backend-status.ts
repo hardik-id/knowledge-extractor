@@ -11,7 +11,7 @@ import { withSocketState } from "./status-rules";
 
 /** The app's one status store: every badge reads it. */
 const statusStore = createStatusStore(services.status, appSession, (error) =>
-  toastFailure("Couldn't test the connections", error),
+  toastFailure("Couldn't test the connections", error, undefined, false),
 );
 
 const EMPTY: StatusSnapshot = { status: undefined, failed: false, testing: false, tested: null };
