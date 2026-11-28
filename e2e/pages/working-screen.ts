@@ -72,3 +72,11 @@ export async function openConfiguration(page: Page) {
     await expect(row).toHaveAttribute("aria-expanded", "true", { timeout: 1_000 });
   }).toPass({ timeout: 20_000 });
 }
+
+/** The tag the top bar shows when the person may read the workspace and not change it. */
+export function viewOnlyTag(page: Page) {
+  return page
+    .getByTestId("workspace-top-bar")
+    .locator("visible=true")
+    .getByText("View only", { exact: true });
+}

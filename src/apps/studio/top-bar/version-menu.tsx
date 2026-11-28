@@ -11,6 +11,7 @@ import type { ExtractionRun } from "@/features/extraction/use-extraction-run";
 import { versionLine } from "@/features/extraction/version-format";
 import { HistoryDialog } from "@/features/extraction/version-history";
 import { MAX_DEFINITION_NOTE_LENGTH } from "@/services/contracts";
+import { useMay } from "../use-may";
 
 /** "Version 3", "Version 3 · unsaved changes", "Nothing saved yet" (with " · unsaved changes" once something is drafted). */
 export function versionLabel(version: number, empty: boolean, dirty: boolean): string {
@@ -24,7 +25,10 @@ export function versionLabel(version: number, empty: boolean, dirty: boolean): s
  */
 export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
   const { definition, running } = extraction;
-  const { saved, dirty, saving } = definition;
+  const { saved, saving } = definition;
+  const mayEdit = useMay("workspace.edit");
+  // Without the right to edit nothing can be saved: unsaved changes (left from before the role changed) are not offered.
+  const dirty = definition.dirty && mayEdit;
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState(false);
   const [note, setNote] = useState(definition.suggestedNote);
@@ -83,7 +87,7 @@ export function VersionMenu({ extraction }: { extraction: ExtractionRun }) {
               {versionLine(saved.version, saved.createdAt)}
             </p>
           )}
-          {dirty ? (
+          {!mayEdit ? null : dirty ? (
             <form
               aria-label="Save configuration"
               className="space-y-3"
