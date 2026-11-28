@@ -1,4 +1,5 @@
 import type { BackendStatus, Services } from "../contracts";
+import { MockAccess } from "./mock-access";
 import { MOCK_PERSON } from "./mock-person";
 import { MockBackend } from "./mock-backend";
 
@@ -27,7 +28,12 @@ const MOCK_STATUS: BackendStatus = {
 export function createMockServices(backend: MockBackend = new MockBackend()): Services {
   if (typeof window !== "undefined") window.__mockBackend = backend;
 
+  const access = new MockAccess({
+    workspaces: { list: () => backend.listWorkspaces(), get: (id) => backend.getWorkspace(id) },
+  });
+
   return {
+    access: access.api,
     me: async () => structuredClone(MOCK_PERSON),
     status: {
       // The mock has no API behind it: one stand-in part, and nothing to test.
