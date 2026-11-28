@@ -143,8 +143,9 @@ export function AssistantDock({
       )}
       <form
         className={`flex shrink-0 items-center gap-2 border-t border-border-subtle py-2 pr-3 pl-4 ${
-          // Next's development indicator sits at the bottom left of a phone-wide overlay.
-          process.env.NODE_ENV === "development" ? "max-sm:pl-[190px]" : ""
+          // Next's development indicator sits at the bottom left: on a phone-wide overlay the
+          // row stays above it, at its full width. A production build has no indicator.
+          process.env.NODE_ENV === "development" ? "max-sm:mb-16" : ""
         }`}
         onSubmit={(e) => {
           e.preventDefault();
